@@ -31,14 +31,17 @@ export const blockInput = {
   placeClick: false,
 }
 
-let lastJumpTap = 0
+/** Time of the jump tap waiting for a second one; -Infinity when none is (never 0: the clock can be that young). */
+let lastJumpTap = -Infinity
 /** A second tap of jump within 0.35 s toggles flight in creative play. */
 export function jumpTapped(creative: boolean) {
+  // Jumps outside creative play never count as the first tap.
+  if (!creative) { lastJumpTap = -Infinity; return }
   const now = performance.now()
-  if (creative && now - lastJumpTap < 350) {
+  if (now - lastJumpTap < 350) {
     playerState.body.flying = !playerState.body.flying
     playerState.body.velocity.y = 0
-    lastJumpTap = 0
+    lastJumpTap = -Infinity
     return
   }
   lastJumpTap = now

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { advance, daylight, DAY_SECONDS, isNight, sunDirection } from '../src/game/daylight'
 import { inventory, resetInventory, useInventory } from '../src/game/inventory'
 import { matchRecipe } from '../src/game/recipes'
@@ -89,6 +89,24 @@ describe('creative flight', () => {
     expect(playerState.body.flying).toBe(true)
     jumpTapped(true); jumpTapped(true)
     expect(playerState.body.flying).toBe(false)
+  })
+
+  it('needs two creative taps even when the clock has only just started', () => {
+    // A young clock (a fresh page or test worker) once made one tap after a toggle count as a second.
+    const clock = vi.spyOn(performance, 'now').mockReturnValue(120)
+    try {
+      playerState.body.flying = false
+      jumpTapped(false)
+      jumpTapped(true)
+      expect(playerState.body.flying).toBe(false)
+      jumpTapped(true)
+      expect(playerState.body.flying).toBe(true)
+      clock.mockReturnValue(900)
+      jumpTapped(true)
+      expect(playerState.body.flying).toBe(true)
+    } finally {
+      clock.mockRestore()
+    }
   })
 })
 
