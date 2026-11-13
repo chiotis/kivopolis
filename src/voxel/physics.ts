@@ -1,4 +1,4 @@
-import { isSolid } from './blocks'
+import { isSolid, isWater } from './blocks'
 import { S, SY, bx, by, bz, wx, wy, wz } from './grid'
 import type { Sampler } from './mesher'
 
@@ -25,6 +25,8 @@ export interface Body {
   crouching: boolean
   /** Creative flight: no gravity, Space rises and C sinks. */
   flying: boolean
+  /** Waist-deep or deeper in water: slow, buoyant movement; Space swims up and C dives. */
+  inWater: boolean
 }
 export interface MoveInput {
   /** Desired horizontal direction in world space (any length; normalised here). */
@@ -43,7 +45,7 @@ export interface Limits {
 }
 
 export function newBody(x: number, y: number, z: number): Body {
-  return { position: { x, y, z }, velocity: { x: 0, y: 0, z: 0 }, onGround: false, crouching: false, flying: false }
+  return { position: { x, y, z }, velocity: { x: 0, y: 0, z: 0 }, onGround: false, crouching: false, flying: false, inWater: false }
 }
 
 const heightOf = (body: Body) => (body.crouching ? PLAYER.crouchHeight : PLAYER.height)
@@ -95,7 +97,8 @@ function moveHorizontal(world: Sampler, body: Body, axis: 'x' | 'z', delta: numb
   const before = { ...p }
   let lifted = 0
   const blocked = moveAxis(world, body, axis, delta)
-  if (blocked && body.onGround && !body.crouching) {
+  // Swimmers climb out onto a one-block ledge the same way walkers step up.
+  if (blocked && (body.onGround || body.inWater) && !body.crouching) {
     const blockedAt = { ...p }
     Object.assign(p, before)
     p.y += S + 0.02
@@ -115,25 +118,38 @@ function moveHorizontal(world: Sampler, body: Body, axis: 'x' | 'z', delta: numb
 
 const FLY_SPEED = 6.2
 const FLY_RISE = 5
+export const SWIM = { speed: 0.55, rise: 2.6, sink: 0.9, dive: 2.4 }
+
+/** Water at waist height: the body floats and swims. */
+export const wading = (world: Sampler, body: Body) =>
+  isWater(world.get(bx(body.position.x), by(body.position.y + 0.35), bz(body.position.z)))
 
 export function stepBody(world: Sampler, body: Body, input: MoveInput, dt: number, limits: Limits) {
   if (body.flying) return fly(world, body, input, dt, limits)
-  if (input.crouch) body.crouching = true
+  body.inWater = wading(world, body)
+  if (body.inWater) body.crouching = false
+  else if (input.crouch) body.crouching = true
   else if (body.crouching && !collides(world, body.position.x, body.position.y, body.position.z, PLAYER.height)) body.crouching = false
 
-  const speed = body.crouching ? PLAYER.crouch : input.sprint ? PLAYER.sprint : PLAYER.walk
+  const speed = (body.crouching ? PLAYER.crouch : input.sprint ? PLAYER.sprint : PLAYER.walk) * (body.inWater ? SWIM.speed : 1)
   const length = Math.hypot(input.x, input.z)
   const targetX = length ? (input.x / length) * speed : 0
   const targetZ = length ? (input.z / length) * speed : 0
-  const grip = 1 - Math.exp(-dt * (body.onGround ? 16 : 3.5))
+  const grip = 1 - Math.exp(-dt * (body.inWater ? 6 : body.onGround ? 16 : 3.5))
   body.velocity.x += (targetX - body.velocity.x) * grip
   body.velocity.z += (targetZ - body.velocity.z) * grip
 
   let lifted = moveHorizontal(world, body, 'x', body.velocity.x * dt, limits)
   lifted += moveHorizontal(world, body, 'z', body.velocity.z * dt, limits)
 
-  if (input.jump && body.onGround) body.velocity.y = PLAYER.jump
-  body.velocity.y = Math.max(-30, body.velocity.y - PLAYER.gravity * dt)
+  if (body.inWater) {
+    // Buoyant: drift slowly down, swim up with Space, dive with C.
+    const target = input.jump ? SWIM.rise : input.crouch ? -SWIM.dive : -SWIM.sink
+    body.velocity.y += (target - body.velocity.y) * (1 - Math.exp(-dt * 5))
+  } else {
+    if (input.jump && body.onGround) body.velocity.y = PLAYER.jump
+    body.velocity.y = Math.max(-30, body.velocity.y - PLAYER.gravity * dt)
+  }
   const falling = body.velocity.y < 0
   const hit = moveAxis(world, body, 'y', body.velocity.y * dt)
   body.onGround = hit && falling

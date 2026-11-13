@@ -1,4 +1,4 @@
-import { Block } from './blocks'
+import { isEmpty } from './blocks'
 import { OX, OY, OZ, S } from './grid'
 import type { Sampler } from './mesher'
 
@@ -30,7 +30,7 @@ export function raycast(world: Sampler, origin: [number, number, number], direct
   const normal: [number, number, number] = [0, 0, 0]
   let t = 0
   while (t <= limit) {
-    if (world.get(cell[0], cell[1], cell[2]) !== Block.air) {
+    if (!isEmpty(world.get(cell[0], cell[1], cell[2]))) {
       return { x: cell[0], y: cell[1], z: cell[2], normal: [...normal], distance: t * S }
     }
     const axis = tMax[0] < tMax[1] ? (tMax[0] < tMax[2] ? 0 : 2) : (tMax[1] < tMax[2] ? 1 : 2)

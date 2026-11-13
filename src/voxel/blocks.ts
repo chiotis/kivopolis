@@ -23,6 +23,7 @@ export const Block = {
   tinOre: 19,
   lamp: 20,
   wool: 21,
+  water: 22,
 } as const
 export type BlockId = (typeof Block)[keyof typeof Block]
 
@@ -86,6 +87,8 @@ const defs: Omit<BlockDef, 'id'>[] = [
   // An oil lamp on a bronze stand: drawn as a cut-out, walked through, and it lights its surroundings.
   { key: 'lamp', hardness: 0.1, opaque: false, solid: false, tiles: { top: Tile.lampTop, side: Tile.lampSide, bottom: Tile.lampTop }, color: '#c98a3c', sound: 'stone', tier: 0, light: 14 },
   { key: 'wool', hardness: 0.35, opaque: true, solid: true, tiles: all(Tile.wool), color: '#ece6d6', sound: 'soft', tier: 0 },
+  // Sea water: drawn in its own see-through mesh, swum through, never mined.
+  { key: 'water', hardness: Infinity, opaque: false, solid: false, tiles: all(0), color: '#4f93a0', sound: 'soft', tier: 9, drop: null },
 ]
 
 export const blocks: BlockDef[] = defs.map((def, id) => ({ ...def, id: id as BlockId }))
@@ -101,5 +104,8 @@ for (const def of blocks) {
 export const isOpaque = (id: number) => opaqueTable[id] === 1
 export const isSolid = (id: number) => solidTable[id] === 1
 export const isKnownBlock = (id: number) => id >= 0 && id < blocks.length
+export const isWater = (id: number) => id === Block.water
+/** Blocks a ray or a placed block treats as empty space. */
+export const isEmpty = (id: number) => id === Block.air || id === Block.water
 
 export const blockByKey = new Map(blocks.map((def) => [def.key as string, def]))

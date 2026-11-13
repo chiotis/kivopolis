@@ -128,7 +128,7 @@ export function HeldItem() {
     gl.render(scene, camera)
 
     const game = useGame.getState()
-    const visible = game.screen === 'game' && game.mode === 'explore' && !viewMode.third
+    const visible = game.screen === 'game' && game.mode === 'explore' && !viewMode.third && !game.photo
     if (!visible) return
     const dt = Math.min(elapsed, 0.05)
     const s = rig.state

@@ -63,6 +63,9 @@ svg { flex-shrink: 0; }
 .in-game .stage { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .stage-overlay { position: absolute; z-index: 7; inset: 0; pointer-events: none; }
 .stage-overlay button { pointer-events: auto; }
+.photo-bar { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 6px; padding: 5px; border-radius: 11px; background: #1d2a22a6; opacity: 0.55; transition: opacity 0.2s; }
+.photo-bar:hover, .photo-bar:focus-within { opacity: 1; }
+.photo-bar .hud-icon { color: #fff2d8; }
 .stage-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 16px; }
 .stage-location, .chapter-pin { display: inline-flex; align-items: center; gap: 7px; padding: 8px 11px; border-radius: 8px; background: #203c31c4; color: #fff5dc; font-size: 11px; font-weight: 700; box-shadow: 0 4px 12px #203c3133; }
 .chapter-pin { margin-top: 5px; }
@@ -177,6 +180,9 @@ progress::-moz-progress-bar { background: #6f8b66; border-radius: 10px; }
 .settings-list > label { display: flex; gap: 10px; justify-content: space-between; align-items: center; font-size: 13px; }
 .settings-list select { border: 1px solid #e2dac8; border-radius: 7px; padding: 5px 7px; background: #f4ecdc; }
 .settings-list input { accent-color: var(--green); width: 17px; height: 17px; }
+.settings-list .setting-range { display: flex; align-items: center; gap: 8px; }
+.settings-list input[type='range'] { width: min(150px, 34vw); height: 17px; }
+.settings-list output { min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; color: #585a4c; }
 .completion-message { font: 500 20px/1.4 var(--serif) !important; color: var(--ink) !important; }
 .badge-score { display: flex; gap: 6px; align-items: center; margin-top: 10px; }
 .agora { display: flex; align-items: flex-start; gap: 10px; padding: 12px; margin-top: 14px; border: 1px solid #e5dac6; border-radius: 11px; background: #f0eadb; }

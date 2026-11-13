@@ -2,7 +2,7 @@ import { ground, islandEdge } from '../game/terrain'
 import { siteMarker, spawn, tourMarker } from '../game/theatre'
 import { cells } from '../game/blueprints/theatre'
 import { Block } from './blocks'
-import { OY, S, SX, SY, SZ, bx, bz, wx, wz } from './grid'
+import { OY, S, SEA_FLOOR_Y, SEA_Y, SX, SY, SZ, bx, bz, wx, wz } from './grid'
 
 /** The subset of VoxelWorld the generator needs (avoids an import cycle). */
 export interface Grid {
@@ -67,9 +67,12 @@ function terrain(grid: Grid) {
     for (let z = 0; z < SZ; z++) {
       const px = wx(x) + S / 2, pz = wz(z) + S / 2
       const height = ground(px, pz)
-      const top = Math.max(1, Math.min(SY - 2, OY + level(height) - 1))
       const radius = Math.hypot(px, pz)
-      const beach = height < -0.2 || radius > islandEdge(Math.atan2(px, -pz)) - 2.2
+      const edge = islandEdge(Math.atan2(px, -pz))
+      // Past the shore the sea floor drops to swimming depth, then levels out.
+      const shelf = radius > edge ? Math.max(SEA_FLOOR_Y, SEA_Y - 2 - Math.floor((radius - edge) * 3)) : SY
+      const top = Math.max(1, Math.min(SY - 2, shelf, OY + level(height) - 1))
+      const beach = height < -0.2 || radius > edge - 2.2
       const ridge = pz < -12 && pz > -19.5 && Math.abs(px) < 19 && hash(x, z, 3) > 0.35
       const rocky = height > 3.2 && hash(x, z, 5) > 0.55
       // Pale marble breaks the surface on the northern ridge; clay lies under the beaches.
@@ -205,10 +208,20 @@ function site(grid: Grid) {
   for (const cell of cells) if (cell.footing) footing(grid, cell.x, cell.z, cell.y - 1, Block.soil)
 }
 
+/** Every open cell at or below sea level is sea. */
+function sea(grid: Grid) {
+  for (let y = 1; y <= SEA_Y; y++) {
+    for (let z = 0; z < SZ; z++) {
+      for (let x = 0; x < SX; x++) if (grid.get(x, y, z) === Block.air) grid.fill(x, y, z, Block.water)
+    }
+  }
+}
+
 export function generate(grid: Grid) {
   terrain(grid)
   trees(grid)
   ruins(grid)
   boulders(grid)
   site(grid)
+  sea(grid)
 }

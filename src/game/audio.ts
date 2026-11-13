@@ -25,15 +25,16 @@ const voices = {
   stone: { frequency: 1650, q: 2.2, level: 0.13 },
   wood: { frequency: 820, q: 3.5, level: 0.15 },
   leaves: { frequency: 3200, q: 0.6, level: 0.09 },
+  water: { frequency: 650, q: 0.5, level: 0.16 },
 }
 
 /** A short filtered noise burst: duller for soil, sharper for stone. */
-export function blockSound(kind: keyof typeof voices, action: 'hit' | 'break' | 'place') {
+export function blockSound(kind: keyof typeof voices, action: 'hit' | 'break' | 'place' | 'step') {
   try {
     context ??= new AudioContext()
     void context.resume().catch(() => undefined)
     const now = context.currentTime
-    const length = action === 'break' ? 0.2 : action === 'place' ? 0.11 : 0.06
+    const length = action === 'break' ? 0.2 : action === 'place' ? 0.11 : action === 'step' ? 0.045 : 0.06
     const buffer = context.createBuffer(1, Math.ceil(context.sampleRate * length), context.sampleRate)
     const samples = buffer.getChannelData(0)
     for (let i = 0; i < samples.length; i++) samples[i] = (Math.random() * 2 - 1) * (1 - i / samples.length) ** 2
@@ -42,10 +43,11 @@ export function blockSound(kind: keyof typeof voices, action: 'hit' | 'break' | 
     const filter = context.createBiquadFilter()
     const voice = voices[kind]
     filter.type = 'bandpass'
-    filter.frequency.value = voice.frequency * (action === 'place' ? 0.7 : 1)
+    // Steps are lower and softer, with a little variation so a walk does not sound like a metronome.
+    filter.frequency.value = voice.frequency * (action === 'place' ? 0.7 : action === 'step' ? 0.55 + Math.random() * 0.2 : 1)
     filter.Q.value = voice.q
     const level = context.createGain()
-    level.gain.value = voice.level * (action === 'hit' ? 0.6 : 1)
+    level.gain.value = voice.level * (action === 'hit' ? 0.6 : action === 'step' ? 0.4 : 1)
     source.connect(filter).connect(level).connect(context.destination)
     source.start(now)
   } catch {

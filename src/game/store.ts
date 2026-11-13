@@ -3,7 +3,7 @@ import { objectives, siteMarker, spawn, tourMarker, type Mission, type Point } f
 import { cells, legacySlots } from './blueprints/theatre'
 import { activeMission, builtIn, complete, entrancesReady, trackSite, useSite } from './site'
 import { placementSound } from './audio'
-import { Block, blocks } from '../voxel/blocks'
+import { Block, blocks, isEmpty } from '../voxel/blocks'
 import { getWorld, resetWorld } from '../voxel/world'
 import { HOTBAR, inventory, resetInventory, useInventory } from './inventory'
 import { clearDrops, spawnDrop } from '../world/dropState'
@@ -13,7 +13,18 @@ export const interactionRadius = 2.55
 /** Explore is the first-person game; overview is the orbiting architect's camera; tour is the finale. */
 export type Mode = 'explore' | 'overview' | 'tour'
 export type Panel = 'settings' | 'help' | 'journal' | 'pause' | 'reset' | 'new' | 'complete' | 'inventory' | 'workshop' | 'kiln'
-export interface Settings { quality: 'auto' | 'high' | 'low'; sound: boolean; reducedMotion: boolean; dayCycle: boolean }
+export interface Settings {
+  quality: 'auto' | 'high' | 'low'; sound: boolean; reducedMotion: boolean; dayCycle: boolean
+  /** First-person field of view in degrees (vertical). */
+  fov: number
+  /** Look speed multiplier for mouse and touch. */
+  sensitivity: number
+  invertY: boolean
+}
+export const fovRange = [50, 100] as const
+export const sensitivityRange = [0.3, 2.5] as const
+const within = (value: unknown, [low, high]: readonly [number, number], fallback: number) =>
+  typeof value === 'number' && Number.isFinite(value) ? Math.min(high, Math.max(low, value)) : fallback
 export interface Progress {
   started: boolean
   discovered: boolean
@@ -46,6 +57,9 @@ interface State {
   hotbar: number
   /** Short-lived message shown over the world, such as a refused block edit. */
   notice: string | null
+  /** Screenshot mode: the interface is hidden so only the world shows. */
+  photo: boolean
+  setPhoto: (photo: boolean) => void
   setHotbar: (index: number) => void
   setNotice: (notice: string | null) => void
   /** Opens the backpack (2 × 2 crafting), a workshop (3 × 3) or the kiln at a world cell. */
@@ -81,7 +95,7 @@ const initialProgress = (): Progress => ({
   started: false, discovered: false, player: [...spawn], completed: false, celebrated: [],
   time: 0.3, creative: false, facts: [],
 })
-const defaults: Settings = { quality: 'auto', sound: false, reducedMotion: false, dayCycle: true }
+const defaults: Settings = { quality: 'auto', sound: false, reducedMotion: false, dayCycle: true, fov: 70, sensitivity: 1, invertY: false }
 const missionIds = new Set<string>(objectives.map(({ id }) => id))
 
 interface Loaded { game: SavedGame; legacy: string[] }
@@ -109,6 +123,9 @@ function load(): Loaded {
           sound: settings.sound === true,
           reducedMotion: settings.reducedMotion === true,
           dayCycle: settings.dayCycle !== false,
+          fov: within(settings.fov, fovRange, defaults.fov),
+          sensitivity: within(settings.sensitivity, sensitivityRange, defaults.sensitivity),
+          invertY: settings.invertY === true,
         },
         progress: {
           started: progress.started === true, discovered: progress.discovered === true, player,
@@ -132,7 +149,7 @@ export function migrateLegacy(placed: readonly string[]) {
   const whole = new Set(Object.entries(legacySlots).filter(([, ids]) => ids.every((id) => set.has(id))).map(([mission]) => mission))
   for (const cell of cells) {
     if (!whole.has(cell.mission) && !set.has(cell.legacy)) continue
-    if (world.get(cell.x, cell.y, cell.z) === Block.air) world.set(cell.x, cell.y, cell.z, cell.block)
+    if (isEmpty(world.get(cell.x, cell.y, cell.z))) world.set(cell.x, cell.y, cell.z, cell.block)
   }
 }
 
@@ -161,6 +178,11 @@ export const useGame = create<State>((set, get) => ({
   facts: [],
   hotbar: 0,
   notice: null,
+  photo: false,
+  setPhoto: (photo) => {
+    const { screen, mode, panel } = get()
+    set({ photo: photo && screen === 'game' && mode !== 'tour' && !panel })
+  },
   setHotbar: (index) => set({ hotbar: ((index % HOTBAR) + HOTBAR) % HOTBAR }),
   openContainer: (kind, kiln) => {
     const { mode, screen, panel } = get()
@@ -267,6 +289,11 @@ useSite.subscribe((site, previous) => {
     progress: { ...progress, celebrated: [...progress.celebrated, ...fresh] },
     milestone: state.screen === 'game' ? fresh.at(-1)! : state.milestone,
   })
+})
+
+// Screenshot mode ends whenever a dialog opens or the view changes.
+useGame.subscribe((state, previous) => {
+  if (state.photo && (state.panel || state.screen !== previous.screen || state.mode !== previous.mode)) useGame.setState({ photo: false })
 })
 
 useGame.subscribe((state, previous) => {

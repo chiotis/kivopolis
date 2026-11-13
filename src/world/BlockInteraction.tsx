@@ -7,7 +7,7 @@ import { useGame } from '../game/store'
 import { siteMarker, tourMarker } from '../game/theatre'
 import { inventory, useInventory } from '../game/inventory'
 import { itemByKey, mining, rollDrop } from '../game/items'
-import { Block, blocks } from '../voxel/blocks'
+import { Block, blocks, isEmpty } from '../voxel/blocks'
 import { PLAYER } from '../voxel/physics'
 import { raycast, type VoxelHit } from '../voxel/raycast'
 import { S, getWorld, index, inside, wx, wy, wz } from '../voxel/world'
@@ -18,6 +18,8 @@ import { blockInput, playerState } from './player'
 
 export const REACH = 4.6
 const PLACE_REPEAT = 0.24
+/** Seconds a freshly placed block takes to settle from a slight swell back to its size. */
+const POP = 0.18
 
 /**
  * The theatre is built by hand like everything else, so only the island's floor and the two
@@ -48,6 +50,9 @@ export function BlockInteraction() {
   const outline = useRef<LineSegments>(null)
   const crack = useRef<Mesh>(null)
   const sparks = useRef<Group>(null)
+  const pop = useRef<Mesh>(null)
+  /** Cell and start time (performance.now) of the last placed block. */
+  const popped = useRef<{ x: number; y: number; z: number; at: number } | null>(null)
   const memory = useRef({ key: '', progress: 0, placeTimer: 0, hit: null as VoxelHit | null, chip: 0, cooldown: 0, struck: false })
   const particles = useRef<Particle[]>([])
   const assets = useMemo(() => {
@@ -58,6 +63,7 @@ export function BlockInteraction() {
       line: new LineBasicMaterial({ color: '#1d2a22', transparent: true, opacity: 0.85 }),
       locked: new LineBasicMaterial({ color: '#b54a32' }),
       shade: new MeshBasicMaterial({ color: '#1b1209', transparent: true, opacity: 0, depthWrite: false }),
+      glow: new MeshBasicMaterial({ color: '#fff6df', transparent: true, opacity: 0, depthWrite: false }),
       chip: new BoxGeometry(S * 0.16, S * 0.16, S * 0.16),
       chipMaterials: new Map<number, MeshBasicMaterial>(),
     }
@@ -85,6 +91,19 @@ export function BlockInteraction() {
     const world = getWorld()
     const m = memory.current
     const active = state.screen === 'game' && state.mode === 'explore' && !state.panel
+
+    // A placed block swells slightly with a pale flash, then settles to its size.
+    if (pop.current) {
+      const placed = popped.current
+      const t = placed ? (performance.now() - placed.at) / 1000 / POP : 1
+      pop.current.visible = Boolean(placed) && t < 1
+      if (placed && t < 1) {
+        const ease = 1 - (1 - t) ** 3
+        pop.current.position.set(wx(placed.x) + S / 2, wy(placed.y) + S / 2, wz(placed.z) + S / 2)
+        pop.current.scale.setScalar(1.16 - 0.16 * ease)
+        assets.glow.opacity = 0.42 * (1 - ease)
+      } else popped.current = null
+    }
 
     for (const particle of [...particles.current]) {
       particle.life -= dt
@@ -120,7 +139,7 @@ export function BlockInteraction() {
     if (!pressing) m.struck = false
     m.hit = hit
     if (outline.current && crack.current) {
-      outline.current.visible = Boolean(hit)
+      outline.current.visible = Boolean(hit) && !state.photo
       crack.current.visible = false
       if (hit) {
         const cx = wx(hit.x) + S / 2, cy = wy(hit.y) + S / 2, cz = wz(hit.z) + S / 2
@@ -198,7 +217,8 @@ export function BlockInteraction() {
       const held = useInventory.getState().slots[state.hotbar]
       const id = held ? itemByKey.get(held.item)?.block : undefined
       if (id === undefined) return
-      if (!(nx || ny || nz) || !inside(x, y, z) || world.get(x, y, z) !== Block.air) return
+      // Blocks go into air or water; the sea is not a wall.
+      if (!(nx || ny || nz) || !inside(x, y, z) || !isEmpty(world.get(x, y, z))) return
       if (isProtected(x, y, z)) { notify(copy.protectedSite); return }
       if (overlapsPlayer(x, y, z)) return
       if (world.set(x, y, z, id)) {
@@ -206,6 +226,7 @@ export function BlockInteraction() {
         if (!state.progress.creative) inventory.take(state.hotbar)
         if (id === Block.lamp) state.learn('lamp')
         if (state.settings.sound) blockSound(blocks[id].sound, 'place')
+        if (!state.settings.reducedMotion) popped.current = { x, y, z, at: performance.now() }
       }
     }
   })
@@ -215,6 +236,7 @@ export function BlockInteraction() {
       <lineSegments ref={outline} geometry={assets.edges} material={assets.line} visible={false} renderOrder={3} />
       <mesh ref={crack} geometry={assets.box} material={assets.shade} visible={false} renderOrder={2} />
       <group ref={sparks} />
+      <mesh ref={pop} geometry={assets.box} material={assets.glow} visible={false} renderOrder={4} />
     </>
   )
 }

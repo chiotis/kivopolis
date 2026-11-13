@@ -6,7 +6,9 @@ import { islandEdge, type Obstacle } from '../game/terrain'
 import { siteMarker, spawn, tourMarker, type Point } from '../game/theatre'
 import { eyeHeight, stepBody, type Limits } from '../voxel/physics'
 import { raycast } from '../voxel/raycast'
-import { getWorld } from '../voxel/world'
+import { SX, SZ, getWorld, bx, by, bz, wx, wz } from '../voxel/world'
+import { blocks } from '../voxel/blocks'
+import { blockSound } from '../game/audio'
 import { playerState } from './player'
 
 export const movementKeys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', ' ', 'c'])
@@ -16,7 +18,9 @@ const staticObstacles: Obstacle[] = [
   { x: siteMarker[0], z: siteMarker[2], radius: 0.4 },
   { x: tourMarker[0], z: tourMarker[2], radius: 0.35 },
 ]
-const islandBounds = (x: number, z: number) => Math.hypot(x, z) < islandEdge(Math.atan2(x, -z)) - 2.4
+/** The island and a strip of sea to swim in, kept inside the block world. */
+const islandBounds = (x: number, z: number) => Math.hypot(x, z) < islandEdge(Math.atan2(x, -z)) + 2.5
+  && Math.abs(x) < wx(SX) - 1 && Math.abs(z) < wz(SZ) - 1
 export interface View {
   yaw: number
   pitch: number
@@ -54,6 +58,8 @@ export function CameraRig({ view, player, marker }: {
     limits: { circles: staticObstacles, bounds: islandBounds } as Limits,
     /** Seconds spent in the current explore session; the camera glides in at first. */
     settle: 0, eyeLag: 0,
+    /** Distance walked on the ground since the last footstep. */
+    stride: 0,
   })
 
   useEffect(() => {
@@ -112,15 +118,27 @@ export function CameraRig({ view, player, marker }: {
       const moveX = dx * cos + dz * sin, moveZ = dz * cos - dx * sin
       const before = { ...body.position }
       if (!state.progress.creative) body.flying = false
+      const wasInWater = body.inWater
       const lifted = stepBody(world, body, {
         x: moveX, z: moveZ, sprint: keys.has('shift'), jump: free && keys.has(' '), crouch: free && keys.has('c'),
       }, dt, memory.limits)
+      if (body.inWater && !wasInWater && state.settings.sound) blockSound('water', 'break')
       if (body.position.y < -6) respawn(spawn[0], spawn[2])
       if (moveX || moveZ) memory.facing = Math.atan2(moveX, moveZ)
       // Smooth automatic step-ups so climbing a block does not jolt the view.
       memory.eyeLag = state.settings.reducedMotion ? 0 : MathUtils.damp(memory.eyeLag - lifted, 0, 14, dt)
       const position = player.current.set(body.position.x, body.position.y, body.position.z)
-      if (Math.hypot(position.x - before.x, position.z - before.z) > 1e-5) memory.dirty = true
+      const walked = Math.hypot(position.x - before.x, position.z - before.z)
+      if (walked > 1e-5) memory.dirty = true
+      // A footstep every 0.85 units on the ground, sounding like the block underfoot.
+      if (body.onGround && !body.flying && !body.inWater && walked > 1e-5) {
+        memory.stride += walked
+        if (memory.stride > 0.85) {
+          memory.stride = 0
+          const under = world.get(bx(position.x), by(position.y - 0.05), bz(position.z))
+          if (under && state.settings.sound && !body.crouching) blockSound(blocks[under].sound, 'step')
+        }
+      } else if (!body.onGround) memory.stride = 0.6
       if (memory.dirty && (performance.now() - memory.lastSave > 170 || !(dx || dz))) {
         state.updatePlayer(position.toArray() as Point)
         memory.lastSave = performance.now()
@@ -147,7 +165,7 @@ export function CameraRig({ view, player, marker }: {
     }
 
     const lens = camera as PerspectiveCamera
-    const fov = exploring && !viewMode.third ? 70 : 43
+    const fov = exploring && !viewMode.third ? state.settings.fov : 43
     if (Math.abs(lens.fov - fov) > 0.05) {
       lens.fov = MathUtils.lerp(lens.fov, fov, state.settings.reducedMotion ? 1 : 1 - Math.exp(-dt * 6))
       lens.updateProjectionMatrix()

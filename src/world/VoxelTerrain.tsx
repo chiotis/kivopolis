@@ -3,7 +3,9 @@ import { useFrame } from '@react-three/fiber'
 import { BufferAttribute, BufferGeometry, Group, Mesh, MeshLambertMaterial } from 'three'
 import { sharedAtlas } from '../voxel/atlas'
 import { sky } from '../game/daylight'
-import { meshChunk } from '../voxel/mesher'
+import { meshChunk, meshWater } from '../voxel/mesher'
+import { useGame } from '../game/store'
+import { animateWater, waterMaterial } from './water'
 import { CHUNK, CX, CZ, S, getWorld, wx, wz } from '../voxel/world'
 import { CHUNK_RADIUS, viewDistance } from './view'
 
@@ -23,8 +25,19 @@ function buildGeometry(cx: number, cz: number, ao: boolean) {
   return geometry
 }
 
+function buildWater(cx: number, cz: number) {
+  const mesh = meshWater(getWorld(), cx, cz)
+  const geometry = new BufferGeometry()
+  geometry.setAttribute('position', new BufferAttribute(mesh.positions, 3))
+  geometry.setAttribute('normal', new BufferAttribute(mesh.normals, 3))
+  geometry.setAttribute('uv', new BufferAttribute(mesh.uvs, 2))
+  geometry.setIndex(new BufferAttribute(mesh.indices, 1))
+  geometry.computeBoundingSphere()
+  return geometry
+}
+
 /**
- * The island as one mesh per 16 × 16 chunk. three.js skips chunks outside the camera frustum by
+ * The island as one mesh per 16 × 16 chunk, plus a see-through water mesh drawn after it. three.js skips chunks outside the camera frustum by
  * their bounding spheres; chunks beyond the view distance (low quality) are hidden as well.
  */
 export function VoxelTerrain({ shadows, distance, ao }: { shadows: boolean; distance: number; ao: boolean }) {
@@ -45,6 +58,7 @@ export function VoxelTerrain({ shadows, distance, ao }: { shadows: boolean; dist
     return result
   }, [lamp])
   const meshes = useRef<Mesh[]>([])
+  const waters = useRef<Mesh[]>([])
   const dirty = useRef(new Set<number>())
   const smooth = useRef(ao)
 
@@ -52,6 +66,7 @@ export function VoxelTerrain({ shadows, distance, ao }: { shadows: boolean; dist
     const root = group.current!
     const world = getWorld()
     const list: Mesh[] = []
+    const seas: Mesh[] = []
     for (let cz = 0; cz < CZ; cz++) {
       for (let cx = 0; cx < CX; cx++) {
         const mesh = new Mesh(buildGeometry(cx, cz, smooth.current), material)
@@ -59,17 +74,24 @@ export function VoxelTerrain({ shadows, distance, ao }: { shadows: boolean; dist
         mesh.name = `chunk-${cx}-${cz}`
         list.push(mesh)
         root.add(mesh)
+        const water = new Mesh(buildWater(cx, cz), waterMaterial())
+        water.renderOrder = 1
+        water.name = `water-${cx}-${cz}`
+        seas.push(water)
+        root.add(water)
       }
     }
     meshes.current = list
+    waters.current = seas
     const unsubscribe = world.subscribe((chunks) => { for (const chunk of chunks) dirty.current.add(chunk) })
     return () => {
       unsubscribe()
-      for (const mesh of list) {
+      for (const mesh of [...list, ...seas]) {
         root.remove(mesh)
         mesh.geometry.dispose()
       }
       meshes.current = []
+      waters.current = []
     }
   }, [material])
 
@@ -86,14 +108,17 @@ export function VoxelTerrain({ shadows, distance, ao }: { shadows: boolean; dist
     for (let chunk = 0; chunk < CX * CZ; chunk++) dirty.current.add(chunk)
   }, [ao])
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera }, elapsed) => {
     lamp.value = 0.3 + (1 - sky.daylight) * 2.1
+    animateWater(Math.min(elapsed, 0.1), useGame.getState().settings.reducedMotion)
     const range = viewDistance(distance) + CHUNK_RADIUS
     const half = (CHUNK * S) / 2
     for (let chunk = 0; chunk < meshes.current.length; chunk++) {
       const cx = chunk % CX, cz = Math.floor(chunk / CX)
       const dx = wx(cx * CHUNK) + half - camera.position.x, dz = wz(cz * CHUNK) + half - camera.position.z
-      meshes.current[chunk].visible = dx * dx + dz * dz <= range * range
+      const visible = dx * dx + dz * dz <= range * range
+      meshes.current[chunk].visible = visible
+      if (waters.current[chunk]) waters.current[chunk].visible = visible
     }
     if (!dirty.current.size) return
     let budget = BUDGET
@@ -104,6 +129,11 @@ export function VoxelTerrain({ shadows, distance, ao }: { shadows: boolean; dist
       if (!mesh) continue
       mesh.geometry.dispose()
       mesh.geometry = buildGeometry(chunk % CX, Math.floor(chunk / CX), smooth.current)
+      const water = waters.current[chunk]
+      if (water) {
+        water.geometry.dispose()
+        water.geometry = buildWater(chunk % CX, Math.floor(chunk / CX))
+      }
     }
   })
 

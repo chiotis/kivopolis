@@ -7,6 +7,12 @@ import { blockInput } from './player'
 
 const LOOK_SPEED = 0.0024
 
+/** Look speed and vertical direction from the settings: [yaw factor, pitch factor]. */
+function lookFactors() {
+  const { sensitivity, invertY } = useGame.getState().settings
+  return [sensitivity, invertY ? -sensitivity : sensitivity] as const
+}
+
 export function SceneInput({ view }: { view: RefObject<View> }) {
   const { gl } = useThree()
   useEffect(() => {
@@ -73,8 +79,9 @@ export function SceneInput({ view }: { view: RefObject<View> }) {
       if (state.screen !== 'game' || state.panel || state.mode === 'tour') return
       if (locked()) {
         if (state.mode !== 'explore') return
-        view.current.walkYaw -= event.movementX * LOOK_SPEED
-        view.current.walkPitch = MathUtils.clamp(view.current.walkPitch - event.movementY * LOOK_SPEED, -1.5, 1.5)
+        const [yaw, pitch] = lookFactors()
+        view.current.walkYaw -= event.movementX * LOOK_SPEED * yaw
+        view.current.walkPitch = MathUtils.clamp(view.current.walkPitch - event.movementY * LOOK_SPEED * pitch, -1.5, 1.5)
         return
       }
       const point = pointers.get(event.pointerId)
@@ -105,8 +112,9 @@ export function SceneInput({ view }: { view: RefObject<View> }) {
         } else {
           // Dragging turns the view (touch, or a mouse without pointer lock); it never also breaks.
           blockInput.breaking = false
-          orbit.walkYaw -= dx * 0.006
-          orbit.walkPitch = MathUtils.clamp(orbit.walkPitch - dy * 0.005, -1.5, 1.5)
+          const [yaw, pitch] = lookFactors()
+          orbit.walkYaw -= dx * 0.006 * yaw
+          orbit.walkPitch = MathUtils.clamp(orbit.walkPitch - dy * 0.005 * pitch, -1.5, 1.5)
         }
       }
     }

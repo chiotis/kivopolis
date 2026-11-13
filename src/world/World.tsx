@@ -15,6 +15,7 @@ import { HeldItem } from './HeldItem'
 import { Sky } from './Sky'
 import { Animals } from './Animals'
 import { SiteGuide } from './SiteGuide'
+import { Capture } from './Capture'
 
 function Fallback() {
   return (
@@ -61,6 +62,7 @@ export function World({ blueprint, marker }: { blueprint: boolean; marker: RefOb
         <CameraRig view={view} player={player} marker={marker} />
         <SceneInput view={view} />
         <HeldItem />
+        <Capture />
       </Canvas>
     </WorldBoundary>
   )

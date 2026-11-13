@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import {
   BoxGeometry, BufferGeometry, Color, DodecahedronGeometry, Float32BufferAttribute, InstancedMesh,
-  LineBasicMaterial, Object3D,
+  LineBasicMaterial, Object3D, Path, Shape, ShapeGeometry,
 } from 'three'
 import { useGame } from '../game/store'
 import { sky } from '../game/daylight'
 import { islandEdge } from '../game/terrain'
 import { siteMarker, tourMarker, type Point } from '../game/theatre'
-import { getWorld } from '../voxel/world'
+import { S, SEA_FLOOR_Y, SEA_LEVEL, SX, SZ, getWorld, wx, wy, wz } from '../voxel/world'
+import { waterMaterial } from './water'
 
 function random(seed: number) {
   return () => {
@@ -65,8 +66,25 @@ function waterLines() {
   return geometry
 }
 
+/**
+ * The open sea beyond the block world: a square of water with a hole exactly over the grid,
+ * where the voxel water takes over. UVs are in blocks, so the ripples match at the border.
+ */
+function outerSea() {
+  const far = 290
+  const shape = new Shape().moveTo(-far, -far).lineTo(far, -far).lineTo(far, far).lineTo(-far, far).closePath() as Shape
+  const [x0, x1, z0, z1] = [wx(0), wx(SX), wz(0), wz(SZ)]
+  // Shape y is world -z once the plane is laid flat (three.js orders the hole's winding itself).
+  shape.holes.push(new Path().moveTo(x0, -z1).lineTo(x0, -z0).lineTo(x1, -z0).lineTo(x1, -z1).closePath())
+  const geometry = new ShapeGeometry(shape)
+  const uv = geometry.getAttribute('uv')
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / S, uv.getY(i) / S)
+  return geometry
+}
+
 export function Landscape() {
   const waves = useMemo(waterLines, [])
+  const sea = useMemo(outerSea, [])
   const waveMaterial = useRef<LineBasicMaterial>(null)
   useFrame(({ clock }) => {
     if (waveMaterial.current) {
@@ -74,12 +92,14 @@ export function Landscape() {
       waveMaterial.current.opacity = wave * (0.25 + sky.daylight * 0.75)
     }
   })
-  useEffect(() => () => { waves.dispose() }, [waves])
+  useEffect(() => () => { waves.dispose(); sea.dispose() }, [waves, sea])
   return (
     <>
-      <mesh position={[0, -0.76, 0]} rotation-x={-Math.PI / 2}>
+      <mesh geometry={sea} material={waterMaterial()} position={[0, SEA_LEVEL, 0]} rotation-x={-Math.PI / 2} renderOrder={1} />
+      {/* The sea floor continues level with the voxel floor at the grid's edge; inside, terrain covers it. */}
+      <mesh position={[0, wy(SEA_FLOOR_Y + 1) - 0.01, 0]} rotation-x={-Math.PI / 2}>
         <planeGeometry args={[580, 580]} />
-        <meshStandardMaterial color="#488894" roughness={0.66} />
+        <meshStandardMaterial color="#3d7178" roughness={1} />
       </mesh>
       <lineSegments geometry={waves}>
         <lineBasicMaterial ref={waveMaterial} vertexColors transparent opacity={0.42} />

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Block } from '../voxel/blocks'
+import { isEmpty } from '../voxel/blocks'
 import type { VoxelWorld } from '../voxel/world'
 import { cells, cellTotals, type Cell } from './blueprints/theatre'
 import { objectives, type Mission } from './theatre'
@@ -30,7 +30,7 @@ export function measure(world: Pick<VoxelWorld, 'get'>) {
   cells.forEach((cell, i) => {
     const id = world.get(cell.x, cell.y, cell.z)
     if (cell.accept.includes(id)) counts[cell.mission]++
-    else if (id === Block.air) missing.push(i)
+    else if (isEmpty(id)) missing.push(i)
     else wrong.push(i)
   })
   return { counts, wrong, missing }

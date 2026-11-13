@@ -4,6 +4,7 @@ import { interactionAvailable, useGame } from '../game/store'
 import { spawnDrop } from '../world/dropState'
 import { jumpTapped, playerState } from '../world/player'
 import { keys, movementKeys, viewMode } from '../world/camera'
+import { savePicture } from '../world/picture'
 
 /** Name a key by its physical position for letters and digits, so W/A/S/D and
  * the other shortcuts work on any keyboard layout (Greek, Cyrillic, …). */
@@ -19,8 +20,17 @@ export function useControls() {
     function down(event: KeyboardEvent) {
       const key = keyName(event)
       const state = useGame.getState()
+      // F1 hides the interface for pictures and F2 saves one; both replace the browser's own F1/F2.
+      if ((key === 'f1' || key === 'f2') && state.screen === 'game' && !state.panel) {
+        event.preventDefault()
+        if (event.repeat) return
+        if (key === 'f1') state.setPhoto(!state.photo)
+        else void savePicture()
+        return
+      }
       if (key === 'escape') {
-        if (state.panel) state.setPanel(null)
+        if (state.photo) state.setPhoto(false)
+        else if (state.panel) state.setPanel(null)
         else if (state.screen === 'game' && state.mode === 'tour') state.endTour()
         else if (state.screen === 'game') state.setPanel('pause')
         return
