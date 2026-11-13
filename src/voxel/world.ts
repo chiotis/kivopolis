@@ -1,4 +1,4 @@
-import { Block, isKnownBlock, isSolid } from './blocks'
+import { Block, isKnownBlock, isOpaque, isSolid, lightTable } from './blocks'
 import { generate } from './generate'
 
 import { CHUNK, CX, CZ, SX, SY, SZ, bx, bz, index, inside, wy } from './grid'
@@ -11,6 +11,10 @@ export class VoxelWorld {
   readonly data = new Uint8Array(SX * SY * SZ)
   /** Player edits on top of the generated terrain: grid index → block id. */
   readonly edits = new Map<number, number>()
+  /** Block light (0–15) from lamps, spread one level per block through non-opaque cells. */
+  readonly light = new Uint8Array(SX * SY * SZ)
+  private lamps = new Set<number>()
+  private lit: number[] = []
   private listeners = new Set<Listener>()
 
   constructor() { generate(this) }
@@ -29,11 +33,80 @@ export class VoxelWorld {
   set(x: number, y: number, z: number, id: number) {
     if (!inside(x, y, z) || !isKnownBlock(id)) return false
     const i = index(x, y, z)
-    if (this.data[i] === id) return false
+    const old = this.data[i]
+    if (old === id) return false
     this.data[i] = id
     this.edits.set(i, id)
-    this.emit(affectedChunks(x, z))
+    const chunks = new Set(affectedChunks(x, z))
+    // Relight when a lamp comes or goes, or when a block opens or closes a lit space.
+    if (lightTable[old] || lightTable[id] || this.litAround(x, y, z)) {
+      if (lightTable[id]) this.lamps.add(i)
+      else this.lamps.delete(i)
+      for (const chunk of this.relight()) chunks.add(chunk)
+    }
+    this.emit([...chunks])
     return true
+  }
+
+  lightAt(x: number, y: number, z: number) {
+    return inside(x, y, z) ? this.light[index(x, y, z)] : 0
+  }
+
+  private litAround(x: number, y: number, z: number) {
+    return this.lightAt(x, y, z) > 0 || this.lightAt(x + 1, y, z) > 0 || this.lightAt(x - 1, y, z) > 0
+      || this.lightAt(x, y + 1, z) > 0 || this.lightAt(x, y - 1, z) > 0
+      || this.lightAt(x, y, z + 1) > 0 || this.lightAt(x, y, z - 1) > 0
+  }
+
+  /** Recomputes all lamp light (lamps are few) and returns the chunks whose lighting changed. */
+  private relight() {
+    const { light, data } = this
+    const before = new Map<number, number>()
+    for (const i of this.lit) { before.set(i, light[i]); light[i] = 0 }
+    const lit: number[] = []
+    const queue: number[] = []
+    for (const i of this.lamps) {
+      const level = lightTable[data[i]]
+      if (!level || light[i] >= level) continue
+      if (!light[i]) lit.push(i)
+      light[i] = level
+      queue.push(i)
+    }
+    const plane = SX * SZ
+    for (let head = 0; head < queue.length; head++) {
+      const i = queue[head]
+      const next = light[i] - 1
+      if (next <= 0) continue
+      const x = i % SX, z = Math.floor(i / SX) % SZ, y = Math.floor(i / plane)
+      const spread = (n: number) => {
+        if (light[n] >= next || isOpaque(data[n])) return
+        if (!light[n]) lit.push(n)
+        light[n] = next
+        queue.push(n)
+      }
+      if (x > 0) spread(i - 1)
+      if (x < SX - 1) spread(i + 1)
+      if (z > 0) spread(i - SX)
+      if (z < SZ - 1) spread(i + SX)
+      if (y > 0) spread(i - plane)
+      if (y < SY - 1) spread(i + plane)
+    }
+    this.lit = lit
+    const chunks = new Set<number>()
+    const columns = new Set<number>()
+    for (const i of new Set([...before.keys(), ...lit])) {
+      if ((before.get(i) ?? 0) === light[i]) continue
+      const column = i % plane
+      if (columns.has(column)) continue
+      columns.add(column)
+      for (const chunk of affectedChunks(column % SX, Math.floor(column / SX))) chunks.add(chunk)
+    }
+    return chunks
+  }
+
+  private findLamps() {
+    this.lamps.clear()
+    for (let i = 0; i < this.data.length; i++) if (lightTable[this.data[i]]) this.lamps.add(i)
   }
 
   solidAt(x: number, y: number, z: number) { return isSolid(this.get(x, y, z)) }
@@ -55,6 +128,8 @@ export class VoxelWorld {
         this.edits.set(i, id)
       }
     }
+    this.findLamps()
+    this.relight()
     this.emit(Array.from({ length: CX * CZ }, (_, chunk) => chunk))
   }
 

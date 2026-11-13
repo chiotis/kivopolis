@@ -51,6 +51,18 @@ Implemented in `src/voxel/` and `src/world/{VoxelTerrain,BlockInteraction,camera
   - The orchestra is a stone ring around the existing packed-earth floor rather than a fully paved disc, which keeps the first mission to 48 blocks.
   - The parodoi are not kept clear automatically.
 
+## Status (2026-11-13): Phase 6 done, survival postponed
+- **Day and night** (`game/daylight.ts`, `world/Sky.tsx`): a 20-minute day (about 12 minutes of light). One directional light follows the sun by day and the moon by night, so shadows keep working. Sky, fog, stars and the hand light all follow the clock. The time is saved; the setting «Κύκλος ημέρας και νύχτας» freezes it at mid-morning.
+- **Oil lamps** (`lamp` block, «Λυχνοστάτης»: a clay lump on a stick gives two). Block light (0–15) spreads one level per block through non-opaque cells (`VoxelWorld.light`, recomputed from all lamps when lamps or nearby blocks change). The mesher passes smoothed per-vertex light, and the terrain shader adds it as warm emission, strongest at night.
+- **Creative mode**, chosen on the start screen or for a new game, and switchable in settings:
+  - instant breaking (no drops), placing that never runs out, and no tool wear;
+  - a palette of every item in the backpack;
+  - flight with a double tap of Space (Space rises, C sinks, touching ground lands);
+  - empty hotbar slots are stocked with building blocks.
+- **Animals** (`world/wildlife.ts` logic, `world/Animals.tsx` models, `world/herd.ts` interaction): 6 sheep, 4 goats and 6 chickens wander their meadows, avoid walls, cliffs and the building site, and rest at night. Hit a sheep for wool (it grows back after 2 minutes), right-click a goat for milk, and chickens drop feathers. They cannot be hurt and are not saved.
+- **History notes** pop up top-right the first time night falls, a lamp is placed, or an animal is met. They also appear in the journal.
+- Not done: survival (health, hunger, fall damage) is postponed by request. Milk and feathers have no use yet; they are meant for survival food and later crafts.
+
 ## Phase 1: Voxel world foundation
 **Goal:** the island is made of blocks and renders at 60 fps.
 

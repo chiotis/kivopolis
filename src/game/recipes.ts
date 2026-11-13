@@ -22,6 +22,8 @@ export const recipes: Recipe[] = [
   { pattern: ['LLL', 'L L', 'LLL'], keys: { L: 'limestone' }, result: { item: 'kiln', count: 1 } },
   { pattern: ['LL', 'LL'], keys: { L: 'limestone' }, result: { item: 'ashlar', count: 4 } },
   { pattern: ['CC', 'CC'], keys: { C: 'clayLump' }, result: { item: 'clay', count: 1 } },
+  // A clay oil lamp set on a stick: the light of ancient homes and workshops.
+  { pattern: ['C', 'S'], keys: { C: 'clayLump', S: 'stick' }, result: { item: 'lamp', count: 2 } },
   { ingredients: ['copperIngot', 'copperIngot', 'copperIngot', 'tinIngot'], result: { item: 'bronzeIngot', count: 4 } },
   ...tool('planks', 'wood'),
   ...tool('limestone', 'stone'),

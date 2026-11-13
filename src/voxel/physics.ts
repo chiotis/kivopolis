@@ -1,5 +1,5 @@
 import { isSolid } from './blocks'
-import { S, bx, by, bz, wx, wy, wz } from './grid'
+import { S, SY, bx, by, bz, wx, wy, wz } from './grid'
 import type { Sampler } from './mesher'
 
 export const PLAYER = {
@@ -23,6 +23,8 @@ export interface Body {
   velocity: Vec3
   onGround: boolean
   crouching: boolean
+  /** Creative flight: no gravity, Space rises and C sinks. */
+  flying: boolean
 }
 export interface MoveInput {
   /** Desired horizontal direction in world space (any length; normalised here). */
@@ -41,7 +43,7 @@ export interface Limits {
 }
 
 export function newBody(x: number, y: number, z: number): Body {
-  return { position: { x, y, z }, velocity: { x: 0, y: 0, z: 0 }, onGround: false, crouching: false }
+  return { position: { x, y, z }, velocity: { x: 0, y: 0, z: 0 }, onGround: false, crouching: false, flying: false }
 }
 
 const heightOf = (body: Body) => (body.crouching ? PLAYER.crouchHeight : PLAYER.height)
@@ -111,7 +113,11 @@ function moveHorizontal(world: Sampler, body: Body, axis: 'x' | 'z', delta: numb
   return lifted
 }
 
+const FLY_SPEED = 6.2
+const FLY_RISE = 5
+
 export function stepBody(world: Sampler, body: Body, input: MoveInput, dt: number, limits: Limits) {
+  if (body.flying) return fly(world, body, input, dt, limits)
   if (input.crouch) body.crouching = true
   else if (body.crouching && !collides(world, body.position.x, body.position.y, body.position.z, PLAYER.height)) body.crouching = false
 
@@ -136,3 +142,31 @@ export function stepBody(world: Sampler, body: Body, input: MoveInput, dt: numbe
 }
 
 export const eyeHeight = (body: Body) => (body.crouching ? PLAYER.crouchEye : PLAYER.eye)
+
+/** Flight: smooth horizontal and vertical motion without gravity; touching the ground lands. */
+function fly(world: Sampler, body: Body, input: MoveInput, dt: number, limits: Limits) {
+  body.crouching = false
+  const speed = input.sprint ? FLY_SPEED * 1.8 : FLY_SPEED
+  const length = Math.hypot(input.x, input.z)
+  const grip = 1 - Math.exp(-dt * 6)
+  body.velocity.x += ((length ? (input.x / length) * speed : 0) - body.velocity.x) * grip
+  body.velocity.z += ((length ? (input.z / length) * speed : 0) - body.velocity.z) * grip
+  body.velocity.y += ((Number(input.jump) - Number(input.crouch)) * FLY_RISE - body.velocity.y) * grip
+  for (const axis of ['x', 'z'] as const) {
+    const before = { ...body.position }
+    moveAxis(world, body, axis, body.velocity[axis] * dt)
+    if (blockedByLimits(limits, body.position.x, body.position.z)) Object.assign(body.position, before)
+  }
+  const sinking = body.velocity.y < 0
+  const hit = moveAxis(world, body, 'y', body.velocity.y * dt)
+  // Keep the head inside the world's build height.
+  const ceiling = wy(SY) - PLAYER.height
+  if (body.position.y > ceiling) { body.position.y = ceiling; body.velocity.y = Math.min(0, body.velocity.y) }
+  if (hit) {
+    body.velocity.y = 0
+    if (sinking) { body.flying = false; body.onGround = true }
+  } else {
+    body.onGround = false
+  }
+  return 0
+}

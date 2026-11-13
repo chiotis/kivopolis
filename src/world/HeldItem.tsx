@@ -5,6 +5,7 @@ import {
   MeshLambertMaterial, PerspectiveCamera, Scene,
 } from 'three'
 import { useGame } from '../game/store'
+import { sky } from '../game/daylight'
 import { useInventory } from '../game/inventory'
 import { itemByKey } from '../game/items'
 import { blocks } from '../voxel/blocks'
@@ -87,7 +88,8 @@ export function HeldItem() {
   const rig = useMemo(() => {
     const view = new Scene()
     const lens = new PerspectiveCamera(70, 1, 0.01, 10)
-    view.add(new HemisphereLight('#fff1d3', '#8a7d68', 2.1))
+    const fill = new HemisphereLight('#fff1d3', '#8a7d68', 2.1)
+    view.add(fill)
     const sun = new DirectionalLight('#ffe4b7', 1.6)
     sun.position.set(-1, 2, 1.5)
     view.add(sun)
@@ -96,7 +98,7 @@ export function HeldItem() {
     holder.add(model)
     view.add(holder)
     return {
-      view, lens, holder, model,
+      view, lens, holder, model, fill, sun,
       textured: new MeshLambertMaterial({ map: sharedAtlas() }),
       painted: new MeshLambertMaterial({ vertexColors: true }),
       skin: new MeshLambertMaterial({ color: '#c8956a' }),
@@ -130,6 +132,9 @@ export function HeldItem() {
     if (!visible) return
     const dt = Math.min(elapsed, 0.05)
     const s = rig.state
+    // The hand dims with the world after dark.
+    rig.fill.intensity = 0.8 + sky.daylight * 1.3
+    rig.sun.intensity = 0.3 + sky.daylight * 1.3
     const stack = useInventory.getState().slots[game.hotbar]
     const key = stack?.item ?? ''
 

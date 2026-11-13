@@ -165,6 +165,39 @@ const itemTiles: Record<number, Paint> = {
 ;(['wood', 'stone', 'bronze'] as const).forEach((material, m) => {
   (['Pickaxe', 'Axe', 'Shovel'] as const).forEach((kind, k) => { itemTiles[37 + k * 3 + m] = toolPainter(material, kind) })
 })
+// Oil lamp on a bronze stand (cut-out: transparent around the stand).
+painters[Tile.lampSide] = (x, y) => {
+  if (y <= 3 && Math.abs(x - 8.5) <= (y === 0 ? 0.5 : y === 1 ? 1 : 1.5)) return y <= 1 ? '#fff4c2' : '#f2b13c'
+  if (y >= 4 && y <= 6 && x >= 4 && x <= 12) return y === 4 ? '#7a3f24' : x % 3 === 0 ? '#a65a35' : '#c06c48'
+  if (y >= 7 && y <= 13 && (x === 7 || x === 8)) return x === 7 ? '#c98a3c' : '#9c6a2a'
+  if (y >= 14 && x >= 4 && x <= 11) return y === 14 ? '#c98a3c' : '#8c5e27'
+  return null
+}
+painters[Tile.lampTop] = (x, y) => {
+  const r = Math.hypot(x - 7.5, y - 7.5)
+  if (r < 1.6) return '#fff4c2'
+  if (r < 2.6) return '#f2b13c'
+  return r < 4.5 ? (r < 3.5 ? '#7a3f24' : '#c06c48') : null
+}
+painters[Tile.wool] = (x, y, rng) => {
+  const curl = (Math.sin(x * 1.7 + y * 0.9) + Math.cos(y * 1.9 - x * 0.6)) > 1.2
+  return curl ? hex('#d7d0bf', Math.round((rng() - 0.5) * 10)) : hex('#ece6d6', Math.round((rng() - 0.5) * 14))
+}
+// Milk in a small clay jug, and a white feather.
+itemTiles[46] = (x, y) => {
+  if (y >= 3 && y <= 4 && x >= 6 && x <= 10) return '#f6f3ea'
+  if (y === 2 && x >= 5 && x <= 11) return '#8f4a2c'
+  const half = y < 7 ? 2.6 : y < 13 ? 4.2 - Math.abs(y - 10) * 0.25 : 2.6
+  if (y >= 5 && y <= 14 && Math.abs(x - 8) <= half) return x < 7 ? '#a65a35' : '#c06c48'
+  if (x >= 12 && x <= 13 && y >= 6 && y <= 10 && !(x === 12 && y > 6 && y < 10)) return '#a65a35'
+  return null
+}
+itemTiles[47] = (x, y) => {
+  const t = (x + y - 15) / 1, along = (x - y + 0) / 2
+  if (Math.abs(t) <= 0.6 && x >= 3 && x <= 12) return '#b8a88a'
+  if (Math.abs(t) <= 2.6 && x >= 6 && x <= 13 && y >= 2 && Math.abs(along) < 8) return (x + y) % 3 === 0 ? '#e4dfd2' : '#fbf8f0'
+  return null
+}
 Object.assign(painters, itemTiles)
 
 export function createAtlas() {

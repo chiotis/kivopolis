@@ -5,6 +5,7 @@ import {
   LineBasicMaterial, Object3D,
 } from 'three'
 import { useGame } from '../game/store'
+import { sky } from '../game/daylight'
 import { islandEdge } from '../game/terrain'
 import { siteMarker, tourMarker, type Point } from '../game/theatre'
 import { getWorld } from '../voxel/world'
@@ -69,8 +70,8 @@ export function Landscape() {
   const waveMaterial = useRef<LineBasicMaterial>(null)
   useFrame(({ clock }) => {
     if (waveMaterial.current) {
-      waveMaterial.current.opacity = useGame.getState().settings.reducedMotion
-        ? 0.42 : 0.40 + Math.sin(clock.elapsedTime * 0.85) * 0.07
+      const wave = useGame.getState().settings.reducedMotion ? 0.42 : 0.40 + Math.sin(clock.elapsedTime * 0.85) * 0.07
+      waveMaterial.current.opacity = wave * (0.25 + sky.daylight * 0.75)
     }
   })
   useEffect(() => () => { waves.dispose() }, [waves])

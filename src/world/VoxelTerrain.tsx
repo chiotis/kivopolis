@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { BufferAttribute, BufferGeometry, Group, Mesh, MeshLambertMaterial } from 'three'
 import { sharedAtlas } from '../voxel/atlas'
+import { sky } from '../game/daylight'
 import { meshChunk } from '../voxel/mesher'
 import { CX, CZ, getWorld } from '../voxel/world'
 
@@ -15,6 +16,7 @@ function buildGeometry(cx: number, cz: number) {
   geometry.setAttribute('normal', new BufferAttribute(mesh.normals, 3))
   geometry.setAttribute('uv', new BufferAttribute(mesh.uvs, 2))
   geometry.setAttribute('color', new BufferAttribute(mesh.colors, 3))
+  geometry.setAttribute('blockLight', new BufferAttribute(mesh.lights, 1))
   geometry.setIndex(new BufferAttribute(mesh.indices, 1))
   geometry.computeBoundingSphere()
   return geometry
@@ -22,7 +24,21 @@ function buildGeometry(cx: number, cz: number) {
 
 export function VoxelTerrain({ shadows }: { shadows: boolean }) {
   const group = useRef<Group>(null)
-  const material = useMemo(() => new MeshLambertMaterial({ map: sharedAtlas(), vertexColors: true, alphaTest: 0.5 }), [])
+  const lamp = useMemo(() => ({ value: 0.4 }), [])
+  const material = useMemo(() => {
+    const result = new MeshLambertMaterial({ map: sharedAtlas(), vertexColors: true, alphaTest: 0.5 })
+    // Lamp light is added as warm emission, strongest at night, so lit blocks glow in the dark.
+    result.onBeforeCompile = (shader) => {
+      shader.uniforms.uLamp = lamp
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute float blockLight;\nvarying float vBlockLight;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBlockLight = blockLight;')
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform float uLamp;\nvarying float vBlockLight;')
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * vec3(1.0, 0.7, 0.4) * pow(vBlockLight, 2.0) * uLamp;')
+    }
+    return result
+  }, [lamp])
   const meshes = useRef<Mesh[]>([])
   const dirty = useRef(new Set<number>())
 
@@ -58,6 +74,7 @@ export function VoxelTerrain({ shadows }: { shadows: boolean }) {
   useEffect(() => () => { material.dispose() }, [material])
 
   useFrame(() => {
+    lamp.value = 0.3 + (1 - sky.daylight) * 2.1
     if (!dirty.current.size) return
     let budget = BUDGET
     for (const chunk of dirty.current) {

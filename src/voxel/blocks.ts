@@ -21,6 +21,8 @@ export const Block = {
   kiln: 17,
   copperOre: 18,
   tinOre: 19,
+  lamp: 20,
+  wool: 21,
 } as const
 export type BlockId = (typeof Block)[keyof typeof Block]
 
@@ -29,7 +31,7 @@ export const Tile = {
   grassTop: 0, grassSide: 1, soil: 2, sand: 3, limestone: 4, marble: 5, clay: 6, terracotta: 7,
   logSide: 8, logTop: 9, oliveLeaves: 10, cypressLeaves: 11, gravel: 12, ashlar: 13, planks: 14, path: 15,
   bedrock: 16, pathSide: 17, workshopTop: 18, workshopSide: 19, kilnSide: 20, kilnTop: 21,
-  copperOre: 22, tinOre: 23,
+  copperOre: 22, tinOre: 23, lampSide: 24, lampTop: 25, wool: 26,
 } as const
 
 export type ToolType = 'pickaxe' | 'axe' | 'shovel'
@@ -54,6 +56,8 @@ export interface BlockDef {
   tier: number
   /** Defaults to one of the block itself; null drops nothing. */
   drop?: Drop | null
+  /** Block light it gives off (0–15), spreading one level per block. */
+  light?: number
 }
 
 const all = (tile: number) => ({ top: tile, side: tile, bottom: tile })
@@ -79,15 +83,20 @@ const defs: Omit<BlockDef, 'id'>[] = [
   { key: 'kiln', hardness: 1.3, opaque: true, solid: true, tiles: { top: Tile.kilnTop, side: Tile.kilnSide, bottom: Tile.limestone }, color: '#a49276', sound: 'stone', tool: 'pickaxe', tier: 1 },
   { key: 'copperOre', hardness: 1.5, opaque: true, solid: true, tiles: all(Tile.copperOre), color: '#c4743a', sound: 'stone', tool: 'pickaxe', tier: 2 },
   { key: 'tinOre', hardness: 1.5, opaque: true, solid: true, tiles: all(Tile.tinOre), color: '#9fb0bd', sound: 'stone', tool: 'pickaxe', tier: 2 },
+  // An oil lamp on a bronze stand: drawn as a cut-out, walked through, and it lights its surroundings.
+  { key: 'lamp', hardness: 0.1, opaque: false, solid: false, tiles: { top: Tile.lampTop, side: Tile.lampSide, bottom: Tile.lampTop }, color: '#c98a3c', sound: 'stone', tier: 0, light: 14 },
+  { key: 'wool', hardness: 0.35, opaque: true, solid: true, tiles: all(Tile.wool), color: '#ece6d6', sound: 'soft', tier: 0 },
 ]
 
 export const blocks: BlockDef[] = defs.map((def, id) => ({ ...def, id: id as BlockId }))
 
 const opaqueTable = new Uint8Array(256)
+export const lightTable = new Uint8Array(256)
 const solidTable = new Uint8Array(256)
 for (const def of blocks) {
   opaqueTable[def.id] = def.opaque ? 1 : 0
   solidTable[def.id] = def.solid ? 1 : 0
+  lightTable[def.id] = def.light ?? 0
 }
 export const isOpaque = (id: number) => opaqueTable[id] === 1
 export const isSolid = (id: number) => solidTable[id] === 1

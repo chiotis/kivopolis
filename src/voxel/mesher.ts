@@ -4,13 +4,19 @@ import { CHUNK, SY, wx, wy, wz } from './grid'
 export const ATLAS_TILES = 8
 const INSET = 0.002
 
-export interface Sampler { get(x: number, y: number, z: number): number }
+export interface Sampler {
+  get(x: number, y: number, z: number): number
+  /** Block light 0–15; samplers without lamps may leave it out. */
+  lightAt?(x: number, y: number, z: number): number
+}
 
 export interface ChunkMesh {
   positions: Float32Array
   normals: Float32Array
   uvs: Float32Array
   colors: Float32Array
+  /** Block light per vertex, 0–1. */
+  lights: Float32Array
   indices: Uint32Array
   faces: number
 }
@@ -42,8 +48,10 @@ export function meshChunk(world: Sampler, cx: number, cz: number): ChunkMesh {
   const normals: number[] = []
   const uvs: number[] = []
   const colors: number[] = []
+  const lights: number[] = []
   const indices: number[] = []
   const occludes = (x: number, y: number, z: number) => isOpaque(world.get(x, y, z))
+  const lightAt = world.lightAt ? (x: number, y: number, z: number) => world.lightAt!(x, y, z) : () => 0
   const x0 = cx * CHUNK, z0 = cz * CHUNK
 
   for (let y = 0; y < SY; y++) {
@@ -81,6 +89,16 @@ export function meshChunk(world: Sampler, cx: number, cz: number): ChunkMesh {
             ao.push(level)
             const shade = AO_LEVEL[level]
             colors.push(shade, shade, shade)
+            // Smooth light: average the open cells around this corner, as for occlusion.
+            if (def.light) {
+              lights.push(1)
+            } else {
+              let sum = lightAt(bx, by, bz), open = 1
+              if (!side1) { sum += lightAt(bx + t[0][0], by + t[0][1], bz + t[0][2]); open++ }
+              if (!side2) { sum += lightAt(bx + t[1][0], by + t[1][1], bz + t[1][2]); open++ }
+              if (!cornerBlock && !(side1 && side2)) { sum += lightAt(bx + t[0][0] + t[1][0], by + t[0][1] + t[1][1], bz + t[0][2] + t[1][2]); open++ }
+              lights.push(sum / open / 15)
+            }
           })
           // Flip the diagonal so AO gradients interpolate without a visible seam.
           if (ao[0] + ao[2] < ao[1] + ao[3]) {
@@ -97,6 +115,7 @@ export function meshChunk(world: Sampler, cx: number, cz: number): ChunkMesh {
     normals: new Float32Array(normals),
     uvs: new Float32Array(uvs),
     colors: new Float32Array(colors),
+    lights: new Float32Array(lights),
     indices: new Uint32Array(indices),
     faces: indices.length / 6,
   }

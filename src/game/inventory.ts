@@ -143,6 +143,18 @@ export const inventory = {
     return left
   },
 
+  /**
+   * Creative palette: picks up a full stack of an item, or with shift puts it straight into the
+   * inventory. Clicking the palette while carrying something throws the carried stack away.
+   */
+  palette(key: string | null, shift = false) {
+    const state = useInventory.getState()
+    if (!key) { useInventory.setState({ cursor: null }); return }
+    const stack = { item: key, count: maxStack(key) }
+    if (shift) { inventory.add(stack); return }
+    useInventory.setState({ cursor: state.cursor?.item === key ? null : stack })
+  },
+
   /** Removes `count` from an inventory slot. */
   take(index: number, count = 1) {
     const { slots } = useInventory.getState()

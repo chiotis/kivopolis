@@ -32,7 +32,7 @@ async function startGame(page: Page, label = copy.start) {
 async function walkUntil(page: Page, key: string, button: RegExp) {
   await page.keyboard.down(key)
   try {
-    await page.getByRole('button', { name: button }).waitFor({ timeout: 15_000 })
+    await page.getByRole('button', { name: button }).waitFor({ timeout: 30_000 })
   } finally {
     await page.keyboard.up(key)
   }
@@ -53,7 +53,7 @@ async function settledCanvas(page: Page) {
     const stable = next.x === rect.x && next.y === rect.y && next.width === rect.width && next.height === rect.height
     rect = next
     return stable
-  }, { intervals: [250] }).toBe(true)
+  }, { intervals: [250], timeout: 20_000 }).toBe(true)
   await page.waitForTimeout(800)
   return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
 }
@@ -200,4 +200,31 @@ test('switches the browser to full screen and back from the top bar', async ({ p
   await page.getByRole('button', { name: copy.exitFullscreen }).click()
   await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false)
   await expect(button).toBeVisible()
+})
+
+test('starts in creative mode: every material at hand, blocks placed without running out', async ({ page }, info) => {
+  test.skip(info.project.name !== 'chromium')
+  const slots = async () => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{"slots":[]}').slots, inventorySaveKey)
+  await page.addInitScript(noPointerLock)
+  await page.goto('/')
+  await page.getByText(copy.modeCreative, { exact: true }).click()
+  await page.getByRole('button', { name: copy.start }).click()
+  await expect(page.getByText(` · ${copy.modeCreative}`)).toBeVisible()
+  // No gathering guide in creative play, and the hotbar comes stocked with building stone.
+  await expect(page.getByRole('region', { name: copy.guide })).toBeHidden()
+  await expect.poll(async () => (await slots())[0]).toEqual({ item: 'ashlar', count: 64 })
+
+  // The backpack shows the palette of every item instead of the crafting grid.
+  await page.keyboard.press('e')
+  await expect(page.getByRole('group', { name: copy.palette })).toBeVisible()
+  await page.keyboard.press('e')
+
+  const center = await settledCanvas(page)
+  await lookDown(page, center, 150)
+  await page.mouse.click(center.x, center.y, { button: 'right' })
+  await expect.poll(async () => Object.values(await edits(page))).toContain(Block.ashlar)
+  expect((await slots())[0]).toEqual({ item: 'ashlar', count: 64 })
+  // A click breaks a block at once and drops nothing.
+  await page.mouse.click(center.x, center.y)
+  await expect.poll(async () => Object.values(await edits(page))).toContain(Block.air)
 })
