@@ -246,6 +246,31 @@ test('switches the browser to full screen and back from the top bar', async ({ p
   await expect(button).toBeVisible()
 })
 
+test('hides the interface for pictures and saves the view as a PNG', async ({ page }, info) => {
+  test.skip(info.project.name !== 'chromium')
+  await startGame(page)
+  const hotbar = page.getByRole('toolbar', { name: copy.hotbar })
+  await expect(hotbar).toBeVisible()
+  await page.getByRole('button', { name: copy.photoMode }).click()
+  await expect(hotbar).toBeHidden()
+  // F2 (or the camera button) downloads the current view.
+  const download = page.waitForEvent('download')
+  await page.keyboard.press('F2')
+  const file = await download
+  expect(file.suggestedFilename()).toMatch(/^ancient-polis-\d{8}-\d{6}\.png$/)
+  // A PNG starts with the bytes 0x89 'P' 'N' 'G'.
+  const chunks: Uint8Array[] = await (await file.createReadStream()).toArray()
+  expect(new TextDecoder().decode(chunks[0].subarray(1, 4))).toBe('PNG')
+  await page.keyboard.press('Escape')
+  await expect(hotbar).toBeVisible()
+  // Escape left screenshot mode without also opening the pause menu.
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await page.keyboard.press('F1')
+  await expect(hotbar).toBeHidden()
+  await page.keyboard.press('F1')
+  await expect(hotbar).toBeVisible()
+})
+
 test('starts in creative mode: every material at hand, blocks placed without running out', async ({ page }, info) => {
   test.skip(info.project.name !== 'chromium')
   const slots = () => inventorySlots(page)

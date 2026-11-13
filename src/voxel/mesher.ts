@@ -1,5 +1,5 @@
-import { blocks, isOpaque } from './blocks'
-import { CHUNK, SY, wx, wy, wz } from './grid'
+import { blocks, isOpaque, isWater } from './blocks'
+import { CHUNK, SX, SY, SZ, wx, wy, wz } from './grid'
 
 export const ATLAS_TILES = 8
 const INSET = 0.002
@@ -36,6 +36,59 @@ const FACES: Face[] = [
 const UV: [number, number][] = [[0, 0], [0, 1], [1, 1], [1, 0]]
 const AO_LEVEL = [0.46, 0.64, 0.82, 1]
 
+const outside = (x: number, z: number) => x < 0 || x >= SX || z < 0 || z >= SZ
+
+export interface WaterMesh {
+  positions: Float32Array
+  normals: Float32Array
+  uvs: Float32Array
+  indices: Uint32Array
+  faces: number
+}
+
+/**
+ * The see-through water of one chunk: faces between water and open space, with the surface
+ * lowered half a block so the sea sits level with the flat sea outside. UVs are in blocks, so
+ * a tiling water texture flows across chunk borders without a seam.
+ */
+export function meshWater(world: Sampler, cx: number, cz: number): WaterMesh {
+  const positions: number[] = []
+  const normals: number[] = []
+  const uvs: number[] = []
+  const indices: number[] = []
+  const x0 = cx * CHUNK, z0 = cz * CHUNK
+  for (let y = 0; y < SY; y++) {
+    for (let z = z0; z < z0 + CHUNK; z++) {
+      for (let x = x0; x < x0 + CHUNK; x++) {
+        if (!isWater(world.get(x, y, z))) continue
+        const surface = !isWater(world.get(x, y + 1, z))
+        const top = surface ? 0.5 : 1
+        for (const face of FACES) {
+          const [nx, ny, nz] = face.normal
+          if (ny === 0 && outside(x + nx, z + nz)) continue
+          const neighbour = world.get(x + nx, y + ny, z + nz)
+          if (isWater(neighbour) || isOpaque(neighbour)) continue
+          if (ny === -1 && y === 0) continue
+          const start = positions.length / 3
+          for (const corner of face.corners) {
+            const cy = corner[1] ? top : 0
+            positions.push(wx(x + corner[0]), wy(y + cy), wz(z + corner[2]))
+            normals.push(nx, ny, nz)
+            // Tops use the ground plane; sides run along their face.
+            if (ny) uvs.push(x + corner[0], z + corner[2])
+            else uvs.push(nx ? z + corner[2] : x + corner[0], y + cy)
+          }
+          indices.push(start, start + 1, start + 2, start, start + 2, start + 3)
+        }
+      }
+    }
+  }
+  return {
+    positions: new Float32Array(positions), normals: new Float32Array(normals), uvs: new Float32Array(uvs),
+    indices: new Uint32Array(indices), faces: indices.length / 6,
+  }
+}
+
 export function tileUV(tile: number, u: number, v: number): [number, number] {
   const col = tile % ATLAS_TILES, row = Math.floor(tile / ATLAS_TILES)
   const uu = INSET + u * (1 - 2 * INSET), vv = INSET + v * (1 - 2 * INSET)
@@ -61,10 +114,12 @@ export function meshChunk(world: Sampler, cx: number, cz: number, { ao: smooth =
     for (let z = z0; z < z0 + CHUNK; z++) {
       for (let x = x0; x < x0 + CHUNK; x++) {
         const id = world.get(x, y, z)
-        if (!id) continue
+        if (!id || isWater(id)) continue
         const def = blocks[id]
         for (const face of FACES) {
           const [nx, ny, nz] = face.normal
+          // The world's outer walls are never seen: the flat sea and its floor continue past them.
+          if (outside(x + nx, z + nz)) continue
           const neighbour = world.get(x + nx, y + ny, z + nz)
           if (isOpaque(neighbour) || (neighbour === id && !def.opaque)) continue
           if (ny === -1 && y === 0) continue

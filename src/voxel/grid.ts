@@ -9,6 +9,12 @@ export const OZ = SZ / 2
 /** Block index whose bottom face sits at world y = 0. */
 export const OY = 16
 export const CHUNK = 16
+/** Highest block index filled with sea water; its surface is drawn half a block down. */
+export const SEA_Y = 14
+/** Sea level in world units (the flat sea outside the grid sits here too). */
+export const SEA_LEVEL = (SEA_Y + 0.5 - OY) * S
+/** Top block of the open sea floor; outside the grid a flat floor continues at its surface. */
+export const SEA_FLOOR_Y = 8
 export const CX = SX / CHUNK
 export const CZ = SZ / CHUNK
 

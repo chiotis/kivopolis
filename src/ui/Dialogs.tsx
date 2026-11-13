@@ -3,7 +3,7 @@ import { Award, Backpack, BookOpen, CircleHelp, Compass, Flame, Hammer, Landmark
 import { InventoryScreen } from './InventoryScreen'
 import { ModeChoice } from './ModeChoice'
 import { copy, missions } from '../game/el'
-import { useGame, type Panel, type Settings } from '../game/store'
+import { fovRange, sensitivityRange, useGame, type Panel, type Settings } from '../game/store'
 import { objectives } from '../game/theatre'
 import { complete, earnedPoints, useSite } from '../game/site'
 
@@ -54,6 +54,15 @@ export function Dialogs() {
             <label>{copy.sound}<input type="checkbox" checked={settings.sound} onChange={(event) => settingsChange({ sound: event.target.checked })} /></label>
             <label>{copy.reducedMotion}<input type="checkbox" checked={settings.reducedMotion} onChange={(event) => settingsChange({ reducedMotion: event.target.checked })} /></label>
             <label>{copy.dayCycle}<input type="checkbox" checked={settings.dayCycle} onChange={(event) => settingsChange({ dayCycle: event.target.checked })} /></label>
+            <label>{copy.fov}<span className="setting-range">
+              <input type="range" min={fovRange[0]} max={fovRange[1]} step={1} value={settings.fov}
+                onChange={(event) => settingsChange({ fov: Number(event.target.value) })} />
+              <output>{settings.fov}°</output></span></label>
+            <label>{copy.sensitivity}<span className="setting-range">
+              <input type="range" min={sensitivityRange[0]} max={sensitivityRange[1]} step={0.05} value={settings.sensitivity}
+                onChange={(event) => settingsChange({ sensitivity: Number(event.target.value) })} />
+              <output>{settings.sensitivity.toLocaleString('el', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}×</output></span></label>
+            <label>{copy.invertY}<input type="checkbox" checked={settings.invertY} onChange={(event) => settingsChange({ invertY: event.target.checked })} /></label>
             {progress.started && <label>{copy.creativeSetting}<input type="checkbox" checked={progress.creative} onChange={(event) => setCreative(event.target.checked)} /></label>}
             {progress.started && <button className="button danger" onClick={() => setPanel('reset')}>{copy.reset}</button>}
           </div>

@@ -7,6 +7,11 @@ import {
 import { advance, daylight, dusk, FIXED_TIME, sky, sunDirection } from '../game/daylight'
 import { useGame } from '../game/store'
 import { viewDistance } from './view'
+import { playerState } from './player'
+import { isWater } from '../voxel/blocks'
+import { bx, by, bz, getWorld } from '../voxel/world'
+
+const underwaterColor = new Color('#2c6873')
 
 const palette = {
   day: new Color('#c3dedb'), dusk: new Color('#e8b48c'), night: new Color('#18213a'),
@@ -93,6 +98,14 @@ export function Sky({ shadows, distance }: { shadows: boolean; distance: number 
     const range = viewDistance(distance)
     fog.far = Math.min(114 - (1 - day) * 34, range)
     fog.near = Math.min(31 - (1 - day) * 8, fog.far * 0.45)
+    // Under water the world closes in to a murky blue-green.
+    const c0 = camera.position
+    if (playing && state.mode === 'explore' && isWater(getWorld().get(bx(c0.x), by(c0.y), bz(c0.z)))) {
+      fog.color.copy(underwaterColor).multiplyScalar(0.35 + day * 0.65)
+      background.copy(fog.color)
+      fog.near = 0.2
+      fog.far = 9
+    }
 
     // Discs stay a fixed distance from the camera so they never come closer when walking.
     const c = camera.position

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import {
   ArrowDown, ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUp, Award, BookOpen, Check, ChevronDown, ChevronUp, CircleHelp, Compass,
-  Backpack, ChevronsUp, DraftingCompass, Eye, EyeOff, Footprints, Lightbulb, Maximize, Minimize, Landmark, Mouse, Move, Pause, Pickaxe, Plus, Route, Settings2, Sparkles, X,
+  Backpack, Camera, ChevronsUp, DraftingCompass, Eye, EyeOff, Footprints, Lightbulb, Maximize, Minimize, Landmark, Mouse, Move, Pause, Pickaxe, Plus, Route, Settings2, Sparkles, X,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { copy, itemName, missions } from '../game/el'
@@ -12,6 +12,7 @@ import { blocks } from '../voxel/blocks'
 import { cells } from '../game/blueprints/theatre'
 import { keys } from '../world/camera'
 import { blockInput, jumpTapped } from '../world/player'
+import { savePicture } from '../world/picture'
 import { HOTBAR, useInventory } from '../game/inventory'
 import { ItemIcon, StackView } from './ItemIcon'
 import type { Stack } from '../game/items'
@@ -81,13 +82,14 @@ export function MissionPanel() {
 export function StageOverlay({ blueprint, setBlueprint, marker }: {
   blueprint: boolean; setBlueprint: (value: boolean) => void; marker: RefObject<HTMLDivElement | null>
 }) {
-  const { progress, mode, toggleOverview, interact, setPanel, endTour, saveStatus } = useGame()
+  const { progress, mode, toggleOverview, interact, setPanel, endTour, saveStatus, photo, setPhoto } = useGame()
   const started = progress.discovered
   const gates = entrancesReady(useSite((state) => state.counts))
   const point = started ? tourMarker : siteMarker
   const nearby = Math.hypot(progress.player[0] - point[0], progress.player[2] - point[2]) <= interactionRadius
   const showInteract = mode === 'explore' && ((!started || gates) && nearby)
   const overview = mode === 'overview'
+  if (photo) return <PhotoBar leave={() => setPhoto(false)} />
   return (
     // Android opens a context menu on a long press; holding a movement or action button is play, not a menu.
     <div className="stage-overlay" onContextMenu={(event) => event.preventDefault()}>
@@ -97,6 +99,7 @@ export function StageOverlay({ blueprint, setBlueprint, marker }: {
           <button className="hud-icon" onClick={() => setPanel('help')} aria-label={copy.help} title={copy.help}><CircleHelp size={16} /></button>
           <button className="hud-icon" onClick={() => setPanel('settings')} aria-label={copy.settings} title={copy.settings}><Settings2 size={16} /></button>
           <FullscreenButton />
+          {mode !== 'tour' && <button className="hud-icon" onClick={() => setPhoto(true)} aria-label={copy.photoMode} title={copy.photoMode}><Camera size={16} /></button>}
           {overview && <button className="hud-icon" aria-label={copy.blueprintToggle} aria-pressed={blueprint} onClick={() => setBlueprint(!blueprint)}>
             {blueprint ? <Eye size={16} /> : <EyeOff size={16} />}
           </button>}
@@ -135,6 +138,18 @@ export function StageOverlay({ blueprint, setBlueprint, marker }: {
       {mode === 'explore' && (!started || (gates && !progress.completed)) && !nearby && (
         <div className="objective-hint"><ArrowDownLeft size={16} />{started ? copy.nearTour : copy.nearSite}</div>
       )}
+    </div>
+  )
+}
+
+/** Screenshot mode: only the world shows, with two small buttons to save a picture or go back. */
+function PhotoBar({ leave }: { leave: () => void }) {
+  return (
+    <div className="stage-overlay photo-mode" onContextMenu={(event) => event.preventDefault()}>
+      <div className="photo-bar">
+        <button className="hud-icon" onClick={() => void savePicture()} aria-label={copy.takePicture} title={copy.takePicture}><Camera size={17} /></button>
+        <button className="hud-icon" onClick={leave} aria-label={copy.leavePhoto} title={copy.leavePhoto}><X size={17} /></button>
+      </div>
     </div>
   )
 }

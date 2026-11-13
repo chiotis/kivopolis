@@ -1,8 +1,8 @@
-import { Block, isKnownBlock, isOpaque, isSolid, lightTable } from './blocks'
+import { Block, isKnownBlock, isOpaque, isSolid, isWater, lightTable } from './blocks'
 import { generate, SEED } from './generate'
 import { chunkKey, chunkRecords, readRecord, writeRecord, type ChunkRecord, type WorldRecord } from '../game/save'
 
-import { CHUNK, CX, CZ, SX, SY, SZ, bx, bz, chunkOfCell, index, inside, wy } from './grid'
+import { CHUNK, CX, CZ, SEA_Y, SX, SY, SZ, bx, bz, chunkOfCell, index, inside, wy } from './grid'
 
 export * from './grid'
 
@@ -35,10 +35,14 @@ export class VoxelWorld {
     if (!inside(x, y, z) || !isKnownBlock(id)) return false
     const i = index(x, y, z)
     const old = this.data[i]
+    // A hole opened next to the sea fills with water, and so does any open space it leads to.
+    const flooding = id === Block.air && this.wet(x, y, z)
+    if (flooding) id = Block.water
     if (old === id) return false
     this.data[i] = id
     this.edits.set(i, id)
     const chunks = new Set(affectedChunks(x, z))
+    if (flooding) for (const chunk of this.flood(x, y, z)) chunks.add(chunk)
     // Relight when a lamp comes or goes, or when a block opens or closes a lit space.
     if (lightTable[old] || lightTable[id] || this.litAround(x, y, z)) {
       if (lightTable[id]) this.lamps.add(i)
@@ -47,6 +51,32 @@ export class VoxelWorld {
     }
     this.emit([...chunks])
     return true
+  }
+
+  /** True for an open cell at or below sea level with water beside or above it. */
+  private wet(x: number, y: number, z: number) {
+    if (y > SEA_Y) return false
+    return isWater(this.get(x + 1, y, z)) || isWater(this.get(x - 1, y, z)) || isWater(this.get(x, y + 1, z))
+      || isWater(this.get(x, y, z + 1)) || isWater(this.get(x, y, z - 1))
+  }
+
+  /** Water spreads sideways and down from (x, y, z) into air below sea level; capped so a cave cannot stall a frame. */
+  private flood(x: number, y: number, z: number) {
+    const chunks = new Set<number>()
+    const queue: [number, number, number][] = [[x, y, z]]
+    for (let head = 0; head < queue.length && head < 4096; head++) {
+      const [cx, cy, cz] = queue[head]
+      for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, -1, 0]]) {
+        const nx = cx + dx, ny = cy + dy, nz = cz + dz
+        if (ny > SEA_Y || !inside(nx, ny, nz) || this.get(nx, ny, nz) !== Block.air) continue
+        const n = index(nx, ny, nz)
+        this.data[n] = Block.water
+        this.edits.set(n, Block.water)
+        for (const chunk of affectedChunks(nx, nz)) chunks.add(chunk)
+        queue.push([nx, ny, nz])
+      }
+    }
+    return chunks
   }
 
   lightAt(x: number, y: number, z: number) {

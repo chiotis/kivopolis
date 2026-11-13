@@ -22,7 +22,7 @@ The codebase is about 2.2k lines of React, R3F, and zustand. That is small and c
 Implemented in `src/voxel/` and `src/world/{VoxelTerrain,BlockInteraction,camera,input}.tsx`. Where it differs from the plan below:
 - **Block size is 0.5 units** (finer detail). The theatre's tier height changed from 0.64 to 0.5 so the seats sit on block tops.
 - **Meshing runs on the main thread** with per-face culling and AO, not greedy meshing in a worker. The whole island meshes quickly enough, and edits re-mesh at most four chunks. A worker is worth adding if the world grows.
-- **There are no water blocks yet.** The sea is still the flat plane, and swimming is deferred to the water work in Phase 8.
+- ~~There are no water blocks yet.~~ Water blocks and swimming arrived in Phase 8.
 - **The theatre site is protected** from free editing for now. The campaign still uses the old prefab construction mode (B). That is temporary: Phase 5 removes it and the theatre is built block by block.
 - World edits are saved to LocalStorage (`ancient-polis-world`) for now. The move to IndexedDB stays in Phase 7.
 
@@ -115,6 +115,16 @@ Implemented in `src/voxel/` and `src/world/{VoxelTerrain,BlockInteraction,camera
 - **Save migration:** an old save's placed slots fill the matching blueprint cells, so finished missions stay finished.
 - **Tests:** blueprint cell counts per mission, progress counted from world blocks, and an e2e that builds the orchestra by placing blocks in first person.
 - **Size:** larger than first estimated (large, not medium), because it replaces the construction system instead of adapting it. **Recommended to do this before Phase 4**, so the campaign is never left in a half-prefab state.
+
+## Status (2026-11-13): Phase 8 done
+- **Water:** a `water` block (id 22) fills every open cell up to sea level (block 14). Past the shore the sea floor drops to swimming depth. Water has its own see-through mesh per chunk (`meshWater`) with the surface half a block down, so it sits level with the flat sea outside. A shared material (`world/water.ts`) uses a code-drawn ripple texture whose UVs are in blocks, drifting each frame (still with reduced motion). Outside the block world, a square of the same water with a hole over the grid continues to the horizon over a flat sea floor; the world's outer walls are no longer drawn.
+- **Flooding:** a hole opened at or below sea level next to water fills with water, which runs sideways and down into connected open space (capped at 4096 cells). Above sea level, holes stay dry. Water is skipped by the crosshair, and blocks can be placed into it.
+- **Swimming:** waist-deep water makes the body buoyant: slower movement, slow sinking, Space swims up, C dives, and swimmers climb out over a one-block ledge. The walkable area now reaches 2.5 units past the shore. Under water the fog closes in to a blue-green. Entering water splashes.
+- **Footsteps:** a soft step every 0.85 units on the ground, voiced by the block underfoot (not in water, not while crouching). The sound setting is now just «Ήχοι».
+- **Place pop:** a placed block swells slightly with a pale flash and settles in 0.18 s (off with reduced motion).
+- **Screenshot mode:** F1 or the camera button hides the interface (Esc or F1 brings it back); F2 or the camera button saves the view as `ancient-polis-YYYYMMDD-HHMMSS.png`. The frame is rendered and read in the same task, so the canvas does not need `preserveDrawingBuffer`.
+- **Settings:** field of view (50–100°, default 70), look sensitivity (0.3–2.5×) for mouse and touch, and invert-Y. Saved values are clamped on load.
+- Not done: water does not flow above sea level or spread on its own over time; there is no water bucket.
 
 ## Status (2026-11-13): Phase 7 done
 - **Save version 2 in IndexedDB** (`game/save.ts`): one store holds `game`, `inventory`, a `world` header (`version: 2`, island `seed`) and one record per edited chunk (`chunk:N` with typed arrays of cells and block ids). Only changed chunks are rewritten. `main.tsx` reads the whole save before importing the game (`App.tsx`), so the stores still load synchronously. Writes are batched into one transaction and flushed when the tab is hidden.
