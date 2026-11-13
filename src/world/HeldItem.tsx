@@ -102,7 +102,8 @@ export function HeldItem() {
       skin: new MeshLambertMaterial({ color: '#c8956a' }),
       arm: new BoxGeometry(0.075, 0.075, 0.34),
       models: new Map<string, BufferGeometry>(),
-      state: { item: '' as string, equip: 1, swing: 0, walk: 0, lastSwing: 0 },
+      // A sentinel item so the first frame always builds the model, even for an empty hand.
+      state: { item: '\u0000' as string, equip: 1, swing: 0, walk: 0, lastSwing: 0 },
     }
   }, [])
 
