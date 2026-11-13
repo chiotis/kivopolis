@@ -172,6 +172,22 @@ test('shows the blueprint guide and the materials list on a phone', async ({ pag
   expect(overflow).toBe(false)
 })
 
+test('holding a touch button never opens the system menu', async ({ page }, info) => {
+  test.skip(info.project.name !== 'touch')
+  await startGame(page)
+  const forward = page.getByRole('button', { name: copy.moveUp })
+  await expect(forward).toBeVisible()
+  // A long press fires contextmenu on Android; the game must cancel it and block text selection.
+  // (The iOS callout rule, -webkit-touch-callout, exists only in Safari, so Chromium cannot show it.)
+  const result = await forward.evaluate((button) => {
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    button.dispatchEvent(event)
+    const style = getComputedStyle(button)
+    return { cancelled: event.defaultPrevented, select: style.userSelect || style.webkitUserSelect }
+  })
+  expect(result).toEqual({ cancelled: true, select: 'none' })
+})
+
 test('breaks a block by hand, picks up the drop, places it and keeps everything after refresh', async ({ page }, info) => {
   test.skip(info.project.name !== 'chromium')
   const slots = () => inventorySlots(page)
