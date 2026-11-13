@@ -1,7 +1,8 @@
 import { Block, isKnownBlock, isOpaque, isSolid, lightTable } from './blocks'
-import { generate } from './generate'
+import { generate, SEED } from './generate'
+import { chunkKey, chunkRecords, readRecord, writeRecord, type ChunkRecord, type WorldRecord } from '../game/save'
 
-import { CHUNK, CX, CZ, SX, SY, SZ, bx, bz, index, inside, wy } from './grid'
+import { CHUNK, CX, CZ, SX, SY, SZ, bx, bz, chunkOfCell, index, inside, wy } from './grid'
 
 export * from './grid'
 
@@ -155,36 +156,33 @@ export function affectedChunks(x: number, z: number) {
 
 // ---- Singleton and persistence -------------------------------------------------------------
 
-export const worldSaveKey = 'ancient-polis-world'
-interface SavedWorld { version: 1; edits: number[] }
-
 let instance: VoxelWorld | null = null
 let saveTimer: ReturnType<typeof setTimeout> | undefined
+/** Chunks whose edits changed since the last save. */
+const unsaved = new Set<number>()
 
 function readEdits(): [number, number][] {
-  try {
-    const raw = globalThis.localStorage?.getItem(worldSaveKey)
-    if (!raw) return []
-    const data = JSON.parse(raw) as Partial<SavedWorld>
-    if (data.version !== 1 || !Array.isArray(data.edits)) return []
-    const pairs: [number, number][] = []
-    for (let i = 0; i + 1 < data.edits.length; i += 2) {
-      const [cell, id] = [data.edits[i], data.edits[i + 1]]
-      if (Number.isInteger(cell) && Number.isInteger(id)) pairs.push([cell, id])
-    }
-    return pairs
-  } catch {
-    return []
+  const pairs: [number, number][] = []
+  for (const record of chunkRecords().values()) {
+    const { cells, ids } = record ?? {}
+    if (!(cells instanceof Uint32Array) || !(ids instanceof Uint8Array) || cells.length !== ids.length) continue
+    for (let i = 0; i < cells.length; i++) pairs.push([cells[i], ids[i]])
   }
+  return pairs
 }
 
+/** Writes one record per changed chunk; a chunk back to its generated state is deleted. */
 function writeEdits(world: VoxelWorld) {
-  try {
-    const edits: number[] = []
-    for (const [cell, id] of world.edits) edits.push(cell, id)
-    globalThis.localStorage?.setItem(worldSaveKey, JSON.stringify({ version: 1, edits } satisfies SavedWorld))
-  } catch {
-    // Storage is optional; the store reports save availability for the campaign.
+  const grouped = new Map<number, [number[], number[]]>()
+  for (const chunk of unsaved) grouped.set(chunk, [[], []])
+  for (const [cell, id] of world.edits) {
+    const group = grouped.get(chunkOfCell(cell))
+    if (group) { group[0].push(cell); group[1].push(id) }
+  }
+  unsaved.clear()
+  if (!readRecord('world')) writeRecord('world', { version: 2, seed: SEED } satisfies WorldRecord)
+  for (const [chunk, [cells, ids]] of grouped) {
+    writeRecord(chunkKey(chunk), cells.length ? { cells: Uint32Array.from(cells), ids: Uint8Array.from(ids) } satisfies ChunkRecord : undefined, 0)
   }
 }
 
@@ -193,7 +191,8 @@ export function getWorld() {
     const world = new VoxelWorld()
     const edits = readEdits()
     if (edits.length) world.regenerate(edits)
-    world.subscribe(() => {
+    world.subscribe((chunks) => {
+      for (const chunk of chunks) unsaved.add(chunk)
       clearTimeout(saveTimer)
       saveTimer = setTimeout(() => writeEdits(world), 400)
     })
@@ -205,9 +204,11 @@ export function getWorld() {
 /** Restores the generated island and forgets all player edits. */
 export function resetWorld() {
   clearTimeout(saveTimer)
-  try { globalThis.localStorage?.removeItem(worldSaveKey) } catch { /* optional */ }
+  unsaved.clear()
+  for (const chunk of chunkRecords().keys()) writeRecord(chunkKey(chunk), undefined)
   if (instance) {
     instance.regenerate()
     clearTimeout(saveTimer)
+    unsaved.clear()
   }
 }

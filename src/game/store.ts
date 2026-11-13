@@ -7,8 +7,8 @@ import { Block, blocks } from '../voxel/blocks'
 import { getWorld, resetWorld } from '../voxel/world'
 import { HOTBAR, inventory, resetInventory, useInventory } from './inventory'
 import { clearDrops, spawnDrop } from '../world/dropState'
+import { onSaveStatus, readRecord, saveAvailable, writeRecord } from './save'
 
-export const saveKey = 'ancient-polis-save'
 export const interactionRadius = 2.55
 /** Explore is the first-person game; overview is the orbiting architect's camera; tour is the finale. */
 export type Mode = 'explore' | 'overview' | 'tour'
@@ -89,9 +89,8 @@ interface Loaded { game: SavedGame; legacy: string[] }
 function load(): Loaded {
   const fallback: Loaded = { game: { version: 2, progress: initialProgress(), settings: defaults }, legacy: [] }
   try {
-    const raw = globalThis.localStorage?.getItem(saveKey)
-    if (!raw) return fallback
-    const data = JSON.parse(raw) as { version?: number; progress?: Partial<Progress> & { placed?: unknown }; settings?: Partial<Settings> }
+    const data = readRecord<{ version?: number; progress?: Partial<Progress> & { placed?: unknown }; settings?: Partial<Settings> }>('game')
+    if (!data) return fallback
     if ((data.version !== 1 && data.version !== 2) || !data.progress || !data.settings) return fallback
     const { progress, settings } = data
     // Saves from the prefab era list placed slot ids; they are rebuilt as blocks below.
@@ -154,7 +153,7 @@ const loaded = load()
 export const useGame = create<State>((set, get) => ({
   progress: loaded.game.progress,
   settings: loaded.game.settings,
-  saveStatus: 'ready',
+  saveStatus: saveAvailable() ? 'ready' : 'unavailable',
   screen: 'menu',
   panel: null,
   mode: 'explore',
@@ -272,13 +271,12 @@ useSite.subscribe((site, previous) => {
 
 useGame.subscribe((state, previous) => {
   if (state.progress === previous.progress && state.settings === previous.settings) return
-  try {
-    globalThis.localStorage?.setItem(saveKey, JSON.stringify({ version: 2, progress: state.progress, settings: state.settings } satisfies SavedGame))
-  } catch {
-    if (state.saveStatus !== 'unavailable') useGame.setState({ saveStatus: 'unavailable' })
-    return
-  }
-  if (state.saveStatus === 'unavailable') useGame.setState({ saveStatus: 'ready' })
+  writeRecord('game', { version: 2, progress: state.progress, settings: state.settings } satisfies SavedGame)
+})
+
+onSaveStatus((ok) => {
+  const saveStatus = ok ? 'ready' : 'unavailable'
+  if (useGame.getState().saveStatus !== saveStatus) useGame.setState({ saveStatus })
 })
 
 // An upgraded prefab-era save is rewritten at once, so its pieces are never rebuilt twice.

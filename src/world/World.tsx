@@ -42,15 +42,18 @@ export function World({ blueprint, marker }: { blueprint: boolean; marker: RefOb
   const dpr = quality === 'low' ? 1 : quality === 'high' ? Math.min(devicePixelRatio, 1.75)
     : Math.min(devicePixelRatio, MathUtils.lerp(0.85, coarse ? 1.22 : 1.55, factor))
   const shadows = quality === 'high' || (quality === 'auto' && !coarse)
+  // View distance in world units (the island is 72 across) and corner shading follow quality.
+  const distance = quality === 'low' ? 44 : quality === 'auto' && coarse ? 60 : Infinity
+  const ao = quality !== 'low'
   return (
     <WorldBoundary>
       <Canvas aria-label={copy.visual} fallback={<Fallback />} dpr={dpr} shadows={shadows}
         camera={{ position: [12, 11.9, 23.5], fov: 43, near: 0.05, far: 270 }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}>
         {quality === 'auto' && <PerformanceMonitor onChange={({ factor: value }) => setFactor(value)} />}
-        <Sky shadows={shadows} />
+        <Sky shadows={shadows} distance={distance} />
         <Landscape />
-        <VoxelTerrain shadows={shadows} />
+        <VoxelTerrain shadows={shadows} distance={distance} ao={ao} />
         <BlockInteraction />
         <Drops />
         <Animals shadows={shadows} />

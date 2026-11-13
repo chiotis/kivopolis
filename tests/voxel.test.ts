@@ -6,7 +6,8 @@ import { level } from '../src/voxel/generate'
 import { meshChunk, type Sampler } from '../src/voxel/mesher'
 import { newBody, stepBody, type Limits } from '../src/voxel/physics'
 import { raycast } from '../src/voxel/raycast'
-import { CHUNK, OX, OY, OZ, S, VoxelWorld, affectedChunks, bx, by, bz, getWorld, resetWorld, worldSaveKey, wy } from '../src/voxel/world'
+import { CHUNK, OX, OY, OZ, S, VoxelWorld, affectedChunks, bx, by, bz, chunkOfCell, getWorld, resetWorld, wy } from '../src/voxel/world'
+import { chunkKey, fromLegacy, readRecord, type ChunkRecord } from '../src/game/save'
 
 /** A tiny in-memory grid for isolated mesher/physics checks. */
 function grid(cells: [number, number, number, number][]): Sampler {
@@ -42,21 +43,35 @@ describe('voxel world', () => {
     expect(seen[0]).toHaveLength(2)
   })
 
-  it('persists edits and restores the generated island on reset', async () => {
-    const storage = new Map<string, string>()
-    globalThis.localStorage = {
-      getItem: (key: string) => storage.get(key) ?? null,
-      setItem: (key: string, value: string) => void storage.set(key, value),
-      removeItem: (key: string) => void storage.delete(key),
-    } as Storage
+  it('saves edits per chunk and restores the generated island on reset', async () => {
     const world = getWorld()
     const original = world.get(OX, 40, OZ)
     world.set(OX, 40, OZ, Block.terracotta)
     await new Promise((resolve) => setTimeout(resolve, 450))
-    expect(JSON.parse(storage.get(worldSaveKey)!).edits).toEqual([(40 * 144 + OZ) * 144 + OX, Block.terracotta])
+    const cell = (40 * 144 + OZ) * 144 + OX
+    const key = chunkKey(chunkOfCell(cell))
+    const record = readRecord<ChunkRecord>(key)!
+    expect([...record.cells]).toEqual([cell])
+    expect([...record.ids]).toEqual([Block.terracotta])
+    expect(readRecord('world')).toEqual({ version: 2, seed: 0 })
     resetWorld()
     expect(world.get(OX, 40, OZ)).toBe(original)
-    expect(storage.has(worldSaveKey)).toBe(false)
+    expect(readRecord(key)).toBeUndefined()
+  })
+
+  it('moves a version 1 LocalStorage save into chunk records', () => {
+    const a = (40 * 144 + 3) * 144 + 3, b = (40 * 144 + 100) * 144 + 120
+    const storage: Record<string, string> = {
+      'ancient-polis-save': JSON.stringify({ version: 1, progress: { placed: ['x'] }, settings: {} }),
+      'ancient-polis-world': JSON.stringify({ version: 1, edits: [a, Block.marble, b, Block.air, 'bad', 3] }),
+    }
+    const records = fromLegacy((key) => storage[key] ?? null, chunkOfCell, 0)!
+    expect(records.get('game')).toEqual({ version: 1, progress: { placed: ['x'] }, settings: {} })
+    expect(records.has('inventory')).toBe(false)
+    expect([...(records.get(chunkKey(0)) as ChunkRecord).cells]).toEqual([a])
+    expect([...(records.get(chunkKey(chunkOfCell(b))) as ChunkRecord).ids]).toEqual([Block.air])
+    expect(chunkOfCell(b)).toBe(6 * 9 + 7)
+    expect(fromLegacy(() => null, chunkOfCell, 0)).toBeNull()
   })
 })
 
