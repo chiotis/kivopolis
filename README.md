@@ -26,6 +26,8 @@ Open the local URL printed by Vite in a browser with WebGL 2.
 | Discover the blueprint or start the final tour | Approach the marker and press E. | Approach the marker and tap the interaction button. |
 | Overview camera (Σχέδιο) | Press B or use the mode button; the eye button shows the whole plan. | Tap the mode button. |
 | Orbit, pan, and zoom in the overview | Drag, Shift-drag, and scroll. | Drag to orbit and pinch to zoom. |
+| Fly (creative only) | Double-tap Space; Space rises, C sinks, touch the ground to land. | Double-tap the jump button. |
+| Animals | Hit a sheep for wool, right-click a goat for milk; chickens drop feathers. | Pickaxe button on a sheep, + on a goat. |
 
 The theatre is built block by block in first person, like any other build. There are no prefab pieces. After the plan is activated at the site sign, the current mission's blocks appear as glowing ghost blocks. A correct block placed in a ghost cell counts towards the mission, and a block that does not belong there is outlined in red. Breaking a block is the undo. The mission card lists the materials still needed next to how many the player carries. The blueprint is 332 blocks:
 - **Orchestra:** an ashlar ring set flush into a trench, and an altar base.
@@ -34,6 +36,12 @@ The theatre is built block by block in first person, like any other build. There
 - **Stairs:** the two aisle staircases.
 - **Skene:** ashlar platform and walls, olive-log posts and a terracotta roof.
 - **Gates:** two ashlar parodos gateways with marble lintels.
+
+Two ways to play, chosen when a game starts and switchable in settings:
+- **Συλλογή υλικών (gathering):** cut wood, craft tools and dress stone before building. A «Πρώτα βήματα» guide walks through the first steps.
+- **Δημιουργικό (creative):** every item in the backpack palette, instant breaking, blocks that never run out, and flight. Meant for classrooms.
+
+Day turns to night over 20 minutes. Oil lamps («Λυχνοστάτης»: a clay lump on a stick) light their surroundings, and sheep, goats and chickens roam the meadows. Short history notes pop up in the top-right corner the first time night falls, a lamp is lit or an animal is met, and they are kept in the journal. The day cycle can be switched off in settings.
 
 Progress and settings are saved automatically to LocalStorage. The campaign save (version 2) records discovery, player position and which mission completions were already celebrated. Mission progress, knowledge points and the tour are derived from the blocks in the saved world. Older saves from the prefab era are upgraded once, filling the blueprint cells of the pieces they had placed. The pause menu can restart the current mission, which takes its blocks down and returns them to the inventory. Settings offers a confirmation dialog before resetting the campaign.
 

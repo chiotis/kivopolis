@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Award, Backpack, BookOpen, CircleHelp, Compass, Flame, Hammer, Landmark, Pause, Settings2, X } from 'lucide-react'
 import { InventoryScreen } from './InventoryScreen'
+import { ModeChoice } from './ModeChoice'
 import { copy, missions } from '../game/el'
 import { useGame, type Panel, type Settings } from '../game/store'
 import { objectives } from '../game/theatre'
@@ -17,7 +18,8 @@ const icons = {
 }
 
 export function Dialogs() {
-  const { panel, setPanel, settings, settingsChange, progress, screen, restartMission, goHome, reset, start } = useGame()
+  const { panel, setPanel, settings, settingsChange, progress, screen, restartMission, goHome, reset, start, setCreative } = useGame()
+  const [newCreative, setNewCreative] = useState(false)
   const ref = useRef<HTMLDialogElement>(null)
   const counts = useSite((state) => state.counts)
 
@@ -51,6 +53,8 @@ export function Dialogs() {
             </label>
             <label>{copy.sound}<input type="checkbox" checked={settings.sound} onChange={(event) => settingsChange({ sound: event.target.checked })} /></label>
             <label>{copy.reducedMotion}<input type="checkbox" checked={settings.reducedMotion} onChange={(event) => settingsChange({ reducedMotion: event.target.checked })} /></label>
+            <label>{copy.dayCycle}<input type="checkbox" checked={settings.dayCycle} onChange={(event) => settingsChange({ dayCycle: event.target.checked })} /></label>
+            {progress.started && <label>{copy.creativeSetting}<input type="checkbox" checked={progress.creative} onChange={(event) => setCreative(event.target.checked)} /></label>}
             {progress.started && <button className="button danger" onClick={() => setPanel('reset')}>{copy.reset}</button>}
           </div>
         )}
@@ -62,8 +66,9 @@ export function Dialogs() {
         )}
         {panel === 'journal' && (
           <div className="journal-list">
-            {!notes.length && <p>{copy.journalEmpty}</p>}
+            {!notes.length && !progress.facts.length && <p>{copy.journalEmpty}</p>}
             {notes.map(({ id }) => <article key={id}><h3>{missions[id].title}</h3><p>{missions[id].note}</p></article>)}
+            {progress.facts.map((id) => <article key={id}><h3>{copy.facts[id].title}</h3><p>{copy.facts[id].text}</p></article>)}
           </div>
         )}
         {(panel === 'inventory' || panel === 'workshop' || panel === 'kiln') && <InventoryScreen kind={panel} />}
@@ -78,8 +83,9 @@ export function Dialogs() {
         {(panel === 'reset' || panel === 'new') && (
           <>
             <p>{panel === 'new' ? copy.newGamePrompt : copy.resetPrompt}</p>
+            {panel === 'new' && <ModeChoice creative={newCreative} onChange={setNewCreative} />}
             <div className="modal-actions">
-              <button className="button danger" onClick={() => { reset(); if (panel === 'new') start() }}>
+              <button className="button danger" onClick={() => { reset(); if (panel === 'new') { setCreative(newCreative); start() } }}>
                 {panel === 'new' ? copy.newGame : copy.confirmReset}
               </button>
               <button className="button" onClick={panel === 'new' ? dismiss : () => setPanel('settings')}>{copy.cancel}</button>

@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ArrowDownRight, ArrowRight, BookOpen, CircleHelp, Compass, Hammer, Landmark, MapPin, Settings2 } from 'lucide-react'
@@ -20,11 +21,13 @@ import { World } from './world/World'
 import { useControls } from './ui/controls'
 import { Dialogs } from './ui/Dialogs'
 import { StageOverlay } from './ui/Hud'
+import { ModeChoice } from './ui/ModeChoice'
 
 function App() {
   const { screen, progress, start, setPanel } = useGame()
   const marker = useRef<HTMLDivElement>(null)
   const [blueprint, setBlueprint] = useState(true)
+  const [creative, setCreative] = useState(false)
   const game = screen === 'game'
   useControls()
   return (
@@ -45,8 +48,9 @@ function App() {
           <h1>{copy.title[0]}<em>{copy.title[1]}</em></h1>
           <p className="tagline">{copy.tagline}</p>
           <p className="intro-description">{copy.intro}</p>
+          {!progress.started && <ModeChoice creative={creative} onChange={setCreative} />}
           <div className="menu-actions">
-            <button className="button primary start" onClick={start}>{progress.started ? copy.continue : copy.start}<ArrowRight size={20} /></button>
+            <button className="button primary start" onClick={() => { if (!progress.started) useGame.getState().setCreative(creative); start() }}>{progress.started ? copy.continue : copy.start}<ArrowRight size={20} /></button>
             {progress.started
               ? <button className="button guide" onClick={() => setPanel('new')}>{copy.newGame}</button>
               : <button className="button guide" onClick={() => setPanel('help')}><CircleHelp size={17} />{copy.help}</button>}
@@ -82,3 +86,10 @@ function App() {
 }
 
 createRoot(document.getElementById('root')!).render(<App />)
+
+// Development only: lets browser tests read live player and animal state.
+if (import.meta.env.DEV) {
+  void Promise.all([import('./world/player'), import('./world/herd')]).then(([player, herd]) => {
+    Object.assign(window, { __polis: { player: player.playerState, herd: herd.herd } })
+  })
+}

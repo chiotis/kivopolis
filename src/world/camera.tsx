@@ -35,6 +35,7 @@ function respawn(x: number, z: number) {
   Object.assign(body.position, { x, y: getWorld().surface(x, z) + 0.01, z })
   Object.assign(body.velocity, { x: 0, y: 0, z: 0 })
   body.crouching = false
+  body.flying = false
 }
 
 export function CameraRig({ view, player, marker }: {
@@ -110,6 +111,7 @@ export function CameraRig({ view, player, marker }: {
       const sin = Math.sin(orbit.walkYaw), cos = Math.cos(orbit.walkYaw)
       const moveX = dx * cos + dz * sin, moveZ = dz * cos - dx * sin
       const before = { ...body.position }
+      if (!state.progress.creative) body.flying = false
       const lifted = stepBody(world, body, {
         x: moveX, z: moveZ, sprint: keys.has('shift'), jump: free && keys.has(' '), crouch: free && keys.has('c'),
       }, dt, memory.limits)

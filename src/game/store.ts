@@ -5,7 +5,7 @@ import { activeMission, builtIn, complete, entrancesReady, trackSite, useSite } 
 import { placementSound } from './audio'
 import { Block, blocks } from '../voxel/blocks'
 import { getWorld, resetWorld } from '../voxel/world'
-import { HOTBAR, inventory, resetInventory } from './inventory'
+import { HOTBAR, inventory, resetInventory, useInventory } from './inventory'
 import { clearDrops, spawnDrop } from '../world/dropState'
 
 export const saveKey = 'ancient-polis-save'
@@ -13,7 +13,7 @@ export const interactionRadius = 2.55
 /** Explore is the first-person game; overview is the orbiting architect's camera; tour is the finale. */
 export type Mode = 'explore' | 'overview' | 'tour'
 export type Panel = 'settings' | 'help' | 'journal' | 'pause' | 'reset' | 'new' | 'complete' | 'inventory' | 'workshop' | 'kiln'
-export interface Settings { quality: 'auto' | 'high' | 'low'; sound: boolean; reducedMotion: boolean }
+export interface Settings { quality: 'auto' | 'high' | 'low'; sound: boolean; reducedMotion: boolean; dayCycle: boolean }
 export interface Progress {
   started: boolean
   discovered: boolean
@@ -21,7 +21,16 @@ export interface Progress {
   completed: boolean
   /** Missions whose completion has already been celebrated, so rebuilding a broken block stays quiet. */
   celebrated: Mission[]
+  /** Time of day, 0–1 (see game/daylight). */
+  time: number
+  /** Creative play: unlimited blocks, instant breaking and flight. */
+  creative: boolean
+  /** Short history notes already shown, so each pops up once. */
+  facts: Fact[]
 }
+/** History notes that pop up the first time something happens in the world. */
+export type Fact = 'night' | 'lamp' | 'sheep' | 'goat' | 'chicken'
+export const factIds: readonly Fact[] = ['night', 'lamp', 'sheep', 'goat', 'chicken']
 interface SavedGame { version: 2; progress: Progress; settings: Settings }
 interface State {
   progress: Progress
@@ -31,6 +40,8 @@ interface State {
   panel: Panel | null
   mode: Mode
   milestone: Mission | null
+  /** Notes waiting to pop up in the top-right corner, oldest first. */
+  facts: Fact[]
   /** Selected hotbar slot while exploring. */
   hotbar: number
   /** Short-lived message shown over the world, such as a refused block edit. */
@@ -50,6 +61,11 @@ interface State {
   restartMission: () => void
   reset: () => void
   dismissMilestone: () => void
+  setTime: (time: number) => void
+  setCreative: (creative: boolean) => void
+  /** Queues a history note the first time it applies; later calls do nothing. */
+  learn: (fact: Fact) => void
+  dismissFact: () => void
 }
 
 /** True when the player stands by the site sign (before discovery) or the tour point (once the gates stand). */
@@ -63,8 +79,9 @@ export function interactionAvailable(state: Pick<State, 'progress' | 'panel' | '
 
 const initialProgress = (): Progress => ({
   started: false, discovered: false, player: [...spawn], completed: false, celebrated: [],
+  time: 0.3, creative: false, facts: [],
 })
-const defaults: Settings = { quality: 'auto', sound: false, reducedMotion: false }
+const defaults: Settings = { quality: 'auto', sound: false, reducedMotion: false, dayCycle: true }
 const missionIds = new Set<string>(objectives.map(({ id }) => id))
 
 interface Loaded { game: SavedGame; legacy: string[] }
@@ -92,10 +109,14 @@ function load(): Loaded {
           quality: settings.quality && ['auto', 'high', 'low'].includes(settings.quality) ? settings.quality : 'auto',
           sound: settings.sound === true,
           reducedMotion: settings.reducedMotion === true,
+          dayCycle: settings.dayCycle !== false,
         },
         progress: {
           started: progress.started === true, discovered: progress.discovered === true, player,
           completed: progress.completed === true, celebrated,
+          time: typeof progress.time === 'number' && progress.time >= 0 && progress.time < 1 ? progress.time : 0.3,
+          creative: progress.creative === true,
+          facts: Array.isArray(progress.facts) ? progress.facts.filter((id): id is Fact => factIds.includes(id as Fact)) : [],
         },
       },
     }
@@ -138,6 +159,7 @@ export const useGame = create<State>((set, get) => ({
   panel: null,
   mode: 'explore',
   milestone: null,
+  facts: [],
   hotbar: 0,
   notice: null,
   setHotbar: (index) => set({ hotbar: ((index % HOTBAR) + HOTBAR) % HOTBAR }),
@@ -203,10 +225,31 @@ export const useGame = create<State>((set, get) => ({
     resetWorld()
     resetInventory()
     clearDrops()
-    set({ screen: 'menu', panel: null, mode: 'explore', progress: initialProgress(), milestone: null, notice: null })
+    set({ screen: 'menu', panel: null, mode: 'explore', progress: initialProgress(), milestone: null, notice: null, facts: [] })
   },
   dismissMilestone: () => set({ milestone: null }),
+  setTime: (time) => set((state) => ({ progress: { ...state.progress, time } })),
+  setCreative: (creative) => {
+    set((state) => ({ progress: { ...state.progress, creative } }))
+    if (creative) stockCreativeHotbar()
+  },
+  learn: (fact) => {
+    const { progress, facts } = get()
+    if (progress.facts.includes(fact) || facts.includes(fact)) return
+    set({ facts: [...facts, fact], progress: { ...progress, facts: [...progress.facts, fact] } })
+  },
+  dismissFact: () => set((state) => ({ facts: state.facts.slice(1) })),
 }))
+
+/** Creative play starts with building stone in the empty hotbar slots. */
+const creativeKit = ['ashlar', 'marble', 'limestone', 'oliveLog', 'terracotta', 'planks', 'lamp', 'wool', 'grass']
+function stockCreativeHotbar() {
+  const { slots } = useInventory.getState()
+  const next = [...slots]
+  const missing = creativeKit.filter((key) => !slots.some((slot) => slot?.item === key))
+  for (let i = 0; i < HOTBAR && missing.length; i++) if (!next[i]) next[i] = { item: missing.shift()!, count: 64 }
+  useInventory.setState({ slots: next })
+}
 
 // Rebuild old prefab saves as blocks, then follow the world for mission progress.
 trackSite(getWorld())

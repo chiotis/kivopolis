@@ -448,3 +448,24 @@ progress::-moz-progress-bar { background: #6f8b66; border-radius: 10px; }
   .hud-guide h3 { font-size: 14px; }
   .hud-guide .quest-text { font-size: 11px; }
 }
+
+/* Creative palette */
+.palette { padding: 10px; background: #ebe6d6; border-radius: 12px; }
+.palette-title { font-size: 12px !important; font-weight: 800; color: #3f6a55 !important; margin: 0 0 6px !important; }
+.palette-grid { max-height: 210px; overflow: auto; }
+.mode-choice { display: grid; gap: 6px; margin: 18px 0 0; padding: 0; border: 0; width: min(100%, 420px); }
+.mode-choice legend { font-size: 10px; font-weight: 800; letter-spacing: 0.1em; color: #687568; margin-bottom: 6px; text-transform: uppercase; }
+.mode-choice label { display: flex; align-items: flex-start; gap: 9px; padding: 9px 11px; border: 1px solid #e0d8c6; border-radius: 11px; background: #f6f1e4; cursor: pointer; }
+.mode-choice label.chosen { border-color: #6f8b66; background: #e7eddc; }
+.mode-choice input { position: absolute; opacity: 0; pointer-events: none; }
+.mode-choice label:has(input:focus-visible) { outline: 2px solid #377d72; outline-offset: 2px; }
+.mode-choice svg { color: #47725b; margin-top: 2px; }
+.mode-choice span { display: grid; gap: 2px; }
+.mode-choice strong { font-size: 13px; }
+.mode-choice small { font-size: 11px; color: #606a5e; line-height: 1.4; }
+.modal .mode-choice { margin-top: 12px; }
+@media (max-width: 740px) { .mode-choice { margin-top: 10px; } .mode-choice small { font-size: 10px; } }
+.hud-mode small { font-size: 0.85em; color: #9be27a; }
+.hud-fact { border-color: #10233a; background: #0f1d2ed9; }
+.hud-fact .toast-icon { background: #1d3550; color: #9fd0ff; }
+.hud-fact .toast-kicker { color: #9fd0ff; }

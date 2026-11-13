@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { inventory } from '../game/inventory'
 import { interactionAvailable, useGame } from '../game/store'
 import { spawnDrop } from '../world/dropState'
-import { playerState } from '../world/player'
+import { jumpTapped, playerState } from '../world/player'
 import { keys, movementKeys, viewMode } from '../world/camera'
 
 export function useControls() {
@@ -28,6 +28,7 @@ export function useControls() {
         keys.add(key)
       }
       if (event.repeat) return
+      if (key === ' ' && state.mode === 'explore') jumpTapped(state.progress.creative)
       if (key === 'b') state.toggleOverview()
       if (key === 'e') {
         if (interactionAvailable(state)) state.interact()

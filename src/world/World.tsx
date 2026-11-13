@@ -12,6 +12,8 @@ import { Drops } from './Drops'
 import { Landscape } from './landscape'
 import { VoxelTerrain } from './VoxelTerrain'
 import { HeldItem } from './HeldItem'
+import { Sky } from './Sky'
+import { Animals } from './Animals'
 import { SiteGuide } from './SiteGuide'
 
 function Fallback() {
@@ -46,16 +48,12 @@ export function World({ blueprint, marker }: { blueprint: boolean; marker: RefOb
         camera={{ position: [12, 11.9, 23.5], fov: 43, near: 0.05, far: 270 }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}>
         {quality === 'auto' && <PerformanceMonitor onChange={({ factor: value }) => setFactor(value)} />}
-        <color attach="background" args={['#c3dedb']} />
-        <fog attach="fog" args={['#c0d6cd', 31, 114]} />
-        <hemisphereLight args={['#fff1d3', '#b7a88c', 1.74]} />
-        <directionalLight position={[-13, 22, 10]} intensity={2.45} color="#ffe4b7" castShadow={shadows}
-          shadow-mapSize={[2048, 2048]} shadow-camera-left={-30} shadow-camera-right={30}
-          shadow-camera-top={30} shadow-camera-bottom={-30} shadow-camera-far={62} shadow-normalBias={0.065} />
+        <Sky shadows={shadows} />
         <Landscape />
         <VoxelTerrain shadows={shadows} />
         <BlockInteraction />
         <Drops />
+        <Animals shadows={shadows} />
         <SiteGuide blueprint={blueprint} />
         <CameraRig view={view} player={player} marker={marker} />
         <SceneInput view={view} />

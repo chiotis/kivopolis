@@ -6,6 +6,7 @@ export const ItemTile = {
   woodPickaxe: 37, stonePickaxe: 38, bronzePickaxe: 39,
   woodAxe: 40, stoneAxe: 41, bronzeAxe: 42,
   woodShovel: 43, stoneShovel: 44, bronzeShovel: 45,
+  milk: 46, feather: 47,
 } as const
 
 export interface Tool { type: ToolType; tier: 1 | 2 | 3; speed: number; durability: number }
@@ -31,7 +32,7 @@ const placeable = blocks.filter((def) => def.key !== 'air' && def.key !== 'bedro
 
 export const items: ItemDef[] = [
   ...placeable.map((def): ItemDef => ({ key: def.key, block: def.id, icon: def.tiles.side, maxStack: 64 })),
-  ...(['stick', 'clayLump', 'copperIngot', 'tinIngot', 'bronzeIngot'] as const)
+  ...(['stick', 'clayLump', 'copperIngot', 'tinIngot', 'bronzeIngot', 'milk', 'feather'] as const)
     .map((key): ItemDef => ({ key, icon: ItemTile[key], maxStack: 64 })),
   ...tiers.flatMap(({ name, tier, speed, durability }) => toolTypes.map((type): ItemDef => {
     const key = `${name}${type[0].toUpperCase()}${type.slice(1)}` as keyof typeof ItemTile

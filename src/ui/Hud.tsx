@@ -11,7 +11,7 @@ import { activeMission, builtTotal, earnedPoints, entrancesReady, missionCounts,
 import { blocks } from '../voxel/blocks'
 import { cells } from '../game/blueprints/theatre'
 import { keys } from '../world/camera'
-import { blockInput } from '../world/player'
+import { blockInput, jumpTapped } from '../world/player'
 import { HOTBAR, useInventory } from '../game/inventory'
 import { ItemIcon, StackView } from './ItemIcon'
 import type { Stack } from '../game/items'
@@ -101,12 +101,13 @@ export function StageOverlay({ blueprint, setBlueprint, marker }: {
           </button>}
           <span className={`hud-save ${saveStatus === 'unavailable' ? 'unsaved' : ''}`} title={saveStatus === 'ready' ? copy.saved : copy.unsaved}><Check size={13} /></span>
         </div>
-        <span className="hud-panel hud-mode pixel">{mode === 'overview' ? copy.overview : mode === 'tour' ? copy.tour : copy.explore}</span>
+        <span className="hud-panel hud-mode pixel">{mode === 'overview' ? copy.overview : mode === 'tour' ? copy.tour : copy.explore}{progress.creative && <small> · {copy.modeCreative}</small>}</span>
         <div className="compass" aria-hidden="true"><span>{copy.compass}</span><Compass size={18} strokeWidth={1.4} /></div>
       </div>
       <div className="hud-right">
         <Milestone />
-        {mode === 'explore' && <Guide />}
+        <FactToast />
+        {mode === 'explore' && !progress.creative && <Guide />}
         {mode !== 'tour' && <MissionPanel />}
       </div>
       {mode === 'explore' && <><Crosshair /><TouchMovement /><TouchActions /><Notice /><BreakMeter /></>}
@@ -212,9 +213,9 @@ function holdButton(onDown: () => void, onUp: () => void) {
 function TouchActions() {
   return (
     <div className="touch-actions">
-      <button aria-label={copy.breakBlock} {...holdButton(() => { blockInput.breaking = true }, () => { blockInput.breaking = false })}><Pickaxe size={20} /></button>
+      <button aria-label={copy.breakBlock} {...holdButton(() => { blockInput.breaking = true; blockInput.breakOnce = true }, () => { blockInput.breaking = false })}><Pickaxe size={20} /></button>
       <button aria-label={copy.placeBlock} {...holdButton(() => { blockInput.placeOnce = true; blockInput.placing = true }, () => { blockInput.placing = false })}><Plus size={22} /></button>
-      <button aria-label={copy.jump} {...holdButton(() => keys.add(' '), () => keys.delete(' '))}><ChevronsUp size={22} /></button>
+      <button aria-label={copy.jump} {...holdButton(() => { keys.add(' '); jumpTapped(useGame.getState().progress.creative) }, () => keys.delete(' '))}><ChevronsUp size={22} /></button>
       <button aria-label={copy.backpack} onClick={() => useGame.getState().openContainer('inventory')}><Backpack size={20} /></button>
     </div>
   )
@@ -286,6 +287,32 @@ function Notice() {
     return () => window.clearTimeout(timer)
   }, [notice, setNotice])
   return notice ? <div className="world-notice" role="status">{notice}</div> : null
+}
+
+/** A short history note the first time something happens: nightfall, a lamp, meeting an animal. */
+function FactToast() {
+  const fact = useGame((state) => state.facts[0])
+  const dismissFact = useGame((state) => state.dismissFact)
+  const reducedMotion = useGame((state) => state.settings.reducedMotion)
+  useEffect(() => {
+    if (!fact) return
+    const timer = window.setTimeout(dismissFact, 12000)
+    return () => window.clearTimeout(timer)
+  }, [fact, dismissFact])
+  const note = fact ? copy.facts[fact] : null
+  return (
+    <AnimatePresence>
+      {fact && note && <motion.div key={fact} className="hud-panel hud-toast hud-fact" role="status" onClick={dismissFact}
+        initial={{ opacity: 0, x: reducedMotion ? 0 : 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: reducedMotion ? 0 : 60 }}>
+        <span className="toast-icon"><BookOpen size={19} /></span>
+        <div>
+          <span className="pixel toast-kicker">{copy.fact}</span>
+          <strong className="pixel">{note.title}</strong>
+          <p>{note.text}</p>
+        </div>
+      </motion.div>}
+    </AnimatePresence>
+  )
 }
 
 export function Milestone() {

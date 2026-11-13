@@ -3,6 +3,8 @@ import { ArrowRight, Flame } from 'lucide-react'
 import { copy, itemName } from '../game/el'
 import { HOTBAR, inventory, SLOTS, useInventory, type Area } from '../game/inventory'
 import { recipes, type Recipe } from '../game/recipes'
+import { items } from '../game/items'
+import { useGame } from '../game/store'
 import { ItemIcon, StackView } from './ItemIcon'
 
 function Slot({ area, index, label }: { area: Area; index: number; label?: string }) {
@@ -89,9 +91,28 @@ function fits(recipe: Recipe, size: number) {
   return recipe.pattern!.length <= size && recipe.pattern![0].length <= size
 }
 
+/** Every item in the game, one click away, for creative play. */
+function Palette() {
+  return (
+    <div className="palette" role="group" aria-label={copy.palette}>
+      <p className="palette-title">{copy.palette}</p>
+      <div className="inv-grid palette-grid">
+        {items.map(({ key }) => (
+          <button key={key} className="inv-slot" aria-label={itemName(key)} title={itemName(key)}
+            onClick={(event) => { event.preventDefault(); inventory.palette(key, event.shiftKey) }}
+            onContextMenu={(event) => { event.preventDefault(); inventory.palette(null) }}>
+            <ItemIcon item={key} />
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function InventoryScreen({ kind }: { kind: 'inventory' | 'workshop' | 'kiln' }) {
   const cursor = useInventory((state) => state.cursor)
   const craftSize = useInventory((state) => state.craftSize)
+  const creative = useGame((state) => state.progress.creative)
   const carried = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const move = (event: PointerEvent) => {
@@ -103,7 +124,7 @@ export function InventoryScreen({ kind }: { kind: 'inventory' | 'workshop' | 'ki
   const known = kind === 'kiln' ? [] : recipes.filter((recipe) => fits(recipe, craftSize))
   return (
     <div className="inventory-screen">
-      {kind === 'kiln' ? <KilnPanel /> : <Crafting size={craftSize} />}
+      {creative && kind === 'inventory' ? <Palette /> : kind === 'kiln' ? <KilnPanel /> : <Crafting size={craftSize} />}
       <div className="inv-grid main" role="group" aria-label={copy.backpack}>
         {Array.from({ length: SLOTS - HOTBAR }, (_, i) => <Slot key={i} area="inv" index={HOTBAR + i} />)}
       </div>
@@ -111,7 +132,7 @@ export function InventoryScreen({ kind }: { kind: 'inventory' | 'workshop' | 'ki
         {Array.from({ length: HOTBAR }, (_, i) => <Slot key={i} area="inv" index={i} />)}
       </div>
       <p className="inventory-hint">{copy.inventoryHint}</p>
-      {known.length > 0 && <details className="recipe-book">
+      {known.length > 0 && !(creative && kind === 'inventory') && <details className="recipe-book">
         <summary>{copy.recipes}</summary>
         {kind === 'inventory' && <p>{copy.recipesWorkshop}</p>}
         <ul>{known.map((recipe, i) => <RecipeCard key={i} recipe={recipe} />)}</ul>

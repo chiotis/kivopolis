@@ -52,6 +52,7 @@ export function SceneInput({ view }: { view: RefObject<View> }) {
         if (event.button === 0) {
           if (!locked()) lock()
           blockInput.breaking = true
+          blockInput.breakOnce = true
           if (locked()) return
         }
       }

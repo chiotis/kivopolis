@@ -12,6 +12,8 @@ import { PLAYER } from '../voxel/physics'
 import { raycast, type VoxelHit } from '../voxel/raycast'
 import { S, getWorld, index, inside, wx, wy, wz } from '../voxel/world'
 import { spawnDrop } from './dropState'
+import { pickAnimal } from './wildlife'
+import { herd, strikeAnimal, tendAnimal } from './herd'
 import { blockInput, playerState } from './player'
 
 export const REACH = 4.6
@@ -46,7 +48,7 @@ export function BlockInteraction() {
   const outline = useRef<LineSegments>(null)
   const crack = useRef<Mesh>(null)
   const sparks = useRef<Group>(null)
-  const memory = useRef({ key: '', progress: 0, placeTimer: 0, hit: null as VoxelHit | null, chip: 0 })
+  const memory = useRef({ key: '', progress: 0, placeTimer: 0, hit: null as VoxelHit | null, chip: 0, cooldown: 0, struck: false })
   const particles = useRef<Particle[]>([])
   const assets = useMemo(() => {
     const box = new BoxGeometry(S * 1.004, S * 1.004, S * 1.004)
@@ -96,7 +98,26 @@ export function BlockInteraction() {
       }
     }
 
-    const hit = active ? raycast(world, playerState.eye, playerState.look, REACH) : null
+    const pressing = blockInput.breaking || blockInput.breakOnce
+    blockInput.breakOnce = false
+    let hit = active ? raycast(world, playerState.eye, playerState.look, REACH) : null
+    // An animal in front of the block under the crosshair takes the click instead.
+    const target = active ? pickAnimal(herd.list, playerState.eye, playerState.look, REACH) : null
+    if (target && (!hit || target.distance < hit.distance)) {
+      hit = null
+      if (pressing && !m.struck) {
+        m.struck = true
+        strikeAnimal(target.animal)
+        blockInput.swing = performance.now()
+      }
+      if (blockInput.placeOnce) {
+        blockInput.placeOnce = false
+        blockInput.placing = false
+        tendAnimal(target.animal)
+        blockInput.swing = performance.now()
+      }
+    }
+    if (!pressing) m.struck = false
     m.hit = hit
     if (outline.current && crack.current) {
       outline.current.visible = Boolean(hit)
@@ -109,11 +130,12 @@ export function BlockInteraction() {
       }
     }
 
+    m.cooldown -= dt
     // Breaking: hold the primary button on the same block for its hardness in seconds.
     const key = hit ? `${hit.x},${hit.y},${hit.z}` : ''
-    if (!active || !blockInput.breaking || !hit) {
+    if (!active || !pressing || !hit) {
       // A quick click only starts the crack; say so, since breaking needs the button held.
-      if (active && !blockInput.breaking && m.progress > 0 && m.progress < 0.5) notify(copy.holdToBreak)
+      if (active && !pressing && m.progress > 0 && m.progress < 0.5) notify(copy.holdToBreak)
       m.progress = 0
       m.key = key
     } else {
@@ -125,7 +147,10 @@ export function BlockInteraction() {
         const def = blocks[id]
         const held = useInventory.getState().slots[state.hotbar]
         const { time, harvest } = mining(def, held)
-        m.progress += dt / Math.max(0.05, time)
+        // Creative play breaks at once, with a short pause between blocks while the button is held.
+        const creative = state.progress.creative
+        if (creative) m.progress = m.cooldown <= 0 ? 1 : 0
+        else m.progress += dt / Math.max(0.05, time)
         m.chip -= dt
         if (m.chip <= 0 && state.settings.sound) { blockSound(def.sound, 'hit'); m.chip = 0.22 }
         if (crack.current) {
@@ -138,10 +163,11 @@ export function BlockInteraction() {
           if (state.settings.sound) blockSound(def.sound, 'break')
           burst(hit.x, hit.y, hit.z, id)
           const cx = wx(hit.x) + S / 2, cy = wy(hit.y) + S / 2, cz = wz(hit.z) + S / 2
-          const drop = harvest ? rollDrop(def) : null
+          const drop = harvest && !creative ? rollDrop(def) : null
           if (drop) spawnDrop(drop, cx, cy, cz)
           if (id === Block.kiln) for (const stack of inventory.removeKiln(String(index(hit.x, hit.y, hit.z)))) spawnDrop(stack, cx, cy, cz)
-          if (held && itemByKey.get(held.item)?.tool && inventory.wear(state.hotbar) && state.settings.sound) blockSound('wood', 'break')
+          if (!creative && held && itemByKey.get(held.item)?.tool && inventory.wear(state.hotbar) && state.settings.sound) blockSound('wood', 'break')
+          if (creative) m.cooldown = 0.22
           m.progress = 0
           m.key = ''
         }
@@ -177,7 +203,8 @@ export function BlockInteraction() {
       if (overlapsPlayer(x, y, z)) return
       if (world.set(x, y, z, id)) {
         blockInput.swing = performance.now()
-        inventory.take(state.hotbar)
+        if (!state.progress.creative) inventory.take(state.hotbar)
+        if (id === Block.lamp) state.learn('lamp')
         if (state.settings.sound) blockSound(blocks[id].sound, 'place')
       }
     }

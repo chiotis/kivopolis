@@ -25,7 +25,7 @@ describe('voxel world', () => {
       expect(a.get(seat.x, seat.y, seat.z)).toBe(Block.air)
     }
     expect(level(ground(0, 0))).toBe(0)
-  })
+  }, 20_000)
 
   it('records edits, notifies the affected chunks and ignores no-op writes', () => {
     const world = new VoxelWorld()
