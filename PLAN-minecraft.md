@@ -61,7 +61,7 @@ Implemented in `src/voxel/` and `src/world/{VoxelTerrain,BlockInteraction,camera
   - empty hotbar slots are stocked with building blocks.
 - **Animals** (`world/wildlife.ts` logic, `world/Animals.tsx` models, `world/herd.ts` interaction): 6 sheep, 4 goats and 6 chickens wander their meadows, avoid walls, cliffs and the building site, and rest at night. Hit a sheep for wool (it grows back after 2 minutes), right-click a goat for milk, and chickens drop feathers. They cannot be hurt and are not saved.
 - **History notes** pop up top-right the first time night falls, a lamp is placed, or an animal is met. They also appear in the journal.
-- Not done: survival (health, hunger, fall damage) is postponed by request. Milk and feathers have no use yet; they are meant for survival food and later crafts.
+- Not done: survival (health, hunger, fall damage) is postponed by request and is now Phase 9, the last phase. Milk and feathers have no use yet; they are meant for survival food and later crafts.
 
 ## Phase 1: Voxel world foundation
 **Goal:** the island is made of blocks and renders at 60 fps.
@@ -116,9 +116,15 @@ Implemented in `src/voxel/` and `src/world/{VoxelTerrain,BlockInteraction,camera
 - **Tests:** blueprint cell counts per mission, progress counted from world blocks, and an e2e that builds the orchestra by placing blocks in first person.
 - **Size:** larger than first estimated (large, not medium), because it replaces the construction system instead of adapting it. **Recommended to do this before Phase 4**, so the campaign is never left in a half-prefab state.
 
+## Status (2026-11-13): Phase 7 done
+- **Save version 2 in IndexedDB** (`game/save.ts`): one store holds `game`, `inventory`, a `world` header (`version: 2`, island `seed`) and one record per edited chunk (`chunk:N` with typed arrays of cells and block ids). Only changed chunks are rewritten. `main.tsx` reads the whole save before importing the game (`App.tsx`), so the stores still load synchronously. Writes are batched into one transaction and flushed when the tab is hidden.
+- **Migration:** LocalStorage saves (version 1) are moved in at boot and then removed. Prefab-era saves still rebuild their placed slots as blueprint blocks. Without IndexedDB the game plays from memory and the save icon shows it is not saving.
+- **Performance:** three.js already skipped chunks outside the camera by their bounding spheres. Quality now also sets the first-person view distance (low: 44 units, auto on touch devices: 60, otherwise the whole island), with the fog pulled in to match, and low quality turns off corner shading (AO). The menu, overview and tour always draw the whole island.
+- The `WorldBoundary` WebGL fallback is unchanged.
+
 ## Phase 6: Survival-lite and world life
 - Day/night cycle with a moving sun, shadows, sky color, and torches or oil lamps as light sources (a simple block-light flood fill in the mesher).
-- **Game modes:** *Creative* (unlimited blocks, flying, instant break) and *Survival* (health, hunger from food like olives, bread, and figs, fall damage).
+- **Game modes:** *Creative* (unlimited blocks, flying, instant break) and *Survival*. Survival has moved to Phase 9.
 - Passive animals (goats, sheep, chickens) with simple wander AI that drop wool, milk, or feathers. Hostile creatures are optional and come later, if at all.
 
 ## Phase 7: Persistence and performance
@@ -128,6 +134,10 @@ Implemented in `src/voxel/` and `src/world/{VoxelTerrain,BlockInteraction,camera
 
 ## Phase 8: Polish
 Water rendering (transparent, animated UV), fog, footstep sounds per block, a block-place "pop" animation (reuse `effect` in the store), screenshot mode, and settings for FOV, mouse sensitivity, and invert-Y.
+
+## Phase 9: Survival (last, by request)
+- *Survival* mode: health, hunger from food like olives, bread, figs, and milk, and fall damage.
+- Give milk and feathers (already dropped by animals in Phase 6) their uses as food and in crafts.
 
 ---
 
@@ -148,9 +158,10 @@ Physics and voxel data must **not** live in React state. Mutate them in `useFram
 | 3 Break/place | medium | **Core sandbox loop works** |
 | 4 Items/crafting | large | Gather → craft → build |
 | 5 Block-by-block theatre | large | The campaign is built from blocks |
-| 6 Survival/day-night | medium | Full loop |
+| 6 Day-night/animals/creative | medium | Living world |
 | 7 Save/perf | medium | |
 | 8 Polish | ongoing | |
+| 9 Survival | medium | Full loop |
 
 Phases 1–3 are the minimum to *feel* like the genre. Do them first, in order, because each one depends on the previous. Phases 4 and 6 can then be developed in parallel.
 

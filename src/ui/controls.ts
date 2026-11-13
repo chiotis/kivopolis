@@ -5,10 +5,19 @@ import { spawnDrop } from '../world/dropState'
 import { jumpTapped, playerState } from '../world/player'
 import { keys, movementKeys, viewMode } from '../world/camera'
 
+/** Name a key by its physical position for letters and digits, so W/A/S/D and
+ * the other shortcuts work on any keyboard layout (Greek, Cyrillic, …). */
+function keyName(event: KeyboardEvent) {
+  const code = event.code
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase()
+  if (/^Digit[0-9]$/.test(code)) return code.slice(5)
+  return event.key.toLowerCase()
+}
+
 export function useControls() {
   useEffect(() => {
     function down(event: KeyboardEvent) {
-      const key = event.key.toLowerCase()
+      const key = keyName(event)
       const state = useGame.getState()
       if (key === 'escape') {
         if (state.panel) state.setPanel(null)
@@ -45,7 +54,7 @@ export function useControls() {
       if (state.mode === 'explore' && /^[1-9]$/.test(key)) state.setHotbar(Number(key) - 1)
       if (key === 'v' && state.mode === 'explore') viewMode.third = !viewMode.third
     }
-    const up = (event: KeyboardEvent) => keys.delete(event.key.toLowerCase())
+    const up = (event: KeyboardEvent) => keys.delete(keyName(event))
     const blur = () => keys.clear()
     const stopOnPanel = useGame.subscribe((state, previous) => {
       if (state.panel || state.mode !== previous.mode || state.screen !== previous.screen) keys.clear()

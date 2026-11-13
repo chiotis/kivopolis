@@ -42,8 +42,11 @@ export function tileUV(tile: number, u: number, v: number): [number, number] {
   return [(col + uu) / ATLAS_TILES, 1 - (row + 1 - vv) / ATLAS_TILES]
 }
 
-/** Builds face-culled geometry with per-vertex ambient occlusion for one 16 × 16 column of blocks. */
-export function meshChunk(world: Sampler, cx: number, cz: number): ChunkMesh {
+/**
+ * Builds face-culled geometry with per-vertex ambient occlusion for one 16 × 16 column of blocks.
+ * With `ao: false` (low quality) every corner is fully lit.
+ */
+export function meshChunk(world: Sampler, cx: number, cz: number, { ao: smooth = true }: { ao?: boolean } = {}): ChunkMesh {
   const positions: number[] = []
   const normals: number[] = []
   const uvs: number[] = []
@@ -85,7 +88,7 @@ export function meshChunk(world: Sampler, cx: number, cz: number): ChunkMesh {
             const side1 = occludes(bx + t[0][0], by + t[0][1], bz + t[0][2]) ? 1 : 0
             const side2 = occludes(bx + t[1][0], by + t[1][1], bz + t[1][2]) ? 1 : 0
             const cornerBlock = occludes(bx + t[0][0] + t[1][0], by + t[0][1] + t[1][1], bz + t[0][2] + t[1][2]) ? 1 : 0
-            const level = side1 && side2 ? 0 : 3 - side1 - side2 - cornerBlock
+            const level = !smooth ? 3 : side1 && side2 ? 0 : 3 - side1 - side2 - cornerBlock
             ao.push(level)
             const shade = AO_LEVEL[level]
             colors.push(shade, shade, shade)

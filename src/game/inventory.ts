@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { fuel, itemByKey, maxStack, SMELT_TIME, smelting, type Stack } from './items'
 import { matchRecipe } from './recipes'
+import { readRecord, writeRecord } from './save'
 
-export const inventorySaveKey = 'ancient-polis-inventory'
 export const HOTBAR = 9
 export const SLOTS = 36
 
@@ -50,10 +50,8 @@ function validStack(value: unknown): Stack | null {
 function load(): InventoryState {
   const state = fresh()
   try {
-    const raw = globalThis.localStorage?.getItem(inventorySaveKey)
-    if (!raw) return state
-    const data = JSON.parse(raw) as { version?: number; slots?: unknown[]; kilns?: Record<string, Partial<Kiln>> }
-    if (data.version !== 1) return state
+    const data = readRecord<{ version?: number; slots?: unknown[]; kilns?: Record<string, Partial<Kiln>> }>('inventory')
+    if (!data || data.version !== 1) return state
     if (Array.isArray(data.slots)) data.slots.slice(0, SLOTS).forEach((stack, i) => { state.slots[i] = validStack(stack) })
     for (const [cell, kiln] of Object.entries(data.kilns ?? {})) {
       if (!/^\d+$/.test(cell) || !kiln) continue
@@ -349,19 +347,15 @@ export const inventory = {
 
 /** Clears the inventory and kilns (campaign reset). */
 export function resetInventory() {
-  try { globalThis.localStorage?.removeItem(inventorySaveKey) } catch { /* optional */ }
   useInventory.setState(fresh())
+  clearTimeout(saveTimer)
+  writeRecord('inventory', undefined)
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 useInventory.subscribe((state, previous) => {
   if (state.slots === previous.slots && state.kilns === previous.kilns) return
   clearTimeout(saveTimer)
-  saveTimer = setTimeout(() => {
-    try {
-      globalThis.localStorage?.setItem(inventorySaveKey, JSON.stringify({ version: 1, slots: state.slots, kilns: state.kilns }))
-    } catch {
-      // Storage is optional.
-    }
-  }, 300)
+  // Stacks are copied so later in-place changes never reach the queued record.
+  saveTimer = setTimeout(() => writeRecord('inventory', structuredClone({ version: 1, slots: state.slots, kilns: state.kilns })), 300)
 })

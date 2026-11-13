@@ -17,8 +17,11 @@ function random(seed: number) {
   }
 }
 
+/** Island seed, stored in the save header. 0 is the hand-designed island. */
+export const SEED = 0
+
 function hash(x: number, z: number, salt = 0) {
-  let h = (x * 374761393 + z * 668265263 + salt * 2147483647) | 0
+  let h = (x * 374761393 + z * 668265263 + (salt + SEED * 101) * 2147483647) | 0
   h = Math.imul(h ^ (h >>> 13), 1274126177)
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296
 }

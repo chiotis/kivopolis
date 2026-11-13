@@ -2,17 +2,41 @@ import { expect, test, type Page } from '@playwright/test'
 import { copy, itemName, missions } from '../src/game/el'
 import { cellTotals, legacySlots } from '../src/game/blueprints/theatre'
 import { Block } from '../src/voxel/blocks'
-import { worldSaveKey } from '../src/voxel/world'
-import { inventorySaveKey } from '../src/game/inventory'
+import { DB_NAME, STORE, legacyKeys } from '../src/game/save'
 
-const saveKey = 'ancient-polis-save'
-const saved = (page: Page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || 'null'), saveKey)
+const saveKey = legacyKeys.game
+
+/** Every record of the IndexedDB save, with typed arrays turned into plain arrays. */
+const records = (page: Page) => page.evaluate(async ([name, store]) => {
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const req = indexedDB.open(name)
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+  if (!db.objectStoreNames.contains(store)) { db.close(); return {} as Record<string, any> }
+  const tx = db.transaction(store)
+  const read = <T,>(req: IDBRequest<T>) => new Promise<T>((resolve) => { req.onsuccess = () => resolve(req.result) })
+  const [keys, values] = await Promise.all([read(tx.objectStore(store).getAllKeys()), read(tx.objectStore(store).getAll())])
+  db.close()
+  const plain = (value: any): any => ArrayBuffer.isView(value) ? Array.from(value as Uint8Array)
+    : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, plain(v)])) : value
+  return Object.fromEntries(keys.map((key, i) => [String(key), plain(values[i])])) as Record<string, any>
+}, [DB_NAME, STORE] as const)
+const saved = async (page: Page) => (await records(page)).game ?? null
+const inventorySlots = async (page: Page) => (await records(page)).inventory?.slots ?? []
 const edits = async (page: Page) => {
-  const pairs: number[] = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{"edits":[]}').edits, worldSaveKey)
-  return Object.fromEntries(pairs.flatMap((value, i) => (i % 2 ? [] : [[value, pairs[i + 1]]])))
+  const result: Record<number, number> = {}
+  for (const [key, value] of Object.entries(await records(page))) {
+    if (!key.startsWith('chunk:')) continue
+    value.cells.forEach((cell: number, i: number) => { result[cell] = value.ids[i] })
+  }
+  return result
 }
 
-/** Writes saves into the page's storage, then reloads so the game starts from them. */
+/**
+ * Writes version 1 LocalStorage saves, then reloads: the game moves them into IndexedDB at boot,
+ * replacing whatever was saved there.
+ */
 async function seed(page: Page, entries: Record<string, unknown>) {
   await page.goto('/')
   await page.evaluate((items) => {
@@ -86,7 +110,7 @@ test('activates the plan and lays an orchestra block by hand in first person', a
   const empty = Array.from({ length: 36 }, () => null)
   await seed(page, {
     [saveKey]: { version: 2, settings: (await saved(page)).settings, progress: { ...progress, player: [0, 0, 4.55] } },
-    [inventorySaveKey]: { version: 1, slots: [{ item: 'ashlar', count: 8 }, ...empty.slice(1)], kilns: {} },
+    [legacyKeys.inventory]: { version: 1, slots: [{ item: 'ashlar', count: 8 }, ...empty.slice(1)], kilns: {} },
   })
   await page.getByRole('button', { name: copy.continue }).click()
   const center = await settledCanvas(page)
@@ -120,6 +144,10 @@ test('rebuilds an old prefab save as blocks and finishes with the tour', async (
   await expect.poll(async () => (await saved(page))?.version).toBe(2)
   expect((await saved(page)).progress.placed).toBeUndefined()
   await expect.poll(async () => Object.keys(await edits(page)).length).toBeGreaterThanOrEqual(332)
+  // The LocalStorage copy is gone once IndexedDB holds the save, so it is never imported twice.
+  expect(await page.evaluate((keys) => keys.map((key) => localStorage.getItem(key)), Object.values(legacyKeys))).toEqual([null, null, null])
+  await page.reload()
+  await expect.poll(async () => Object.keys(await edits(page)).length).toBeGreaterThanOrEqual(332)
 
   await page.getByRole('button', { name: copy.continue }).click()
   await expect(page.getByText('100%', { exact: true })).toBeVisible()
@@ -146,7 +174,7 @@ test('shows the blueprint guide and the materials list on a phone', async ({ pag
 
 test('breaks a block by hand, picks up the drop, places it and keeps everything after refresh', async ({ page }, info) => {
   test.skip(info.project.name !== 'chromium')
-  const slots = async () => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{"slots":[]}').slots, inventorySaveKey)
+  const slots = () => inventorySlots(page)
   await page.addInitScript(noPointerLock)
   await startGame(page)
   const hotbar = page.getByRole('toolbar', { name: copy.hotbar })
@@ -204,7 +232,7 @@ test('switches the browser to full screen and back from the top bar', async ({ p
 
 test('starts in creative mode: every material at hand, blocks placed without running out', async ({ page }, info) => {
   test.skip(info.project.name !== 'chromium')
-  const slots = async () => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{"slots":[]}').slots, inventorySaveKey)
+  const slots = () => inventorySlots(page)
   await page.addInitScript(noPointerLock)
   await page.goto('/')
   await page.getByText(copy.modeCreative, { exact: true }).click()

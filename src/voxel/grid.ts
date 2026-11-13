@@ -23,3 +23,5 @@ export const wz = (z: number) => (z - OZ) * S
 export const inside = (x: number, y: number, z: number) =>
   x >= 0 && x < SX && y >= 0 && y < SY && z >= 0 && z < SZ
 export const index = (x: number, y: number, z: number) => (y * SZ + z) * SX + x
+/** Chunk index (cz * CX + cx) of a grid index. */
+export const chunkOfCell = (i: number) => Math.floor(Math.floor(i / SX) % SZ / CHUNK) * CX + Math.floor(i % SX / CHUNK)

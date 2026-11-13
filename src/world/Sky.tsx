@@ -6,6 +6,7 @@ import {
 } from 'three'
 import { advance, daylight, dusk, FIXED_TIME, sky, sunDirection } from '../game/daylight'
 import { useGame } from '../game/store'
+import { viewDistance } from './view'
 
 const palette = {
   day: new Color('#c3dedb'), dusk: new Color('#e8b48c'), night: new Color('#18213a'),
@@ -32,7 +33,7 @@ function starField() {
  * Sun, moon, stars, sky colour, fog and the two lights. One directional light follows the
  * sun by day and the moon by night, so shadows keep working after dark.
  */
-export function Sky({ shadows }: { shadows: boolean }) {
+export function Sky({ shadows, distance }: { shadows: boolean; distance: number }) {
   const { scene } = useThree()
   const light = useRef<DirectionalLight>(null)
   const hemi = useRef<HemisphereLight>(null)
@@ -88,8 +89,10 @@ export function Sky({ shadows }: { shadows: boolean }) {
     const { background, fog, sun, moon, stars } = parts
     background.copy(palette.night).lerp(palette.day, day).lerp(palette.dusk, warm * 0.75)
     fog.color.copy(palette.fogNight).lerp(palette.fogDay, day).lerp(palette.fogDusk, warm * 0.7)
-    fog.near = 31 - (1 - day) * 8
-    fog.far = 114 - (1 - day) * 34
+    // A short view distance pulls the fog in so hidden chunks fade out instead of popping.
+    const range = viewDistance(distance)
+    fog.far = Math.min(114 - (1 - day) * 34, range)
+    fog.near = Math.min(31 - (1 - day) * 8, fog.far * 0.45)
 
     // Discs stay a fixed distance from the camera so they never come closer when walking.
     const c = camera.position
