@@ -1,0 +1,211 @@
+import { ground, islandEdge } from '../game/terrain'
+import { siteMarker, spawn, tourMarker } from '../game/theatre'
+import { cells } from '../game/blueprints/theatre'
+import { Block } from './blocks'
+import { OY, S, SX, SY, SZ, bx, bz, wx, wz } from './grid'
+
+/** The subset of VoxelWorld the generator needs (avoids an import cycle). */
+export interface Grid {
+  get(x: number, y: number, z: number): number
+  fill(x: number, y: number, z: number, id: number): void
+}
+
+function random(seed: number) {
+  return () => {
+    seed = (1664525 * seed + 1013904223) >>> 0
+    return seed / 4294967296
+  }
+}
+
+function hash(x: number, z: number, salt = 0) {
+  let h = (x * 374761393 + z * 668265263 + salt * 2147483647) | 0
+  h = Math.imul(h ^ (h >>> 13), 1274126177)
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296
+}
+
+/** Matches the worn paths the old smooth terrain painted. */
+export function onPath(x: number, z: number) {
+  return (Math.abs(x - (6.2 + Math.sin(z * 0.29) * 1.45)) < 1.0 && z > 3.5)
+    || (Math.abs(z - (2.4 + Math.sin(x * 0.27) * 0.8)) < 0.73 && Math.abs(x) > 3.5 && Math.abs(x) < 12.8)
+    || Math.hypot(x, z) < 3.7
+}
+
+/**
+ * Converts the design heightfield into block levels. The +0.25 bias keeps the theatre's
+ * 0.5-unit tiers on exact block tops and its aisles one block lower.
+ */
+export const level = (height: number) => Math.floor(height * 2 + 0.25)
+
+export const groves: [number, number, number, 'olive' | 'cypress'][] = [
+  [-9.7, -2.9, 1.10, 'olive'], [-10.5, -6.6, 1.2, 'olive'], [-12.5, -9.9, 1.35, 'cypress'],
+  [-14.4, -4.8, 0.98, 'olive'], [-13.7, 1.9, 1.15, 'cypress'], [-16.8, -1, 1.2, 'olive'],
+  [-7.4, -6.7, 1.0, 'cypress'], [-8.3, -10.4, 1.17, 'cypress'], [-5.0, -13.4, 1.09, 'olive'],
+  [2.7, -12.5, 1.2, 'cypress'], [4.9, -11.4, 1.0, 'cypress'], [8.1, -10.7, 1.25, 'olive'],
+  [10.8, -11.1, 0.97, 'olive'], [13.4, -8.9, 1.30, 'cypress'], [15.9, -8.1, 0.95, 'cypress'],
+  [9.4, -2.2, 1.05, 'cypress'], [12.3, -1.9, 1.24, 'olive'], [16.1, 2.8, 1.25, 'olive'],
+  [15.2, 6.2, 1.1, 'cypress'], [14.4, 9, 1.1, 'olive'], [8.6, 10.4, 0.93, 'olive'],
+  [3.8, 10.2, 0.9, 'cypress'], [2.3, 11.8, 0.8, 'cypress'], [-3.9, 12.1, 1.05, 'olive'],
+  [-8.2, 10.4, 1.06, 'cypress'], [-13.2, 10.4, 1.1, 'olive'], [-17.3, 11.5, 0.98, 'cypress'],
+  [-21.2, 1.5, 0.86, 'olive'], [-19.7, -12.5, 1.1, 'olive'], [-17.5, -16, 1.1, 'cypress'],
+  [-15, -19, 1.32, 'olive'], [-11.1, -18.9, 1.2, 'cypress'], [-4.4, -19, 1.24, 'cypress'],
+  [5.1, -18.1, 1.05, 'olive'], [9.0, -15.7, 0.8, 'olive'], [16.8, -12.5, 1.17, 'cypress'],
+]
+
+/** Copper is commoner than tin, as in the real Bronze Age trade. Ores cluster in small pockets. */
+function ore(x: number, y: number, z: number, chance: number) {
+  const pocket = hash(x >> 1, z >> 1, y >> 1)
+  if (pocket < chance) return Block.copperOre
+  if (pocket > 1 - chance * 0.45) return Block.tinOre
+  return null
+}
+
+function terrain(grid: Grid) {
+  for (let x = 0; x < SX; x++) {
+    for (let z = 0; z < SZ; z++) {
+      const px = wx(x) + S / 2, pz = wz(z) + S / 2
+      const height = ground(px, pz)
+      const top = Math.max(1, Math.min(SY - 2, OY + level(height) - 1))
+      const radius = Math.hypot(px, pz)
+      const beach = height < -0.2 || radius > islandEdge(Math.atan2(px, -pz)) - 2.2
+      const ridge = pz < -12 && pz > -19.5 && Math.abs(px) < 19 && hash(x, z, 3) > 0.35
+      const rocky = height > 3.2 && hash(x, z, 5) > 0.55
+      // Pale marble breaks the surface on the northern ridge; clay lies under the beaches.
+      const marbleVein = pz < -11 && Math.abs(px) < 20 && hash(x >> 2, z >> 2, 21) > 0.62
+      const clayBed = beach && hash(x >> 1, z >> 1, 17) > 0.5
+      for (let y = 0; y <= top; y++) {
+        let id: number = top - y >= 3 ? Block.limestone : Block.soil
+        if (y === 0) id = Block.bedrock
+        else if (y === top) {
+          if (beach) id = clayBed && hash(x, z, 19) > 0.8 ? Block.clay : Block.sand
+          else if (onPath(px, pz)) id = Block.path
+          else if (marbleVein && (ridge || rocky)) id = Block.marble
+          else if (ridge || rocky) id = hash(x, z, 9) > 0.7 ? Block.gravel : ore(x, y, z, 0.03) ?? Block.limestone
+          else id = Block.grass
+        } else if (beach && top - y < 2) id = Block.sand
+        else if (clayBed && top - y < 4) id = Block.clay
+        else if (id === Block.limestone) id = (marbleVein && top - y < 7 ? Block.marble : null) ?? ore(x, y, z, 0.022) ?? Block.limestone
+        grid.fill(x, y, z, id)
+      }
+    }
+  }
+}
+
+/** Index of the highest solid block in a column. */
+function topOf(grid: Grid, x: number, z: number) {
+  for (let y = SY - 1; y > 0; y--) if (grid.get(x, y, z) !== Block.air) return y
+  return 0
+}
+
+function setIfAir(grid: Grid, x: number, y: number, z: number, id: number) {
+  if (grid.get(x, y, z) === Block.air) grid.fill(x, y, z, id)
+}
+
+function trees(grid: Grid) {
+  for (const [x, z, size, kind] of groves) {
+    const ix = bx(x), iz = bz(z)
+    const base = topOf(grid, ix, iz) + 1
+    if (kind === 'olive') {
+      const trunk = 5 + (size > 1.15 ? 1 : 0)
+      for (let y = 0; y < trunk; y++) grid.fill(ix, base + y, iz, Block.oliveLog)
+      const rx = 2 + Math.round(size), ry = 2, cy = base + trunk + 1
+      for (let dx = -rx; dx <= rx; dx++) {
+        for (let dy = -ry; dy <= ry; dy++) {
+          for (let dz = -rx; dz <= rx; dz++) {
+            const d = (dx / (rx + 0.4)) ** 2 + (dy / (ry + 0.4)) ** 2 + (dz / (rx + 0.4)) ** 2
+            if (d > 1 || hash(ix + dx, iz + dz, cy + dy) < 0.1) continue
+            setIfAir(grid, ix + dx, cy + dy, iz + dz, Block.oliveLeaves)
+          }
+        }
+      }
+      // A couple of branches reaching into the crown.
+      grid.fill(ix + 1, base + trunk, iz, Block.oliveLog)
+      grid.fill(ix - 1, base + trunk - 1 + (size > 1 ? 1 : 0), iz + 1, Block.oliveLog)
+    } else {
+      const height = Math.round(9 + size * 3)
+      for (let y = 0; y < 4; y++) grid.fill(ix, base + y, iz, Block.oliveLog)
+      for (let y = 4; y < height; y++) {
+        grid.fill(ix, base + y, iz, Block.cypressLeaves)
+        if (y < height - 3) {
+          for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) setIfAir(grid, ix + dx, base + y, iz + dz, Block.cypressLeaves)
+        }
+      }
+      grid.fill(ix, base + height, iz, Block.cypressLeaves)
+    }
+  }
+}
+
+/** Fills a solid footing under a structure so it never floats on uneven ground. */
+function footing(grid: Grid, x: number, z: number, top: number, id: number) {
+  for (let y = topOf(grid, x, z) + 1; y <= top; y++) grid.fill(x, y, z, id)
+}
+
+function ruins(grid: Grid) {
+  for (const [x, z, length, standing] of [[-10.2, 5.2, 4.1, 2], [11.2, -6, 4.6, 3], [-13.2, -11, 3.3, 2]]) {
+    const floor = topOf(grid, bx(x), bz(z)) + 1
+    for (let ix = bx(x - length / 2); ix <= bx(x + length / 2); ix++) {
+      for (let iz = bz(z - 1.05); iz <= bz(z + 1.05); iz++) footing(grid, ix, iz, floor, Block.ashlar)
+    }
+    for (let i = 0; i < standing; i++) {
+      const cx = bx(x + (i - (standing - 1) / 2) * 1.12), cz = bz(z - 0.42)
+      const courses = i === 1 ? 2 : 4
+      grid.fill(cx, floor + 1, cz, Block.ashlar)
+      for (let k = 0; k < courses; k++) grid.fill(cx, floor + 2 + k, cz, Block.marble)
+      if (i !== 1) grid.fill(cx, floor + 2 + courses, cz, Block.ashlar)
+    }
+    grid.fill(bx(x + 0.31), floor + 1, bz(z + 0.59), Block.marble)
+    grid.fill(bx(x + 0.81), floor + 1, bz(z + 0.59), Block.marble)
+  }
+
+  // Stacks of quarried blocks waiting beside the path.
+  for (const [x, z, height] of [[8.1, 4.4, 3], [9.3, 5.4, 2], [7.9, 6.1, 1]]) {
+    const ix = bx(x), iz = bz(z)
+    const floor = topOf(grid, ix, iz) + 1
+    for (const dx of [0, 1]) {
+      footing(grid, ix + dx, iz, floor, Block.planks)
+      for (let row = 0; row < height; row++) grid.fill(ix + dx, floor + 1 + row, iz, Block.limestone)
+    }
+  }
+
+  // Low retaining blocks follow both shoulders of the theatre.
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 9; i++) {
+      const ix = bx(side * (6.06 + i * 0.28)), iz = bz(-1.88 - i * 0.62)
+      const top = topOf(grid, ix, iz)
+      grid.fill(ix, top + 1, iz, Block.limestone)
+      if (i > 2) grid.fill(ix, top + 2, iz, Block.ashlar)
+    }
+  }
+}
+
+function boulders(grid: Grid) {
+  const rng = random(6161)
+  const keepClear = [spawn, siteMarker, tourMarker]
+  for (let i = 0; i < 70; i++) {
+    const x = (rng() - 0.5) * 56, z = (rng() - 0.5) * 56
+    const radius = Math.hypot(x, z)
+    if (radius < 9.8 || radius > islandEdge(Math.atan2(x, -z)) - 3.5 || onPath(x, z)
+      || keepClear.some(([px, , pz]) => Math.hypot(px - x, pz - z) < 2.5)) continue
+    const ix = bx(x), iz = bz(z)
+    const top = topOf(grid, ix, iz)
+    grid.fill(ix, top + 1, iz, Block.limestone)
+    if (rng() > 0.5) grid.fill(ix + 1, topOf(grid, ix + 1, iz) + 1, iz, Block.limestone)
+    if (rng() > 0.7) grid.fill(ix, top + 2, iz, Block.limestone)
+  }
+}
+
+/**
+ * Prepares the theatre's building site: every blueprint cell starts empty (the orchestra ring
+ * becomes a shallow trench) and the lowest courses get solid ground beneath them.
+ */
+function site(grid: Grid) {
+  for (const cell of cells) grid.fill(cell.x, cell.y, cell.z, Block.air)
+  for (const cell of cells) if (cell.footing) footing(grid, cell.x, cell.z, cell.y - 1, Block.soil)
+}
+
+export function generate(grid: Grid) {
+  terrain(grid)
+  trees(grid)
+  ruins(grid)
+  boulders(grid)
+  site(grid)
+}
