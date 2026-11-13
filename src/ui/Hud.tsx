@@ -89,7 +89,8 @@ export function StageOverlay({ blueprint, setBlueprint, marker }: {
   const showInteract = mode === 'explore' && ((!started || gates) && nearby)
   const overview = mode === 'overview'
   return (
-    <div className="stage-overlay">
+    // Android opens a context menu on a long press; holding a movement or action button is play, not a menu.
+    <div className="stage-overlay" onContextMenu={(event) => event.preventDefault()}>
       <div className="hud-left">
         <div className="hud-panel hud-bar">
           <button className="hud-icon" onClick={() => setPanel('pause')} aria-label={copy.pause} title={`${copy.pause} (Esc)`}><Pause size={16} /></button>

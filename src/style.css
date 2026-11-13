@@ -59,6 +59,8 @@ svg { flex-shrink: 0; }
 .foot-mark { color: #9a744f; background: #f2e9d7; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; font: 500 18px/1 var(--serif); }
 .stage { position: relative; overflow: hidden; background: #b8c4a8; border-radius: 17px; isolation: isolate; min-width: 0; }
 .stage canvas { display: block; touch-action: none; }
+/* In play, a long press on a pad or button must not select text or open the OS menu (copy, paste…). */
+.in-game .stage { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .stage-overlay { position: absolute; z-index: 7; inset: 0; pointer-events: none; }
 .stage-overlay button { pointer-events: auto; }
 .stage-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 16px; }
