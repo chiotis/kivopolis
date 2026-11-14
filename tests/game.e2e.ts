@@ -257,7 +257,7 @@ test('hides the interface for pictures and saves the view as a PNG', async ({ pa
   const download = page.waitForEvent('download')
   await page.keyboard.press('F2')
   const file = await download
-  expect(file.suggestedFilename()).toMatch(/^ancient-polis-\d{8}-\d{6}\.png$/)
+  expect(file.suggestedFilename()).toMatch(/^kivopolis-\d{8}-\d{6}\.png$/)
   // A PNG starts with the bytes 0x89 'P' 'N' 'G'.
   const chunks: Uint8Array[] = await (await file.createReadStream()).toArray()
   expect(new TextDecoder().decode(chunks[0].subarray(1, 4))).toBe('PNG')

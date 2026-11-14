@@ -1,7 +1,7 @@
 import type { Mission } from './theatre'
 
 export const copy = {
-  brand: 'ANCIENT POLIS',
+  brand: 'KivoPolis',
   chapter: 'ΚΕΦΑΛΑΙΟ 01',
   valley: 'Κοιλάδα του Θεάτρου',
   title: ['Χτίσε το', 'παρελθόν.'],
