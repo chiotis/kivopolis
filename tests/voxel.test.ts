@@ -26,6 +26,11 @@ describe('voxel world', () => {
       expect(a.get(seat.x, seat.y, seat.z)).toBe(Block.air)
     }
     expect(level(ground(0, 0))).toBe(0)
+    // The diazoma is a level walkway of trodden earth between the two tiers.
+    for (const [x, z] of [[0, -7.9], [-4.5, -6.4], [5.6, -5.4]] as const) {
+      expect(level(ground(x, z))).toBe(2)
+      expect(a.get(bx(x), by(0.75), bz(z))).toBe(Block.path)
+    }
   }, 20_000)
 
   it('records edits, notifies the affected chunks and ignores no-op writes', () => {

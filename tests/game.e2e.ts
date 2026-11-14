@@ -143,11 +143,11 @@ test('rebuilds an old prefab save as blocks and finishes with the tour', async (
   // The upgrade rewrites the save at once and stores the theatre as world edits.
   await expect.poll(async () => (await saved(page))?.version).toBe(2)
   expect((await saved(page)).progress.placed).toBeUndefined()
-  await expect.poll(async () => Object.keys(await edits(page)).length).toBeGreaterThanOrEqual(332)
+  await expect.poll(async () => Object.keys(await edits(page)).length).toBeGreaterThanOrEqual(434)
   // The LocalStorage copy is gone once IndexedDB holds the save, so it is never imported twice.
   expect(await page.evaluate((keys) => keys.map((key) => localStorage.getItem(key)), Object.values(legacyKeys))).toEqual([null, null, null])
   await page.reload()
-  await expect.poll(async () => Object.keys(await edits(page)).length).toBeGreaterThanOrEqual(332)
+  await expect.poll(async () => Object.keys(await edits(page)).length).toBeGreaterThanOrEqual(434)
 
   await page.getByRole('button', { name: copy.continue }).click()
   await expect(page.getByText('100%', { exact: true })).toBeVisible()
