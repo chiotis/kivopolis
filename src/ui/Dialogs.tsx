@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Award, Backpack, BookOpen, CircleHelp, Compass, Flame, Hammer, Landmark, Pause, Settings2, X } from 'lucide-react'
 import { InventoryScreen } from './InventoryScreen'
 import { ModeChoice } from './ModeChoice'
+import { PartInfo } from './Parts'
 import { copy, missions } from '../game/el'
 import { fovRange, sensitivityRange, useGame, type Panel, type Settings } from '../game/store'
 import { objectives } from '../game/theatre'
@@ -9,16 +10,16 @@ import { complete, earnedPoints, useSite } from '../game/site'
 
 const labels: Record<Panel, string> = {
   settings: copy.settings, help: copy.help, journal: copy.journal, pause: copy.pause, new: copy.newGame,
-  reset: copy.reset, complete: copy.badge, inventory: copy.backpack, workshop: copy.workshop, kiln: copy.kiln,
+  reset: copy.reset, complete: copy.badge, inventory: copy.backpack, workshop: copy.workshop, kiln: copy.kiln, part: copy.parts,
 }
 
 const icons = {
   settings: Settings2, help: CircleHelp, journal: BookOpen, pause: Pause, reset: Settings2, new: Compass, complete: Award,
-  inventory: Backpack, workshop: Hammer, kiln: Flame,
+  inventory: Backpack, workshop: Hammer, kiln: Flame, part: BookOpen,
 }
 
 export function Dialogs() {
-  const { panel, setPanel, settings, settingsChange, progress, screen, restartMission, goHome, reset, start, setCreative } = useGame()
+  const { panel, part, congrats, setPanel, settings, settingsChange, progress, screen, restartMission, goHome, reset, start, setCreative } = useGame()
   const [newCreative, setNewCreative] = useState(false)
   const ref = useRef<HTMLDialogElement>(null)
   const counts = useSite((state) => state.counts)
@@ -28,7 +29,7 @@ export function Dialogs() {
     else if (!panel && ref.current?.open) ref.current.close()
   }, [panel])
 
-  const Icon = panel ? icons[panel] : Landmark
+  const Icon = panel === 'part' && congrats ? Award : panel ? icons[panel] : Landmark
   const notes = objectives.filter(({ id }) => {
     if (id === 'discover') return progress.discovered
     return progress.celebrated.includes(id) || complete(id, counts)
@@ -43,7 +44,7 @@ export function Dialogs() {
           <span className="modal-symbol"><Icon size={23} /></span>
           <button className="icon-button" aria-label={copy.close} onClick={dismiss}><X size={19} /></button>
         </div>
-        <h2 id="dialog-title">{labels[panel]}</h2>
+        <h2 id="dialog-title">{panel === 'part' && part ? (congrats ? copy.congrats : missions[part].title) : labels[panel]}</h2>
         {panel === 'settings' && (
           <div className="settings-list">
             <label>{copy.quality}
@@ -80,6 +81,7 @@ export function Dialogs() {
             {progress.facts.map((id) => <article key={id}><h3>{copy.facts[id].title}</h3><p>{copy.facts[id].text}</p></article>)}
           </div>
         )}
+        {panel === 'part' && part && <PartInfo part={part} />}
         {(panel === 'inventory' || panel === 'workshop' || panel === 'kiln') && <InventoryScreen kind={panel} />}
         {panel === 'pause' && (
           <div className="modal-actions">

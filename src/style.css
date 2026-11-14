@@ -388,7 +388,7 @@ progress::-moz-progress-bar { background: #6f8b66; border-radius: 10px; }
 .hud-quest .mission-needs strong { font-family: Tiny5, monospace; font-weight: 400; font-size: 14px; }
 .hud-quest .mission-needs .block-icon { width: 20px; height: 20px; border-radius: 0; }
 .quest-warning { margin-top: 8px; padding: 5px 7px; background: #b3261e55; border: 1px solid #ff6b5a88; color: #ffd4cc; font-size: 11.5px; line-height: 1.4; }
-.quest-steps { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin: 10px 0 0; padding: 0; list-style: none; }
+.quest-steps { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; margin: 10px 0 0; padding: 0; list-style: none; }
 .quest-steps li { height: 7px; background: #2b2724; border: 1px solid #000; }
 .quest-steps li.done { background: #5fc23c; }
 .quest-steps li.current { background: #ffd84f; }
@@ -477,3 +477,114 @@ progress::-moz-progress-bar { background: #6f8b66; border-radius: 10px; }
 .hud-fact { border-color: #10233a; background: #0f1d2ed9; }
 .hud-fact .toast-icon { background: #1d3550; color: #9fd0ff; }
 .hud-fact .toast-kicker { color: #9fd0ff; }
+
+/* The parts of the theatre, top centre: each a small plan with its own part lit */
+.hud-parts { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px; padding: 3px; }
+.part-button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 2px solid #000; border-radius: 0; background: #3a352f;
+  box-shadow: inset 2px 2px 0 #ffffff26, inset -2px -2px 0 #0000006b; cursor: pointer; }
+.part-button:hover:not([aria-disabled="true"]) { background: #57513f; outline: 2px solid #fff6; outline-offset: -4px; }
+.part-button.done { background: #2f4a26; }
+.part-button.active { background: #5a4a1b; border-color: #ffd84f; }
+.part-button.todo { background: #24201c; cursor: default; }
+.part-button.todo .part-plan { opacity: 0.55; }
+.part-info { display: grid; gap: 12px; }
+.part-head { display: flex; align-items: center; gap: 14px; }
+.part-figure { display: grid; place-items: center; width: 100px; height: 100px; flex-shrink: 0; background: #1d1915; border: 2px solid #050302; }
+.part-head > div { display: grid; gap: 6px; justify-items: start; }
+.part-state { padding: 3px 8px; font-size: 12px; font-weight: 800; border: 1px solid currentColor; }
+.part-state.done { color: #2f7a1c; background: #5fc23c1f; }
+.part-state.active { color: #8a6200; background: #ffd84f33; }
+.part-note { font-size: 14.5px; line-height: 1.6; }
+.part-task { padding: 10px 12px; background: #f4efe3; border-left: 3px solid #d9a92a; }
+.part-task h3 { font-size: 13px; font-weight: 800; margin-bottom: 4px; }
+.part-task p { font-size: 13px; line-height: 1.5; }
+.part-nav { display: flex; justify-content: space-between; gap: 8px; }
+.part-nav .button { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; }
+.part-nav .button:disabled { visibility: hidden; }
+/* Hints that sit at the top centre move below the parts row. */
+.in-game .stage:has(.hud-parts) .start-hint, .in-game .stage:has(.hud-parts) .objective-hint { top: 68px; }
+.in-game .stage:has(.hud-parts):has(.start-hint) .objective-hint { top: 112px; }
+/* Too narrow for the middle: the row tucks under the buttons on the left. */
+@media (max-width: 1110px) {
+  .hud-parts { left: 12px; top: 62px; transform: none; }
+  .in-game .stage:has(.hud-parts) .start-hint, .in-game .stage:has(.hud-parts) .objective-hint { top: 116px; }
+  .in-game .stage:has(.hud-parts):has(.start-hint) .objective-hint { top: 160px; }
+}
+/* Phones: a narrow column on the left, below the menu buttons. */
+@media (max-width: 760px) {
+  .hud-parts { left: 8px; top: 150px; flex-direction: column; }
+  .part-button { width: 28px; height: 28px; }
+  .part-button svg { width: 24px; height: 24px; }
+  .in-game .stage:has(.hud-parts) .start-hint { top: 56px; }
+  .in-game .stage:has(.hud-parts) .objective-hint { top: auto; }
+}
+
+/*
+ * In-game popups as blocky game windows: a light stone panel with a black outline and a
+ * bevelled rim, recessed dark slots, chunky grey buttons and pixel lettering for headings.
+ * Long texts stay in the reading font so the Greek notes remain easy to read.
+ */
+.in-game .modal { --gui: #c6c6c6; --gui-ink: #2f2f2f; --slot: #8b8b8b;
+  background: var(--gui); color: var(--gui-ink); border: 3px solid #000; border-radius: 0;
+  box-shadow: inset 3px 3px 0 #fff, inset -3px -3px 0 #555, 0 6px 0 #0006; }
+.in-game .modal::backdrop { background: #000000a6; backdrop-filter: none; }
+.in-game .modal-content { padding: 18px 20px 20px; }
+.in-game .modal h2 { font-family: Tiny5, monospace; font-weight: 400; font-size: 26px; letter-spacing: 0.02em; line-height: 1.1; color: #3f3f3f; margin-bottom: 14px; }
+.in-game .modal h3 { font-family: Tiny5, monospace; font-weight: 400; font-size: 15px; letter-spacing: 0.02em; color: #3f3f3f; }
+.in-game .modal p { color: var(--gui-ink); }
+.in-game .modal-symbol { border-radius: 0; background: var(--slot); color: #fff; border: 2px solid #000;
+  box-shadow: inset 2px 2px 0 #373737, inset -2px -2px 0 #fff; }
+.in-game .modal .icon-button, .in-game .modal .button { border-radius: 0; border: 2px solid #000; background: #727272; color: #fff;
+  font-family: Tiny5, monospace; font-weight: 400; letter-spacing: 0.02em; text-shadow: 2px 2px 0 #3f3f3f;
+  box-shadow: inset 2px 2px 0 #ababab, inset -2px -3px 0 #4a4a4a; transition: none; }
+.in-game .modal .button { font-size: 14px; }
+.in-game .modal .icon-button:hover, .in-game .modal .button:hover:not(:disabled) { background: #7e88bf; box-shadow: inset 2px 2px 0 #bcc4f0, inset -2px -3px 0 #4c5584; }
+.in-game .modal .button:active:not(:disabled) { box-shadow: inset 2px 3px 0 #4a4a4a, inset -2px -2px 0 #ababab; }
+.in-game .modal .button.primary { background: #4f8a34; box-shadow: inset 2px 2px 0 #86c467, inset -2px -3px 0 #2c5a1a; }
+.in-game .modal .button.danger { background: #a13a2c; box-shadow: inset 2px 2px 0 #d87363, inset -2px -3px 0 #6a1f15; }
+.in-game .modal .button:disabled { background: #5a5a5a; color: #a0a0a0; opacity: 1; }
+.in-game .modal .eyebrow { font-family: Tiny5, monospace; font-weight: 400; font-size: 12px; letter-spacing: 0.04em; color: #555; }
+
+/* Lists, settings and notes: separated by engraved lines instead of soft rules */
+.in-game .modal .help-list > div, .in-game .modal .journal-list > article, .in-game .modal .settings-list > label { border-bottom: 2px solid #8b8b8b; box-shadow: 0 2px 0 #e6e6e6; }
+.in-game .modal .settings-list select { border-radius: 0; border: 2px solid #000; background: #8b8b8b; color: #fff; font-family: Tiny5, monospace; box-shadow: inset 2px 2px 0 #373737; }
+.in-game .modal .settings-list input { accent-color: #4f8a34; }
+.in-game .modal .settings-list output { color: #3f3f3f; font-family: Tiny5, monospace; }
+.in-game .modal .completion-message { font-family: Tiny5, monospace !important; color: #3f3f3f !important; }
+.in-game .modal .agora, .in-game .modal .mode-choice label { border-radius: 0; border: 2px solid #000; background: #b3b3b3; box-shadow: inset 2px 2px 0 #e0e0e0, inset -2px -2px 0 #777; }
+.in-game .modal .mode-choice label.chosen { background: #9fbf8f; }
+
+/* The knowledge window of a theatre part */
+.in-game .modal .part-figure { background: #1d1915; border: 2px solid #000; box-shadow: inset 3px 3px 0 #000, inset -2px -2px 0 #fff; }
+.in-game .modal .part-state { font-family: Tiny5, monospace; font-weight: 400; font-size: 13px; border: 2px solid #000; color: #fff; text-shadow: 1px 1px 0 #0008; }
+.in-game .modal .part-state.done { background: #4f8a34; }
+.in-game .modal .part-state.active { background: #b8901c; }
+.in-game .modal .part-note { font-size: 14.5px; color: #262626; }
+.in-game .modal .part-task { background: #b3b3b3; border: 2px solid #000; border-left-width: 6px; border-left-color: #b8901c; box-shadow: inset 2px 2px 0 #e0e0e0; }
+
+/* Backpack, workshop and kiln: recessed slots like a block game inventory */
+.in-game .modal .crafting { border-radius: 0; background: transparent; }
+.in-game .modal .craft-arrow { color: #555; }
+.in-game .modal .inv-slot { border-radius: 0; border: 0; background: var(--slot); box-shadow: inset 2px 2px 0 #373737, inset -2px -2px 0 #fff; }
+.in-game .modal .inv-slot:hover { background: #a6a6a6; }
+.in-game .modal .inv-slot.result { background: #9a9a9a; }
+.in-game .modal .inv-slot.ghost { box-shadow: none; background: transparent; }
+.in-game .modal .inv-grid.hotbar-row { border-top: 2px solid #8b8b8b; }
+.in-game .modal .block-icon { border-radius: 0; }
+.in-game .modal .stack-count { font-family: Tiny5, monospace; font-weight: 400; font-size: 13px; text-shadow: 2px 2px 0 #3f3f3f; }
+.in-game .modal .kiln-progress { border-radius: 0; background: var(--slot); box-shadow: inset 2px 2px 0 #373737; }
+.in-game .modal .recipe-book summary { color: #3f3f3f; font-family: Tiny5, monospace; font-weight: 400; font-size: 14px; }
+.in-game .modal .recipe-book li { border-radius: 0; background: #b3b3b3; color: #2f2f2f; border: 2px solid #8b8b8b; }
+.in-game .modal .recipe-cell { border-radius: 0; background: var(--slot); }
+/* Congratulations at the top of the next step's window */
+.part-congrats { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: #e7eddc; border: 1px solid #b9c9a8; }
+.part-congrats svg { flex-shrink: 0; color: #b8901c; }
+.part-congrats p { font-size: 13.5px; color: var(--ink); }
+.part-congrats strong { white-space: nowrap; color: #2f7a1c; }
+.part-next { font-size: 15px; font-weight: 800; }
+.part-go { justify-self: stretch; }
+.in-game .modal .part-congrats { background: #5c8f3f; border: 2px solid #000; box-shadow: inset 2px 2px 0 #8fc46f, inset -2px -2px 0 #2f5a1c; }
+.in-game .modal .part-congrats p { color: #fff; font-family: Tiny5, monospace; font-size: 15px; text-shadow: 2px 2px 0 #2f3f2a; }
+.in-game .modal .part-congrats strong { color: #ffe36a; font-weight: 400; }
+.in-game .modal .part-congrats svg { color: #ffe36a; filter: drop-shadow(2px 2px 0 #2f3f2a); }
+.in-game .modal .part-next { font-size: 17px; }

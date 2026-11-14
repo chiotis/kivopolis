@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { cells, cellTotals, legacySlots, missionCells } from '../src/game/blueprints/theatre'
-import { activeMission, earnedPoints, measure, missionCounts, useSite } from '../src/game/site'
+import { activeMission, earnedPoints, measure, missionCounts, partStates, useSite } from '../src/game/site'
 import { migrateLegacy, useGame } from '../src/game/store'
 import { canWalk, obstacles } from '../src/game/terrain'
 import { objectives } from '../src/game/theatre'
@@ -58,6 +58,9 @@ describe('missions counted from world blocks', () => {
     useGame.getState().start()
     useGame.getState().updatePlayer([6.4, 0, 7.8])
     useGame.getState().interact()
+    // Activating the plan opens the orchestra, the first step to build.
+    expect(useGame.getState()).toMatchObject({ panel: 'part', part: 'orchestra', congrats: 'discover' })
+    useGame.getState().setPanel(null)
   })
 
   it('advances when every cell holds an accepted block and goes back when one breaks', () => {
@@ -67,8 +70,11 @@ describe('missions counted from world blocks', () => {
     let { counts } = useSite.getState()
     expect(activeMission(true, counts)).toBe('analemmata')
     expect(earnedPoints(true, counts, false)).toBe(100)
-    expect(useGame.getState().milestone).toBe('orchestra')
+    // The finished step is congratulated in the window of the next one.
+    expect(useGame.getState()).toMatchObject({ panel: 'part', part: 'analemmata', congrats: 'orchestra', milestone: null })
     expect(useGame.getState().progress.celebrated).toEqual(['orchestra'])
+    useGame.getState().setPanel(null)
+    expect(useGame.getState().congrats).toBeNull()
 
     const [first] = missionCells('orchestra')
     world.set(first.x, first.y, first.z, Block.air)
@@ -85,10 +91,12 @@ describe('missions counted from world blocks', () => {
     expect(activeMission(true, useSite.getState().counts)).toBe('analemmata')
     // Rebuilding a finished mission does not celebrate it twice.
     expect(useGame.getState().milestone).toBeNull()
+    expect(useGame.getState().panel).toBeNull()
   })
 
   it('opens the tour only once both gateways stand', () => {
     for (const { id } of objectives) if (id !== 'discover' && id !== 'finish') fill(id)
+    useGame.getState().setPanel(null)
     expect(activeMission(true, useSite.getState().counts)).toBe('finish')
     useGame.getState().updatePlayer([-6.15, 0, 3.7])
     useGame.getState().interact()
@@ -96,6 +104,16 @@ describe('missions counted from world blocks', () => {
     fill('finish')
     useGame.getState().interact()
     expect(useGame.getState().mode).toBe('tour')
+  })
+
+  it('marks each part of the theatre as done, active or still ahead', () => {
+    fill('orchestra')
+    fill('analemmata')
+    const states = partStates(true, false, useSite.getState().counts)
+    expect(objectives.map(({ id }) => states[id])).toEqual(['done', 'done', 'done', 'active', 'todo', 'todo', 'todo', 'todo', 'todo'])
+    expect(Object.values(partStates(false, false, useSite.getState().counts)).filter((state) => state === 'active')).toHaveLength(1)
+    expect(partStates(false, false, useSite.getState().counts).discover).toBe('active')
+    expect(Object.values(partStates(true, true, useSite.getState().counts)).every((state) => state !== 'active')).toBe(true)
   })
 
   it('gives the blocks back when a mission is restarted', () => {
