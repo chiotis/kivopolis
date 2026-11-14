@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { copy, itemName, missions } from '../game/el'
 import { interactionRadius, useGame } from '../game/store'
 import { objectives, siteMarker, tourMarker } from '../game/theatre'
-import { activeMission, builtTotal, earnedPoints, entrancesReady, missionCounts, needs, totalCells, useSite } from '../game/site'
+import { activeMission, builtTotal, earnedPoints, entrancesReady, missionCounts, needs, partStates, totalCells, useSite } from '../game/site'
 import { blocks } from '../voxel/blocks'
 import { cells } from '../game/blueprints/theatre'
 import { keys } from '../world/camera'
@@ -15,6 +15,7 @@ import { blockInput, jumpTapped } from '../world/player'
 import { savePicture } from '../world/picture'
 import { HOTBAR, useInventory } from '../game/inventory'
 import { ItemIcon, StackView } from './ItemIcon'
+import { PartsBar } from './Parts'
 import type { Stack } from '../game/items'
 
 /** Blocks the current mission still needs, next to how many the player carries. */
@@ -43,6 +44,7 @@ export function MissionPanel() {
   const info = missions[mission]
   const { done, total } = missionCounts(mission, counts)
   const points = earnedPoints(progress.discovered, counts, progress.completed)
+  const states = partStates(progress.discovered, progress.completed, counts)
   const misplaced = wrong.filter((i) => cells[i].mission === mission).length
   return (
     <aside className="hud-panel hud-quest" aria-label={copy.mission}>
@@ -63,9 +65,9 @@ export function MissionPanel() {
       {progress.discovered && total > 0 && <Needs list={needs(mission, missing, wrong)} />}
       {progress.discovered && misplaced > 0 && <p className="quest-warning">{copy.wrongBlocks}</p>}
       <ol className="quest-steps" aria-label={copy.total}>
-        {objectives.map(({ id }, itemIndex) => {
-          const finished = id === 'discover' ? progress.discovered : id === 'finish' ? progress.completed : itemIndex < index
-          return <li key={id} title={missions[id].title} className={finished ? 'done' : id === mission ? 'current' : ''}>
+        {objectives.map(({ id }) => {
+          const state = states[id]
+          return <li key={id} title={missions[id].title} className={state === 'done' ? 'done' : state === 'active' ? 'current' : ''}>
             <span className="visually-hidden">{missions[id].title}</span>
           </li>
         })}
@@ -108,6 +110,7 @@ export function StageOverlay({ blueprint, setBlueprint, marker }: {
         <span className="hud-panel hud-mode pixel">{mode === 'overview' ? copy.overview : mode === 'tour' ? copy.tour : copy.explore}{progress.creative && <small> · {copy.modeCreative}</small>}</span>
         <div className="compass" aria-hidden="true"><span>{copy.compass}</span><Compass size={18} strokeWidth={1.4} /></div>
       </div>
+      <PartsBar />
       <div className="hud-right">
         <Milestone />
         <FactToast />

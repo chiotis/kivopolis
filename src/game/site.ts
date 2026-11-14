@@ -58,6 +58,17 @@ export function activeMission(discovered: boolean, counts: Counts): Mission {
   return objectives.find(({ id }) => id !== 'discover' && !complete(id, counts))?.id ?? 'finish'
 }
 
+/** Where each part of the theatre stands: finished, being built now, or still ahead. */
+export type PartState = 'done' | 'active' | 'todo'
+export function partStates(discovered: boolean, completed: boolean, counts: Counts): Record<Mission, PartState> {
+  const active = completed ? null : activeMission(discovered, counts)
+  const index = objectives.findIndex(({ id }) => id === active)
+  return Object.fromEntries(objectives.map(({ id }, i) => {
+    const done = id === 'discover' ? discovered : id === 'finish' ? completed : index < 0 || i < index
+    return [id, done ? 'done' : id === active ? 'active' : 'todo']
+  })) as Record<Mission, PartState>
+}
+
 export const entrancesReady = (counts: Counts) => complete('finish', counts)
 
 export function earnedPoints(discovered: boolean, counts: Counts, completed: boolean) {

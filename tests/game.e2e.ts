@@ -66,7 +66,12 @@ async function discover(page: Page) {
   await expect(page.locator('.scene-marker')).toBeVisible()
   await walkUntil(page, 'w', new RegExp(copy.interact))
   await page.keyboard.press('e')
-  await expect(page.getByRole('heading', { name: missions.orchestra.title })).toBeVisible()
+  // The plan is congratulated in the window of the first step, the orchestra.
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('heading', { name: copy.congrats })).toBeVisible()
+  await expect(dialog).toContainText(`${copy.nextStep}: ${missions.orchestra.title}`)
+  await dialog.getByRole('button', { name: copy.keepBuilding }).click()
+  await expect(page.getByRole('heading', { name: missions.orchestra.title, exact: true })).toBeVisible()
 }
 
 /** The stage resizes when the menu gives way to the game layout; wait until it settles. */

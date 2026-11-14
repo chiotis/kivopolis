@@ -12,7 +12,7 @@ import { onSaveStatus, readRecord, saveAvailable, writeRecord } from './save'
 export const interactionRadius = 2.55
 /** Explore is the first-person game; overview is the orbiting architect's camera; tour is the finale. */
 export type Mode = 'explore' | 'overview' | 'tour'
-export type Panel = 'settings' | 'help' | 'journal' | 'pause' | 'reset' | 'new' | 'complete' | 'inventory' | 'workshop' | 'kiln'
+export type Panel = 'settings' | 'help' | 'journal' | 'pause' | 'reset' | 'new' | 'complete' | 'inventory' | 'workshop' | 'kiln' | 'part'
 export interface Settings {
   quality: 'auto' | 'high' | 'low'; sound: boolean; reducedMotion: boolean; dayCycle: boolean
   /** First-person field of view in degrees (vertical). */
@@ -49,6 +49,10 @@ interface State {
   saveStatus: 'ready' | 'unavailable'
   screen: 'menu' | 'game'
   panel: Panel | null
+  /** The theatre part whose knowledge text the 'part' panel shows. */
+  part: Mission | null
+  /** The step just finished, congratulated at the top of the next step's window. */
+  congrats: Mission | null
   mode: Mode
   milestone: Mission | null
   /** Notes waiting to pop up in the top-right corner, oldest first. */
@@ -67,6 +71,8 @@ interface State {
   start: () => void
   goHome: () => void
   setPanel: (panel: Panel | null) => void
+  /** Opens the knowledge text of one part of the theatre. */
+  openPart: (part: Mission, congrats?: Mission | null) => void
   settingsChange: (settings: Partial<Settings>) => void
   toggleOverview: () => void
   updatePlayer: (position: Point) => void
@@ -173,6 +179,8 @@ export const useGame = create<State>((set, get) => ({
   saveStatus: saveAvailable() ? 'ready' : 'unavailable',
   screen: 'menu',
   panel: null,
+  part: null,
+  congrats: null,
   mode: 'explore',
   milestone: null,
   facts: [],
@@ -196,7 +204,8 @@ export const useGame = create<State>((set, get) => ({
     progress: state.progress.started ? state.progress : { ...state.progress, started: true },
   })),
   goHome: () => set({ screen: 'menu', panel: null, milestone: null }),
-  setPanel: (panel) => set({ panel }),
+  setPanel: (panel) => set({ panel, congrats: null }),
+  openPart: (part, congrats = null) => set({ panel: 'part', part, congrats }),
   settingsChange: (patch) => set((state) => ({ settings: { ...state.settings, ...patch } })),
   toggleOverview: () => {
     const state = get()
@@ -209,7 +218,8 @@ export const useGame = create<State>((set, get) => ({
     if (!interactionAvailable(get())) return
     if (!progress.discovered) {
       // Anything already built before the plan was activated counts, without a burst of celebrations.
-      set({ progress: { ...progress, discovered: true, celebrated: finishedInOrder() }, milestone: 'discover' })
+      set({ progress: { ...progress, discovered: true, celebrated: finishedInOrder() } })
+      set(celebrate('discover'))
     } else if (entrancesReady(useSite.getState().counts)) {
       set({ mode: 'tour', milestone: null })
     }
@@ -285,11 +295,21 @@ useSite.subscribe((site, previous) => {
   if (state.screen === 'game' && state.settings.sound && site.counts[mission] > previous.counts[mission]) placementSound()
   const fresh = finishedInOrder().filter((id) => !progress.celebrated.includes(id))
   if (!fresh.length) return
-  useGame.setState({
-    progress: { ...progress, celebrated: [...progress.celebrated, ...fresh] },
-    milestone: state.screen === 'game' ? fresh.at(-1)! : state.milestone,
-  })
+  useGame.setState({ progress: { ...progress, celebrated: [...progress.celebrated, ...fresh] } })
+  if (state.screen === 'game') useGame.setState(celebrate(fresh.at(-1)!))
 })
+
+/**
+ * A finished step is congratulated in the window of the step that comes next, so the player reads
+ * what to build straight away. The gateways lead into the tour instead, and an open window or the
+ * tour is never interrupted, so those keep the small corner note.
+ */
+function celebrate(done: Mission): Partial<State> {
+  const state = useGame.getState()
+  const next = activeMission(true, useSite.getState().counts)
+  if (done === 'finish' || next === done || state.panel || state.mode === 'tour') return { milestone: done }
+  return { panel: 'part', part: next, congrats: done, milestone: null }
+}
 
 // Screenshot mode ends whenever a dialog opens or the view changes.
 useGame.subscribe((state, previous) => {
