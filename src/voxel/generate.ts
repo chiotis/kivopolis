@@ -1,5 +1,5 @@
 import { ground, islandEdge } from '../game/terrain'
-import { KOILON_EDGE, siteMarker, spawn, tourMarker } from '../game/theatre'
+import { KOILON_EDGE, parodosZ, siteMarker, spawn, tourMarker } from '../game/theatre'
 import { cells } from '../game/blueprints/theatre'
 import { Block } from './blocks'
 import { OY, S, SEA_FLOOR_Y, SEA_Y, SX, SY, SZ, bx, bz, wx, wz } from './grid'
@@ -29,7 +29,7 @@ function hash(x: number, z: number, salt = 0) {
 /** Matches the worn paths the old smooth terrain painted. */
 export function onPath(x: number, z: number) {
   return (Math.abs(x - (6.2 + Math.sin(z * 0.29) * 1.45)) < 1.0 && z > 3.5)
-    || (Math.abs(z - (2.4 + Math.sin(x * 0.27) * 0.8)) < 0.73 && Math.abs(x) > 3.5 && Math.abs(x) < 12.8)
+    || (Math.abs(z - parodosZ(x)) < 0.73 && Math.abs(x) > 3.5 && Math.abs(x) < 12.8)
     || Math.hypot(x, z) < 3.7
 }
 

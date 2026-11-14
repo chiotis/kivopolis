@@ -19,7 +19,12 @@ export const objectives: Objective[] = [
 
 export const spawn: Point = [6.5, 0, 11]
 export const siteMarker: Point = [6.4, 0, 5.8]
-export const tourMarker: Point = [-6.15, 0, 3.7]
+export const tourMarker: Point = [-6.15, 0, 4.6]
+/**
+ * Centre line of the two side roads, the parodoi, as a distance downhill (+Z) at each x.
+ * It mirrors across the theatre's axis, so both roads and their gateways line up.
+ */
+export const parodosZ = (x: number) => 2.4 + Math.sin(Math.abs(x) * 0.27) * 0.8
 /**
  * The koilon climbs in five terraces, one block apart: two seat rows, the diazoma (a level
  * walkway that splits the lower and upper tiers), then two more seat rows.
