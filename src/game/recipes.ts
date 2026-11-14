@@ -21,6 +21,8 @@ export const recipes: Recipe[] = [
   { pattern: ['PP', 'PP'], keys: { P: 'planks' }, result: { item: 'workshop', count: 1 } },
   { pattern: ['LLL', 'L L', 'LLL'], keys: { L: 'limestone' }, result: { item: 'kiln', count: 1 } },
   { pattern: ['LL', 'LL'], keys: { L: 'limestone' }, result: { item: 'ashlar', count: 4 } },
+  // Crushed limestone: gravel for the diazoma without hunting for it on the ridges.
+  { ingredients: ['limestone'], result: { item: 'gravel', count: 2 } },
   { pattern: ['CC', 'CC'], keys: { C: 'clayLump' }, result: { item: 'clay', count: 1 } },
   // A clay oil lamp set on a stick: the light of ancient homes and workshops.
   { pattern: ['C', 'S'], keys: { C: 'clayLump', S: 'stick' }, result: { item: 'lamp', count: 2 } },

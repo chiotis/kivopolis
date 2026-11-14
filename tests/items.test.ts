@@ -30,6 +30,10 @@ describe('recipes', () => {
     expect(matchRecipe([s('tinIngot'), s('copperIngot'), s('copperIngot'), s('copperIngot')], 2)?.result).toEqual(s('bronzeIngot', 4))
     const kiln = ['limestone', 'limestone', 'limestone', 'limestone', null, 'limestone', 'limestone', 'limestone', 'limestone']
     expect(matchRecipe(kiln.map((item) => (item ? s(item) : null)), 3)?.result.item).toBe('kiln')
+    // One limestone crushes into gravel; four in a square still make ashlar.
+    expect(matchRecipe([null, null, null, s('limestone')], 2)?.result).toEqual(s('gravel', 2))
+    expect(matchRecipe([s('limestone'), s('limestone'), s('limestone'), s('limestone')], 2)?.result).toEqual(s('ashlar', 4))
+    expect(matchRecipe([s('limestone'), s('limestone'), null, null], 2)).toBeNull()
   })
 })
 
