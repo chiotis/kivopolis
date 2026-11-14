@@ -1,6 +1,7 @@
 import { Block } from '../../voxel/blocks'
 import { OX, OY, OZ, S, bx, bz, wx, wz } from '../../voxel/grid'
-import { KOILON_EDGE, SEAT_EDGE, inAisle, rowRadii, rowTerraces, terraceOf, type Mission } from '../theatre'
+import { ground } from '../terrain'
+import { ANALEMMA_ANGLE, DIAZOMA, KOILON_EDGE, SEAT_EDGE, TERRACE_START, inAisle, objectives, rowRadii, rowTerraces, terraceOf, type Mission } from '../theatre'
 
 /**
  * The theatre as a voxel blueprint: every block the player places by hand, in first person.
@@ -39,12 +40,32 @@ function build(): Cell[] {
   const cells: Cell[] = []
   const add = (cell: Cell) => cells.push(cell)
 
+  // Analemmata: two retaining walls close the koilon at its sides. Each column rises from the
+  // ground outside the theatre to one course above the seats of its terrace.
+  const walls = new Map<string, { ix: number; iz: number; side: string; terrace: number }>()
+  for (const side of [-1, 1]) {
+    for (let r = TERRACE_START; r < KOILON_EDGE; r += 0.1) {
+      const ix = bx(side * r * Math.sin(ANALEMMA_ANGLE)), iz = bz(-r * Math.cos(ANALEMMA_ANGLE))
+      const terrace = terraceOf(Math.hypot(center(ix, OX), center(iz, OZ)))
+      const key = `${ix},${iz}`
+      walls.set(key, { ix, iz, side: side < 0 ? 'left' : 'right', terrace: Math.max(terrace, walls.get(key)?.terrace ?? 0) })
+    }
+  }
+  for (const { ix, iz, side, terrace } of walls.values()) {
+    // The same rounding the generator uses, so the bottom course sits on the ground.
+    const floor = OY + Math.floor(ground(center(ix, OX), center(iz, OZ)) * 2 + 0.25)
+    for (let y = Math.min(floor, OY + terrace - 1); y <= OY + terrace + 1; y++) {
+      add({ x: ix, y, z: iz, block: Block.ashlar, accept: [Block.ashlar, Block.limestone], mission: 'analemmata', footing: y === Math.min(floor, OY + terrace - 1), legacy: `analemma-${side}` })
+    }
+  }
+
   // Scan the bowl once: orchestra ring, seats and aisle stairs all follow the circle around the origin.
   for (let ix = bx(-KOILON_EDGE); ix <= bx(KOILON_EDGE); ix++) {
     for (let iz = bz(-KOILON_EDGE); iz <= bz(4); iz++) {
       const px = center(ix, OX), pz = center(iz, OZ)
       const r = Math.hypot(px, pz)
       const angle = angleOf(px, pz)
+      if (walls.has(`${ix},${iz}`)) continue
 
       // Orchestra: a flush ring of dressed stone set into the excavated trench.
       if (r >= 2.95 && r < 3.5) {
@@ -58,6 +79,12 @@ function build(): Cell[] {
         const terrace = terraceOf(r)
         const sector = angle < 0 ? 0 : 1
         add({ x: ix, y: OY + terrace - 1, z: iz, block: Block.limestone, accept: stone, mission: 'stairs', footing: true, legacy: `step-${sector}-${terrace}` })
+        continue
+      }
+
+      // Diazoma: a level walkway of gravel, flush with its terrace, from wall to wall.
+      if (terraceOf(r) === DIAZOMA && r >= TERRACE_START && Math.abs(angle) < ANALEMMA_ANGLE) {
+        add({ x: ix, y: OY + DIAZOMA - 1, z: iz, block: Block.gravel, accept: [Block.gravel], mission: 'diazoma', footing: true, legacy: 'diazoma' })
         continue
       }
 
@@ -121,14 +148,20 @@ function build(): Cell[] {
 export const cells: readonly Cell[] = build()
 export const missionCells = (mission: Mission) => cells.filter((cell) => cell.mission === mission)
 export const cellTotals = Object.fromEntries(
-  (['discover', 'orchestra', 'seats', 'koilon', 'stairs', 'skene', 'finish'] as Mission[]).map((m) => [m, missionCells(m).length]),
+  objectives.map(({ id }) => [id, missionCells(id).length]),
 ) as Record<Mission, number>
 
 /** The old prefab slot ids, per mission, so an old save that finished a mission fills all of its cells. */
+const prefabSeats = [0, 1, 2].flatMap((sector) => [0, 1, 2, 3].map((seat) => `seat-0-${sector}-${seat}`))
+const prefabKoilon = [1, 2].flatMap((row) => [0, 1, 2].flatMap((sector) => [0, 1, 2, 3].map((seat) => `seat-${row}-${sector}-${seat}`)))
+// The analemmata and the diazoma had no prefab pieces: an old save that finished the next
+// step (the seats, the koilon) gets them too.
 export const legacySlots: Record<Exclude<Mission, 'discover'>, string[]> = {
   orchestra: [...Array.from({ length: 6 }, (_, i) => `rim-${i}`), 'floor-0', 'floor-1', 'floor-2'],
-  seats: [0, 1, 2].flatMap((sector) => [0, 1, 2, 3].map((seat) => `seat-0-${sector}-${seat}`)),
-  koilon: [1, 2].flatMap((row) => [0, 1, 2].flatMap((sector) => [0, 1, 2, 3].map((seat) => `seat-${row}-${sector}-${seat}`))),
+  analemmata: prefabSeats,
+  seats: prefabSeats,
+  diazoma: prefabKoilon,
+  koilon: prefabKoilon,
   stairs: [0, 1].flatMap((sector) => [0, 1, 2].map((row) => `step-${sector}-${row}`)),
   skene: ['foundation-left', 'foundation-right', 'wall-left', 'wall-middle', 'wall-right', 'post-left', 'post-right', 'roof'],
   finish: ['gate-left', 'gate-right'],

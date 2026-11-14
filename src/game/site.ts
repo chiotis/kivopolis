@@ -17,7 +17,7 @@ interface SiteState {
   version: number
 }
 
-const empty = (): Counts => ({ discover: 0, orchestra: 0, seats: 0, koilon: 0, stairs: 0, skene: 0, finish: 0 })
+const empty = (): Counts => Object.fromEntries(objectives.map(({ id }) => [id, 0])) as Counts
 
 export const useSite = create<SiteState>(() => ({ counts: empty(), wrong: [], missing: cells.map((_, i) => i), version: 0 }))
 

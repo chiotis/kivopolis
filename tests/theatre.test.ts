@@ -15,7 +15,9 @@ const fill = (mission: string, id?: number) => {
 describe('theatre blueprint', () => {
   it('gives every mission its own distinct blocks', () => {
     expect(new Set(cells.map(({ x, y, z }) => `${x},${y},${z}`)).size).toBe(cells.length)
-    expect(cellTotals).toEqual({ discover: 0, orchestra: 48, seats: 64, koilon: 100, stairs: 74, skene: 122, finish: 26 })
+    expect(cellTotals).toEqual({
+      discover: 0, orchestra: 48, analemmata: 114, seats: 64, diazoma: 94, koilon: 100, stairs: 74, skene: 122, finish: 26,
+    })
     for (const cell of cells) expect(cell.accept[0]).toBe(cell.block)
     // The lower tier: a marble front row, then limestone one block up.
     const lower = missionCells('seats')
@@ -24,6 +26,12 @@ describe('theatre blueprint', () => {
     expect(new Set(lower.map((cell) => cell.y))).toEqual(new Set([OY, OY + 1]))
     // The diazoma takes the third terrace, so the upper tier starts a block higher.
     expect(new Set(missionCells('koilon').map((cell) => cell.y))).toEqual(new Set([OY + 3, OY + 4]))
+    // The diazoma is one level course of gravel on the third terrace.
+    expect(missionCells('diazoma').every((cell) => cell.block === Block.gravel && cell.y === OY + 1)).toBe(true)
+    // The analemmata close both sides and rise one course above the top row.
+    const walls = missionCells('analemmata')
+    expect(new Set(walls.map((cell) => cell.legacy))).toEqual(new Set(['analemma-left', 'analemma-right']))
+    expect(Math.max(...walls.map((cell) => cell.y))).toBe(OY + 5)
     // Stairs climb every terrace, the diazoma included.
     expect(new Set(missionCells('stairs').map((cell) => cell.y))).toEqual(new Set([OY - 1, OY, OY + 1, OY + 2, OY + 3]))
   })
@@ -57,7 +65,7 @@ describe('missions counted from world blocks', () => {
     expect(useGame.getState().progress.discovered).toBe(true)
     fill('orchestra')
     let { counts } = useSite.getState()
-    expect(activeMission(true, counts)).toBe('seats')
+    expect(activeMission(true, counts)).toBe('analemmata')
     expect(earnedPoints(true, counts, false)).toBe(100)
     expect(useGame.getState().milestone).toBe('orchestra')
     expect(useGame.getState().progress.celebrated).toEqual(['orchestra'])
@@ -74,7 +82,7 @@ describe('missions counted from world blocks', () => {
     expect(useSite.getState().wrong).toContain(cells.indexOf(first))
     useGame.getState().dismissMilestone()
     world.set(first.x, first.y, first.z, Block.marble)
-    expect(activeMission(true, useSite.getState().counts)).toBe('seats')
+    expect(activeMission(true, useSite.getState().counts)).toBe('analemmata')
     // Rebuilding a finished mission does not celebrate it twice.
     expect(useGame.getState().milestone).toBeNull()
   })
@@ -92,6 +100,7 @@ describe('missions counted from world blocks', () => {
 
   it('gives the blocks back when a mission is restarted', () => {
     fill('orchestra')
+    fill('analemmata')
     const [cell] = missionCells('seats')
     getWorld().set(cell.x, cell.y, cell.z, Block.marble)
     useGame.getState().restartMission()

@@ -1,5 +1,5 @@
 import { ground, islandEdge } from '../game/terrain'
-import { KOILON_EDGE, onDiazoma, siteMarker, spawn, tourMarker } from '../game/theatre'
+import { KOILON_EDGE, siteMarker, spawn, tourMarker } from '../game/theatre'
 import { cells } from '../game/blueprints/theatre'
 import { Block } from './blocks'
 import { OY, S, SEA_FLOOR_Y, SEA_Y, SX, SY, SZ, bx, bz, wx, wz } from './grid'
@@ -83,8 +83,7 @@ function terrain(grid: Grid) {
         if (y === 0) id = Block.bedrock
         else if (y === top) {
           if (beach) id = clayBed && hash(x, z, 19) > 0.8 ? Block.clay : Block.sand
-          // The diazoma is a walkway of trodden earth between the lower and upper seats.
-          else if (onPath(px, pz) || onDiazoma(px, pz)) id = Block.path
+          else if (onPath(px, pz)) id = Block.path
           else if (marbleVein && (ridge || rocky)) id = Block.marble
           else if (ridge || rocky) id = hash(x, z, 9) > 0.7 ? Block.gravel : ore(x, y, z, 0.03) ?? Block.limestone
           else id = Block.grass
@@ -170,17 +169,6 @@ function ruins(grid: Grid) {
     for (const dx of [0, 1]) {
       footing(grid, ix + dx, iz, floor, Block.planks)
       for (let row = 0; row < height; row++) grid.fill(ix + dx, floor + 1 + row, iz, Block.limestone)
-    }
-  }
-
-  // Low retaining blocks follow both shoulders of the theatre, just outside the seats.
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < 12; i++) {
-      const r = 5.6 + i * 0.5
-      const ix = bx(side * r * Math.sin(1.4)), iz = bz(-r * Math.cos(1.4))
-      const top = topOf(grid, ix, iz)
-      grid.fill(ix, top + 1, iz, Block.limestone)
-      if (i > 2) grid.fill(ix, top + 2, iz, Block.ashlar)
     }
   }
 }
