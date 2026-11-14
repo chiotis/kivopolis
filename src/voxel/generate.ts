@@ -1,5 +1,5 @@
 import { ground, islandEdge } from '../game/terrain'
-import { siteMarker, spawn, tourMarker } from '../game/theatre'
+import { KOILON_EDGE, onDiazoma, siteMarker, spawn, tourMarker } from '../game/theatre'
 import { cells } from '../game/blueprints/theatre'
 import { Block } from './blocks'
 import { OY, S, SEA_FLOOR_Y, SEA_Y, SX, SY, SZ, bx, bz, wx, wz } from './grid'
@@ -40,12 +40,12 @@ export function onPath(x: number, z: number) {
 export const level = (height: number) => Math.floor(height * 2 + 0.25)
 
 export const groves: [number, number, number, 'olive' | 'cypress'][] = [
-  [-9.7, -2.9, 1.10, 'olive'], [-10.5, -6.6, 1.2, 'olive'], [-12.5, -9.9, 1.35, 'cypress'],
+  [-12.8, -3.7, 1.10, 'olive'], [-11.4, -7.6, 1.2, 'olive'], [-12.5, -9.9, 1.35, 'cypress'],
   [-14.4, -4.8, 0.98, 'olive'], [-13.7, 1.9, 1.15, 'cypress'], [-16.8, -1, 1.2, 'olive'],
-  [-7.4, -6.7, 1.0, 'cypress'], [-8.3, -10.4, 1.17, 'cypress'], [-5.0, -13.4, 1.09, 'olive'],
+  [-9.4, -8.5, 1.0, 'cypress'], [-8.3, -10.4, 1.17, 'cypress'], [-5.0, -13.4, 1.09, 'olive'],
   [2.7, -12.5, 1.2, 'cypress'], [4.9, -11.4, 1.0, 'cypress'], [8.1, -10.7, 1.25, 'olive'],
   [10.8, -11.1, 0.97, 'olive'], [13.4, -8.9, 1.30, 'cypress'], [15.9, -8.1, 0.95, 'cypress'],
-  [9.4, -2.2, 1.05, 'cypress'], [12.3, -1.9, 1.24, 'olive'], [16.1, 2.8, 1.25, 'olive'],
+  [12.4, -4.4, 1.05, 'cypress'], [13.6, -1.4, 1.24, 'olive'], [16.1, 2.8, 1.25, 'olive'],
   [15.2, 6.2, 1.1, 'cypress'], [14.4, 9, 1.1, 'olive'], [8.6, 10.4, 0.93, 'olive'],
   [3.8, 10.2, 0.9, 'cypress'], [2.3, 11.8, 0.8, 'cypress'], [-3.9, 12.1, 1.05, 'olive'],
   [-8.2, 10.4, 1.06, 'cypress'], [-13.2, 10.4, 1.1, 'olive'], [-17.3, 11.5, 0.98, 'cypress'],
@@ -83,7 +83,8 @@ function terrain(grid: Grid) {
         if (y === 0) id = Block.bedrock
         else if (y === top) {
           if (beach) id = clayBed && hash(x, z, 19) > 0.8 ? Block.clay : Block.sand
-          else if (onPath(px, pz)) id = Block.path
+          // The diazoma is a walkway of trodden earth between the lower and upper seats.
+          else if (onPath(px, pz) || onDiazoma(px, pz)) id = Block.path
           else if (marbleVein && (ridge || rocky)) id = Block.marble
           else if (ridge || rocky) id = hash(x, z, 9) > 0.7 ? Block.gravel : ore(x, y, z, 0.03) ?? Block.limestone
           else id = Block.grass
@@ -146,7 +147,7 @@ function footing(grid: Grid, x: number, z: number, top: number, id: number) {
 }
 
 function ruins(grid: Grid) {
-  for (const [x, z, length, standing] of [[-10.2, 5.2, 4.1, 2], [11.2, -6, 4.6, 3], [-13.2, -11, 3.3, 2]]) {
+  for (const [x, z, length, standing] of [[-10.2, 5.2, 4.1, 2], [12.9, -6.6, 4.6, 3], [-13.2, -11, 3.3, 2]]) {
     const floor = topOf(grid, bx(x), bz(z)) + 1
     for (let ix = bx(x - length / 2); ix <= bx(x + length / 2); ix++) {
       for (let iz = bz(z - 1.05); iz <= bz(z + 1.05); iz++) footing(grid, ix, iz, floor, Block.ashlar)
@@ -172,10 +173,11 @@ function ruins(grid: Grid) {
     }
   }
 
-  // Low retaining blocks follow both shoulders of the theatre.
+  // Low retaining blocks follow both shoulders of the theatre, just outside the seats.
   for (const side of [-1, 1]) {
-    for (let i = 0; i < 9; i++) {
-      const ix = bx(side * (6.06 + i * 0.28)), iz = bz(-1.88 - i * 0.62)
+    for (let i = 0; i < 12; i++) {
+      const r = 5.6 + i * 0.5
+      const ix = bx(side * r * Math.sin(1.4)), iz = bz(-r * Math.cos(1.4))
       const top = topOf(grid, ix, iz)
       grid.fill(ix, top + 1, iz, Block.limestone)
       if (i > 2) grid.fill(ix, top + 2, iz, Block.ashlar)
@@ -189,7 +191,7 @@ function boulders(grid: Grid) {
   for (let i = 0; i < 70; i++) {
     const x = (rng() - 0.5) * 56, z = (rng() - 0.5) * 56
     const radius = Math.hypot(x, z)
-    if (radius < 9.8 || radius > islandEdge(Math.atan2(x, -z)) - 3.5 || onPath(x, z)
+    if (radius < KOILON_EDGE + 1.6 || radius > islandEdge(Math.atan2(x, -z)) - 3.5 || onPath(x, z)
       || keepClear.some(([px, , pz]) => Math.hypot(px - x, pz - z) < 2.5)) continue
     const ix = bx(x), iz = bz(z)
     const top = topOf(grid, ix, iz)

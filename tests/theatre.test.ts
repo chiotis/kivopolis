@@ -15,11 +15,17 @@ const fill = (mission: string, id?: number) => {
 describe('theatre blueprint', () => {
   it('gives every mission its own distinct blocks', () => {
     expect(new Set(cells.map(({ x, y, z }) => `${x},${y},${z}`)).size).toBe(cells.length)
-    expect(cellTotals).toEqual({ discover: 0, orchestra: 48, seats: 32, koilon: 68, stairs: 36, skene: 122, finish: 26 })
+    expect(cellTotals).toEqual({ discover: 0, orchestra: 48, seats: 64, koilon: 100, stairs: 74, skene: 122, finish: 26 })
     for (const cell of cells) expect(cell.accept[0]).toBe(cell.block)
-    // The front row is marble, the upper rows climb one block per row.
-    expect(missionCells('seats').every((cell) => cell.block === Block.marble && cell.y === OY)).toBe(true)
-    expect(new Set(missionCells('koilon').map((cell) => cell.y))).toEqual(new Set([OY + 1, OY + 2]))
+    // The lower tier: a marble front row, then limestone one block up.
+    const lower = missionCells('seats')
+    expect(lower.filter((cell) => cell.y === OY).every((cell) => cell.block === Block.marble)).toBe(true)
+    expect(lower.filter((cell) => cell.y === OY + 1).every((cell) => cell.block === Block.limestone)).toBe(true)
+    expect(new Set(lower.map((cell) => cell.y))).toEqual(new Set([OY, OY + 1]))
+    // The diazoma takes the third terrace, so the upper tier starts a block higher.
+    expect(new Set(missionCells('koilon').map((cell) => cell.y))).toEqual(new Set([OY + 3, OY + 4]))
+    // Stairs climb every terrace, the diazoma included.
+    expect(new Set(missionCells('stairs').map((cell) => cell.y))).toEqual(new Set([OY - 1, OY, OY + 1, OY + 2, OY + 3]))
   })
 
   it('starts as an empty, supported building site', () => {

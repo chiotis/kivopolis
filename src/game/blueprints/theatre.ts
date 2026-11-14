@@ -1,6 +1,6 @@
 import { Block } from '../../voxel/blocks'
 import { OX, OY, OZ, S, bx, bz, wx, wz } from '../../voxel/grid'
-import { rowRadii, type Mission } from '../theatre'
+import { KOILON_EDGE, SEAT_EDGE, inAisle, rowRadii, rowTerraces, terraceOf, type Mission } from '../theatre'
 
 /**
  * The theatre as a voxel blueprint: every block the player places by hand, in first person.
@@ -27,10 +27,6 @@ const dressed = [Block.ashlar, Block.marble]
 /** Polar angle as the old theatre used it: zero points uphill (-Z), positive towards +X. */
 const angleOf = (x: number, z: number) => Math.atan2(x, -z)
 const center = (i: number, origin: number) => (i - origin) * S + S / 2
-const AISLES = [-0.44, 0.44]
-const AISLE_HALF = 0.087
-const inAisle = (angle: number) => AISLES.some((a) => Math.abs(angle - a) < AISLE_HALF)
-const SEAT_EDGE = 1.27
 const SECTORS = [-0.88, 0, 0.88]
 
 function seatLegacy(row: number, angle: number) {
@@ -44,8 +40,8 @@ function build(): Cell[] {
   const add = (cell: Cell) => cells.push(cell)
 
   // Scan the bowl once: orchestra ring, seats and aisle stairs all follow the circle around the origin.
-  for (let ix = bx(-9); ix <= bx(9); ix++) {
-    for (let iz = bz(-9); iz <= bz(4); iz++) {
+  for (let ix = bx(-KOILON_EDGE); ix <= bx(KOILON_EDGE); ix++) {
+    for (let iz = bz(-KOILON_EDGE); iz <= bz(4); iz++) {
       const px = center(ix, OX), pz = center(iz, OZ)
       const r = Math.hypot(px, pz)
       const angle = angleOf(px, pz)
@@ -57,22 +53,25 @@ function build(): Cell[] {
       }
 
       // Stairs: fill the aisle trenches so each step lands flush with its terrace.
-      if (r >= 4.18 && r < 8.52 && inAisle(angle)) {
-        const row = Math.min(2, Math.max(0, Math.floor((r - (rowRadii[0] - 0.67)) / 1.38)))
+      // They run through the diazoma too, where the top step lies flush with the walkway.
+      if (r >= 4.18 && r < KOILON_EDGE && inAisle(angle)) {
+        const terrace = terraceOf(r)
         const sector = angle < 0 ? 0 : 1
-        add({ x: ix, y: OY + row - 1, z: iz, block: Block.limestone, accept: stone, mission: 'stairs', footing: true, legacy: `step-${sector}-${row}` })
+        add({ x: ix, y: OY + terrace - 1, z: iz, block: Block.limestone, accept: stone, mission: 'stairs', footing: true, legacy: `step-${sector}-${terrace}` })
         continue
       }
 
       // Seats: one block high, one block deep, following each curved row on its terrace.
+      // The two rows below the diazoma make the lower tier; the two above it, the upper tier.
       if (Math.abs(angle) > SEAT_EDGE || inAisle(angle)) continue
       rowRadii.forEach((radius, row) => {
         if (Math.abs(r - radius) >= 0.31) return
         // The front row is the prohedria: marble seats of honour.
         const front = row === 0
+        const terrace = rowTerraces[row]
         add({
-          x: ix, y: OY + row, z: iz, block: front ? Block.marble : Block.limestone,
-          accept: front ? [Block.marble] : stone, mission: front ? 'seats' : 'koilon', footing: true, legacy: seatLegacy(row, angle),
+          x: ix, y: OY + terrace, z: iz, block: front ? Block.marble : Block.limestone,
+          accept: front ? [Block.marble] : stone, mission: row < 2 ? 'seats' : 'koilon', footing: true, legacy: seatLegacy(row, angle),
         })
       })
     }
