@@ -1,7 +1,7 @@
 import { Block } from '../../voxel/blocks'
 import { OX, OY, OZ, S, bx, bz, wx, wz } from '../../voxel/grid'
 import { ground } from '../terrain'
-import { ANALEMMA_ANGLE, DIAZOMA, KOILON_EDGE, SEAT_EDGE, TERRACE_START, inAisle, objectives, rowRadii, rowTerraces, terraceOf, type Mission } from '../theatre'
+import { ANALEMMA_ANGLE, DIAZOMA, KOILON_EDGE, SEAT_EDGE, TERRACE_START, inAisle, objectives, parodosZ, rowRadii, rowTerraces, terraceOf, type Mission } from '../theatre'
 
 /**
  * The theatre as a voxel blueprint: every block the player places by hand, in first person.
@@ -131,7 +131,7 @@ function build(): Cell[] {
 
   // Parodoi: two stone gateways over the side paths, with the passage running towards the orchestra.
   for (const [x, label] of [[-5.1, 'left'], [5.1, 'right']] as const) {
-    const ix = bx(x), iz = bz(2.4 + Math.sin(x * 0.27) * 0.8)
+    const ix = bx(x), iz = bz(parodosZ(x))
     for (const dz of [-2, 2]) {
       for (let layer = 0; layer < 4; layer++) {
         add({ x: ix, y: OY + layer, z: iz + dz, block: Block.ashlar, accept: [Block.ashlar, Block.marble], mission: 'finish', footing: layer === 0, legacy: `gate-${label}` })
