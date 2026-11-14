@@ -143,22 +143,22 @@ test('rebuilds an old prefab save as blocks and finishes with the tour', async (
   // The upgrade rewrites the save at once and stores the theatre as world edits.
   await expect.poll(async () => (await saved(page))?.version).toBe(2)
   expect((await saved(page)).progress.placed).toBeUndefined()
-  await expect.poll(async () => Object.keys(await edits(page)).length).toBeGreaterThanOrEqual(434)
+  await expect.poll(async () => Object.keys(await edits(page)).length).toBeGreaterThanOrEqual(642)
   // The LocalStorage copy is gone once IndexedDB holds the save, so it is never imported twice.
   expect(await page.evaluate((keys) => keys.map((key) => localStorage.getItem(key)), Object.values(legacyKeys))).toEqual([null, null, null])
   await page.reload()
-  await expect.poll(async () => Object.keys(await edits(page)).length).toBeGreaterThanOrEqual(434)
+  await expect.poll(async () => Object.keys(await edits(page)).length).toBeGreaterThanOrEqual(642)
 
   await page.getByRole('button', { name: copy.continue }).click()
   await expect(page.getByText('100%', { exact: true })).toBeVisible()
-  await expect(page.getByTestId('points')).toHaveText((800).toLocaleString('el'))
+  await expect(page.getByTestId('points')).toHaveText((1050).toLocaleString('el'))
   await walkUntil(page, 'w', new RegExp(copy.startTour))
   await page.keyboard.press('e')
   await page.getByRole('button', { name: copy.finishTour }).click()
   await expect(page.getByText(copy.finishTitle)).toBeVisible()
   await expect(page.getByRole('heading', { name: copy.agora })).toBeVisible()
   await expect.poll(async () => (await saved(page)).progress.completed).toBe(true)
-  await expect(page.getByTestId('points')).toHaveText((1100).toLocaleString('el'))
+  await expect(page.getByTestId('points')).toHaveText((1350).toLocaleString('el'))
   expect(errorsSeen).toEqual([])
 })
 

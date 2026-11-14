@@ -26,10 +26,13 @@ describe('voxel world', () => {
       expect(a.get(seat.x, seat.y, seat.z)).toBe(Block.air)
     }
     expect(level(ground(0, 0))).toBe(0)
-    // The diazoma is a level walkway of trodden earth between the two tiers.
+    // The diazoma terrace is level, and its gravel course starts as an empty, supported trench.
+    const diazoma = new Set(cells.filter((cell) => cell.mission === 'diazoma').map(({ x, y, z }) => `${x},${y},${z}`))
     for (const [x, z] of [[0, -7.9], [-4.5, -6.4], [5.6, -5.4]] as const) {
       expect(level(ground(x, z))).toBe(2)
-      expect(a.get(bx(x), by(0.75), bz(z))).toBe(Block.path)
+      expect(diazoma.has(`${bx(x)},${by(0.75)},${bz(z)}`)).toBe(true)
+      expect(a.get(bx(x), by(0.75), bz(z))).toBe(Block.air)
+      expect(a.solidAt(bx(x), by(0.25), bz(z))).toBe(true)
     }
   }, 20_000)
 

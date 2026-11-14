@@ -1,5 +1,5 @@
 export type Point = [number, number, number]
-export type Mission = 'discover' | 'orchestra' | 'seats' | 'koilon' | 'stairs' | 'skene' | 'finish'
+export type Mission = 'discover' | 'orchestra' | 'analemmata' | 'seats' | 'diazoma' | 'koilon' | 'stairs' | 'skene' | 'finish'
 export interface Objective {
   id: Mission
   reward: number
@@ -8,7 +8,9 @@ export interface Objective {
 export const objectives: Objective[] = [
   { id: 'discover', reward: 0 },
   { id: 'orchestra', reward: 100 },
+  { id: 'analemmata', reward: 150 },
   { id: 'seats', reward: 150 },
+  { id: 'diazoma', reward: 100 },
   { id: 'koilon', reward: 200 },
   { id: 'stairs', reward: 150 },
   { id: 'skene', reward: 200 },
@@ -44,9 +46,8 @@ export const SEAT_EDGE = 1.27
 export const AISLES = [-0.44, 0.44]
 export const AISLE_HALF = 0.087
 export const inAisle = (angle: number) => AISLES.some((a) => Math.abs(angle - a) < AISLE_HALF)
-/** The diazoma runs a little past the seats at both ends. */
-export const onDiazoma = (x: number, z: number) =>
-  terraceOf(Math.hypot(x, z)) === DIAZOMA && Math.hypot(x, z) >= TERRACE_START && Math.abs(Math.atan2(x, -z)) < SEAT_EDGE + 0.08
+/** The analemmata, the two retaining walls that close the koilon at its sides, run along this angle. */
+export const ANALEMMA_ANGLE = 1.3
 
 // Zero angle points uphill (-Z).
 export function polar(radius: number, angle: number, elevation: number): Point {
