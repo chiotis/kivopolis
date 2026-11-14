@@ -23,6 +23,7 @@ import { useControls } from './ui/controls'
 import { Dialogs } from './ui/Dialogs'
 import { StageOverlay } from './ui/Hud'
 import { ModeChoice } from './ui/ModeChoice'
+import { Logo } from './ui/Logo'
 
 function App() {
   const { screen, progress, start, setPanel } = useGame()
@@ -35,7 +36,7 @@ function App() {
     <div className={`app-shell ${game ? 'in-game' : 'in-menu'}`}>
       {!game && <header className="masthead">
         <div className="brand">
-          <span className="brand-mark"><Landmark size={24} strokeWidth={1.65} /></span>
+          <span className="brand-mark"><Logo size={30} /></span>
           <span className="brand-text"><strong>{copy.brand}</strong><span>{copy.valley}</span></span>
         </div>
         <nav className="top-nav">
