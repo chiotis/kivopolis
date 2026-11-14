@@ -1,6 +1,8 @@
-# Ancient Polis
+# KivoPolis
 
-**Theatre Valley** is a Greek-language, single-player browser game. Walk to the site marker, activate the blueprint, and build a fictional ancient Greek theatre in seven missions. The finished theatre contains 61 buildable slots, including 36 individual seats across three curved rows.
+**KivoPolis** (from *κύβος*, cube, and *πόλις*, city) is a Greek-language, single-player browser game set in an ancient Greek valley. In its first chapter, **Theatre Valley**, you walk to the site marker, activate the blueprint, and build a fictional ancient Greek theatre block by block in nine missions: the orchestra, the analemmata, four curved rows of seats split by a gravel diazoma, the stairways, the skene and the parodoi.
+
+Saved games are still stored under the `ancient-polis` keys, so renaming the game keeps everyone's progress.
 
 ## Run locally
 
