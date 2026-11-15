@@ -2,7 +2,7 @@
 
 ## Where the game is today
 
-| Area | Current implementation | Gap compared with a Minecraft-style game |
+| Area | Current implementation | Gap compared with a voxel sandbox game |
 | --- | --- | --- |
 | World | Smooth heightfield `ground(x,z)` in `game/terrain.ts`, low-poly triangle mesh, and instanced scenery in `world/landscape.tsx` | There are no blocks. The terrain can't be dug, edited, or generated procedurally. |
 | Building | 61 fixed **slots** in `game/theatre.ts`. A piece can only go into its predefined slot during the matching mission. | The player can't place freely, choose positions, or break anything. |
@@ -12,7 +12,7 @@
 | Loop | Linear 7-mission tutorial that ends in a tour | There is no open-ended loop of gathering, crafting, building, and surviving. |
 | Save | LocalStorage holding a list of placed slot IDs | A list of slot IDs can't store an edited world, which needs chunk diffs in IndexedDB. |
 
-The codebase is about 2.2k lines of React, R3F, and zustand. That is small and clean enough to restructure instead of patching. **Keep** the Greek setting, island, UI shell, journal, and the theatre as a goal. Those are the game's own identity. Take the *mechanics* of the genre (voxels, mining, crafting, free building, day/night), but don't copy Minecraft's textures, block names, mobs, or look. Draw a palette of original Greek materials instead.
+The codebase is about 2.2k lines of React, R3F, and zustand. That is small and clean enough to restructure instead of patching. **Keep** the Greek setting, island, UI shell, journal, and the theatre as a goal. Those are the game's own identity. Take the *mechanics* of the genre (voxels, mining, crafting, free building, day/night), but don't copy any existing game's textures, block names, creatures, or look. Draw a palette of original Greek materials instead.
 
 > The project is not a git repository. Run `git init` and commit the current state before Phase 1, because this is a rewrite of the world layer.
 
