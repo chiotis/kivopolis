@@ -4,8 +4,8 @@ import {
   AdditiveBlending, BufferGeometry, CircleGeometry, Color, DirectionalLight, Float32BufferAttribute, Fog, HemisphereLight,
   Mesh, MeshBasicMaterial, Points, PointsMaterial,
 } from 'three'
-import { advance, daylight, dusk, FIXED_TIME, sky, sunDirection } from '../game/daylight'
-import { useGame } from '../game/store'
+import { daylight, dusk, FIXED_TIME, sky, stepDay, sunDirection } from '../game/daylight'
+import { useGame, useShared } from '../game/store'
 import { viewDistance } from './view'
 import { playerState } from './player'
 import { submerged } from '../voxel/flow'
@@ -62,7 +62,7 @@ export function Sky({ shadows, distance }: { shadows: boolean; distance: number 
     scene.background = background
     scene.fog = fog
     scene.add(sun, moon, stars)
-    sky.time = useGame.getState().progress.time
+    sky.time = useShared.getState().time
     return () => {
       scene.remove(sun, moon, stars)
       scene.background = previous.background
@@ -77,8 +77,7 @@ export function Sky({ shadows, distance }: { shadows: boolean; distance: number 
     const playing = state.screen === 'game'
     const running = playing && state.settings.dayCycle && state.panel !== 'pause' && state.mode !== 'tour'
     if (running) {
-      sky.time = advance(sky.time, Math.min(elapsed, 0.1))
-      if (daylight(sky.time) < 0.25 && state.mode === 'explore') state.learn('night')
+      if (stepDay(Math.min(elapsed, 0.1)).night && state.mode === 'explore') state.learn('night')
       saved.current += elapsed
       if (saved.current > 5) {
         saved.current = 0

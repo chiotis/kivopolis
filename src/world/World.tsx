@@ -35,7 +35,7 @@ class WorldBoundary extends Component<{ children: ReactNode }, { failed: boolean
 
 export function World({ blueprint, marker }: { blueprint: boolean; marker: RefObject<HTMLDivElement | null> }) {
   const view = useRef(initialView())
-  const [x, , z] = useGame.getState().progress.player
+  const [x, , z] = useGame.getState().player
   const player = useRef(new Vector3(x, 0, z))
   const quality = useGame((state) => state.settings.quality)
   const [factor, setFactor] = useState(0.72)

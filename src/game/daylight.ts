@@ -39,3 +39,12 @@ export function advance(time: number, seconds: number) {
 }
 
 export const isNight = (time: number) => daylight(time) < 0.25
+
+/**
+ * One step of the day clock: moves the shared time on and reports whether night has fallen.
+ * Plain code with no rendering, so a room server can keep the clock for everyone (Phase 12).
+ */
+export function stepDay(seconds: number) {
+  sky.time = advance(sky.time, seconds)
+  return { time: sky.time, night: isNight(sky.time) }
+}

@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { BoxGeometry, Color, EdgesGeometry, InstancedMesh, LineBasicMaterial, LineSegments, Matrix4, MeshBasicMaterial, BufferGeometry, Float32BufferAttribute } from 'three'
 import { cells } from '../game/blueprints/theatre'
 import { activeMission, useSite } from '../game/site'
-import { useGame } from '../game/store'
+import { useGame, useShared } from '../game/store'
 import { blocks } from '../voxel/blocks'
 import { S, wx, wy, wz } from '../voxel/world'
 
@@ -49,7 +49,7 @@ export function SiteGuide({ blueprint }: { blueprint: boolean }) {
   }), [])
   const { missing, wrong, counts } = useSite()
   const { discovered, screen, mode, reducedMotion } = useGame(useShallow((state) => ({
-    discovered: state.progress.discovered, screen: state.screen, mode: state.mode, reducedMotion: state.settings.reducedMotion,
+    discovered: useShared.getState().discovered, screen: state.screen, mode: state.mode, reducedMotion: state.settings.reducedMotion,
   })))
   const mission = activeMission(discovered, counts)
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { MathUtils, PerspectiveCamera, Vector3 } from 'three'
-import { useGame } from '../game/store'
+import { useGame, useShared } from '../game/store'
 import { islandEdge, type Obstacle } from '../game/terrain'
 import { siteMarker, spawn, tourMarker, type Point } from '../game/theatre'
 import { eyeHeight, stepBody, type Limits } from '../voxel/physics'
@@ -65,11 +65,11 @@ export function CameraRig({ view, player, marker }: {
   })
 
   useEffect(() => {
-    const [x, , z] = useGame.getState().progress.player
+    const [x, , z] = useGame.getState().player
     respawn(x, z)
     return useGame.subscribe((current, previous) => {
       if (current.screen === 'game' && previous.screen !== 'game') {
-        const [px, , pz] = current.progress.player
+        const [px, , pz] = current.player
         respawn(px, pz)
         view.current.walkYaw = initialView().walkYaw
         view.current.walkPitch = initialView().walkPitch
@@ -119,7 +119,7 @@ export function CameraRig({ view, player, marker }: {
       const sin = Math.sin(orbit.walkYaw), cos = Math.cos(orbit.walkYaw)
       const moveX = dx * cos + dz * sin, moveZ = dz * cos - dx * sin
       const before = { ...body.position }
-      if (!state.progress.creative) body.flying = false
+      if (!useShared.getState().creative) body.flying = false
       const wasInWater = body.inWater
       const lifted = stepBody(world, body, {
         x: moveX, z: moveZ, sprint: keys.has('shift'), jump: free && keys.has(' '), crouch: free && keys.has('c'),
@@ -184,7 +184,7 @@ export function CameraRig({ view, player, marker }: {
     }
 
     if (marker.current) {
-      const [x, , z] = state.progress.discovered ? tourMarker : siteMarker
+      const [x, , z] = useShared.getState().discovered ? tourMarker : siteMarker
       const screen = projection.current.set(x, getWorld().surface(x, z) + 1.7, z).project(camera)
       const visible = screen.z > -1 && screen.z < 1 && Math.abs(screen.x) < 0.93 && Math.abs(screen.y) < 0.90
       marker.current.style.visibility = visible ? 'visible' : 'hidden'

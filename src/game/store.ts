@@ -1,20 +1,25 @@
 import { create } from 'zustand'
 import { objectives, siteMarker, spawn, tourMarker, type Mission, type Point } from './theatre'
 import { cells, legacySlots } from './blueprints/theatre'
-import { activeMission, builtIn, complete, entrancesReady, trackSite, useSite } from './site'
+import { activeMission, complete, entrancesReady, trackSite, useSite } from './site'
 import { placementSound } from './audio'
-import { Block, blocks, isEmpty } from '../voxel/blocks'
+import { isEmpty } from '../voxel/blocks'
 import { getWorld, resetWorld } from '../voxel/world'
-import { HOTBAR, inventory, resetInventory, useInventory } from './inventory'
-import { clearDrops, spawnDrop } from '../world/dropState'
+import { HOTBAR, resetInventory, useInventory } from './inventory'
+import { clearDrops } from '../world/dropState'
 import { onSaveStatus, readRecord, saveAvailable, writeRecord } from './save'
-import { buildingStatus, readBuildings, signNear, type BuildingProgress } from './buildings'
+import { buildingStatus, readBuildings, signNear } from './buildings'
+import { factIds, initialShared, useShared, type Fact, type Shared } from './shared'
+import { apply } from './actions'
 import type { BuildingId } from './regions'
+
+export { factIds, useShared, type Fact, type Shared } from './shared'
 
 export const interactionRadius = 2.55
 /** Explore is the first-person game; overview is the orbiting architect's camera; tour is the finale. */
 export type Mode = 'explore' | 'overview' | 'tour'
 export type Panel = 'settings' | 'help' | 'journal' | 'pause' | 'reset' | 'new' | 'complete' | 'inventory' | 'workshop' | 'kiln' | 'part' | 'building'
+/** Device settings: they belong to this browser, never to a shared room. */
 export interface Settings {
   quality: 'auto' | 'high' | 'low'; sound: boolean; reducedMotion: boolean; dayCycle: boolean
   /** First-person field of view in degrees (vertical). */
@@ -27,28 +32,17 @@ export const fovRange = [50, 100] as const
 export const sensitivityRange = [0.3, 2.5] as const
 const within = (value: unknown, [low, high]: readonly [number, number], fallback: number) =>
   typeof value === 'number' && Number.isFinite(value) ? Math.min(high, Math.max(low, value)) : fallback
-export interface Progress {
-  started: boolean
-  discovered: boolean
-  player: Point
-  completed: boolean
-  /** Missions whose completion has already been celebrated, so rebuilding a broken block stays quiet. */
-  celebrated: Mission[]
-  /** Time of day, 0–1 (see game/daylight). */
-  time: number
-  /** Creative play: unlimited blocks, instant breaking and flight. */
-  creative: boolean
-  /** Short history notes already shown, so each pops up once. */
-  facts: Fact[]
-  /** Progress of the buildings after the theatre (whose own fields are above). */
-  buildings: BuildingProgress
-}
-/** History notes that pop up the first time something happens in the world. */
-export type Fact = 'night' | 'lamp' | 'sheep' | 'goat' | 'chicken' | 'hydria'
-export const factIds: readonly Fact[] = ['night', 'lamp', 'sheep', 'goat', 'chicken', 'hydria']
-interface SavedGame { version: 2; progress: Progress; settings: Settings }
+
+/**
+ * Saved game, version 3: the shared game, this player's position and the device settings, kept
+ * apart so a room can own the shared part (Phase 12). Versions 1 and 2 kept them in one `progress`.
+ */
+interface SavedGame { version: 3; shared: Shared; player: { position: Point }; settings: Settings }
+
+/** This player and this device: everything that is not shared with a room. */
 interface State {
-  progress: Progress
+  /** Where this player stands (saved, so the game resumes there). */
+  player: Point
   settings: Settings
   saveStatus: 'ready' | 'unavailable'
   screen: 'menu' | 'game'
@@ -94,60 +88,72 @@ interface State {
   dismissFact: () => void
 }
 
-/** True when the player stands by the site sign (before discovery) or the tour point (once the gates stand). */
-export function interactionAvailable(state: Pick<State, 'progress' | 'panel' | 'mode'>) {
-  const { progress } = state
+/** True when the player stands by a signpost, the site sign (before discovery) or the tour point (once the gates stand). */
+export function interactionAvailable(state: Pick<State, 'player' | 'panel' | 'mode'>) {
+  const { player } = state
   if (state.mode !== 'explore' || state.panel) return false
-  if (signNear(progress.player[0], progress.player[2])) return true
-  if (progress.discovered && !entrancesReady(useSite.getState().counts)) return false
-  const point = progress.discovered ? tourMarker : siteMarker
-  return Math.hypot(progress.player[0] - point[0], progress.player[2] - point[2]) <= interactionRadius
+  if (signNear(player[0], player[2])) return true
+  const { discovered } = useShared.getState()
+  if (discovered && !entrancesReady(useSite.getState().counts)) return false
+  const point = discovered ? tourMarker : siteMarker
+  return Math.hypot(player[0] - point[0], player[2] - point[2]) <= interactionRadius
 }
 
-const initialProgress = (): Progress => ({
-  started: false, discovered: false, player: [...spawn], completed: false, celebrated: [],
-  time: 0.3, creative: false, facts: [], buildings: {},
-})
 const defaults: Settings = { quality: 'auto', sound: false, reducedMotion: false, dayCycle: true, fov: 70, sensitivity: 1, invertY: false }
 const missionIds = new Set<string>(objectives.map(({ id }) => id))
 
 interface Loaded { game: SavedGame; legacy: string[] }
 
+const isPoint = (value: unknown): value is Point => Array.isArray(value) && value.length === 3 && value.every(Number.isFinite)
+
+function readSettings(settings: Partial<Settings>): Settings {
+  return {
+    quality: settings.quality && ['auto', 'high', 'low'].includes(settings.quality) ? settings.quality : 'auto',
+    sound: settings.sound === true,
+    reducedMotion: settings.reducedMotion === true,
+    dayCycle: settings.dayCycle !== false,
+    fov: within(settings.fov, fovRange, defaults.fov),
+    sensitivity: within(settings.sensitivity, sensitivityRange, defaults.sensitivity),
+    invertY: settings.invertY === true,
+  }
+}
+
+function readShared(shared: Partial<Shared>): Shared {
+  return {
+    started: shared.started === true, discovered: shared.discovered === true, completed: shared.completed === true,
+    celebrated: Array.isArray(shared.celebrated) ? shared.celebrated.filter((id): id is Mission => missionIds.has(id)) : [],
+    buildings: readBuildings(shared.buildings),
+    facts: Array.isArray(shared.facts) ? shared.facts.filter((id): id is Fact => factIds.includes(id as Fact)) : [],
+    time: typeof shared.time === 'number' && shared.time >= 0 && shared.time < 1 ? shared.time : 0.3,
+    creative: shared.creative === true,
+  }
+}
+
 function load(): Loaded {
-  const fallback: Loaded = { game: { version: 2, progress: initialProgress(), settings: defaults }, legacy: [] }
+  const fallback: Loaded = { game: { version: 3, shared: initialShared(), player: { position: [...spawn] }, settings: defaults }, legacy: [] }
   try {
-    const data = readRecord<{ version?: number; progress?: Partial<Progress> & { placed?: unknown }; settings?: Partial<Settings> }>('game')
-    if (!data) return fallback
-    if ((data.version !== 1 && data.version !== 2) || !data.progress || !data.settings) return fallback
-    const { progress, settings } = data
+    type Old = Partial<Shared> & { player?: unknown; placed?: unknown }
+    const data = readRecord<{ version?: number; progress?: Old; shared?: Partial<Shared>; player?: { position?: unknown }; settings?: Partial<Settings> }>('game')
+    if (!data || !data.settings) return fallback
+    if (data.version === 3 && data.shared) {
+      return {
+        legacy: [],
+        game: {
+          version: 3, shared: readShared(data.shared), settings: readSettings(data.settings),
+          player: { position: isPoint(data.player?.position) ? data.player.position : [...spawn] },
+        },
+      }
+    }
+    if ((data.version !== 1 && data.version !== 2) || !data.progress) return fallback
+    const { progress } = data
     // Saves from the prefab era list placed slot ids; they are rebuilt as blocks below.
     const legacy = data.version === 1 && Array.isArray(progress.placed)
       ? progress.placed.filter((id): id is string => typeof id === 'string') : []
-    const player = Array.isArray(progress.player) && progress.player.length === 3 && progress.player.every(Number.isFinite)
-      ? progress.player as Point : [...spawn] as Point
-    const celebrated = Array.isArray(progress.celebrated)
-      ? progress.celebrated.filter((id): id is Mission => missionIds.has(id)) : []
     return {
       legacy,
       game: {
-        version: 2,
-        settings: {
-          quality: settings.quality && ['auto', 'high', 'low'].includes(settings.quality) ? settings.quality : 'auto',
-          sound: settings.sound === true,
-          reducedMotion: settings.reducedMotion === true,
-          dayCycle: settings.dayCycle !== false,
-          fov: within(settings.fov, fovRange, defaults.fov),
-          sensitivity: within(settings.sensitivity, sensitivityRange, defaults.sensitivity),
-          invertY: settings.invertY === true,
-        },
-        progress: {
-          started: progress.started === true, discovered: progress.discovered === true, player,
-          completed: progress.completed === true, celebrated,
-          time: typeof progress.time === 'number' && progress.time >= 0 && progress.time < 1 ? progress.time : 0.3,
-          creative: progress.creative === true,
-          facts: Array.isArray(progress.facts) ? progress.facts.filter((id): id is Fact => factIds.includes(id as Fact)) : [],
-          buildings: readBuildings(progress.buildings),
-        },
+        version: 3, shared: readShared(progress), settings: readSettings(data.settings),
+        player: { position: isPoint(progress.player) ? progress.player : [...spawn] },
       },
     }
   } catch {
@@ -163,6 +169,7 @@ export function migrateLegacy(placed: readonly string[]) {
   const whole = new Set(Object.entries(legacySlots).filter(([, ids]) => ids.every((id) => set.has(id))).map(([mission]) => mission))
   for (const cell of cells) {
     if (!whole.has(cell.mission) && !set.has(cell.legacy)) continue
+    // Loading an old save is not a player's change, so it writes the world directly.
     if (isEmpty(world.get(cell.x, cell.y, cell.z))) world.set(cell.x, cell.y, cell.z, cell.block)
   }
 }
@@ -180,9 +187,13 @@ function finishedInOrder() {
 }
 
 const loaded = load()
+useShared.setState(loaded.game.shared)
+
+/** Changes the shared game. In a room (Phase 12) this becomes a message to the room server. */
+const share = (patch: Partial<Shared>) => useShared.setState(patch)
 
 export const useGame = create<State>((set, get) => ({
-  progress: loaded.game.progress,
+  player: loaded.game.player.position,
   settings: loaded.game.settings,
   saveStatus: saveAvailable() ? 'ready' : 'unavailable',
   screen: 'menu',
@@ -204,90 +215,76 @@ export const useGame = create<State>((set, get) => ({
   openContainer: (kind, kiln) => {
     const { mode, screen, panel } = get()
     if (screen !== 'game' || mode !== 'explore' || panel) return
-    inventory.open(kind === 'workshop' ? 3 : 2, kind === 'kiln' ? kiln ?? null : null)
+    apply({ type: 'open', craftSize: kind === 'workshop' ? 3 : 2, kiln: kind === 'kiln' ? kiln ?? null : null })
     set({ panel: kind })
   },
   setNotice: (notice) => set({ notice }),
-  start: () => set((state) => ({
-    screen: 'game', panel: null, mode: 'explore', milestone: null,
-    progress: state.progress.started ? state.progress : { ...state.progress, started: true },
-  })),
+  start: () => {
+    if (!useShared.getState().started) share({ started: true })
+    set({ screen: 'game', panel: null, mode: 'explore', milestone: null })
+  },
   goHome: () => set({ screen: 'menu', panel: null, milestone: null }),
   setPanel: (panel) => set({ panel, congrats: null }),
   openPart: (part, congrats = null) => set({ panel: 'part', part, congrats }),
   settingsChange: (patch) => set((state) => ({ settings: { ...state.settings, ...patch } })),
   toggleOverview: () => {
     const state = get()
-    if (!state.progress.discovered || state.mode === 'tour' || state.panel) return
+    if (!useShared.getState().discovered || state.mode === 'tour' || state.panel) return
     set({ mode: state.mode === 'overview' ? 'explore' : 'overview' })
   },
-  updatePlayer: (player) => set((state) => ({ progress: { ...state.progress, player } })),
+  updatePlayer: (player) => set({ player }),
   interact: () => {
-    const { progress } = get()
+    const { player } = get()
+    const shared = useShared.getState()
     if (!interactionAvailable(get())) return
     // A new area's signpost: tells what will stand here, and marks an open building as found.
-    const sign = signNear(progress.player[0], progress.player[2])
+    const sign = signNear(player[0], player[2])
     if (sign && sign !== 'theatre') {
-      const status = buildingStatus(progress, sign)
-      const known = progress.buildings[sign]
-      const buildings = status !== 'locked' && !known?.discovered
-        ? { ...progress.buildings, [sign]: { completed: false, celebrated: [], ...known, discovered: true } }
-        : progress.buildings
-      set({ panel: 'building', building: sign, progress: buildings === progress.buildings ? progress : { ...progress, buildings } })
+      const known = shared.buildings[sign]
+      if (buildingStatus(shared, sign) !== 'locked' && !known?.discovered) {
+        share({ buildings: { ...shared.buildings, [sign]: { completed: false, celebrated: [], ...known, discovered: true } } })
+      }
+      set({ panel: 'building', building: sign })
       return
     }
-    if (!progress.discovered) {
+    if (!shared.discovered) {
       // Anything already built before the plan was activated counts, without a burst of celebrations.
-      set({ progress: { ...progress, discovered: true, celebrated: finishedInOrder() } })
+      share({ discovered: true, celebrated: finishedInOrder() })
       set(celebrate('discover'))
     } else if (entrancesReady(useSite.getState().counts)) {
       set({ mode: 'tour', milestone: null })
     }
   },
-  endTour: () => set((state) => ({
-    mode: 'explore', panel: 'complete', progress: { ...state.progress, completed: true },
-  })),
+  endTour: () => {
+    share({ completed: true })
+    set({ mode: 'explore', panel: 'complete' })
+  },
   restartMission: () => {
-    const { progress } = get()
-    const world = getWorld()
-    const mission = activeMission(progress.discovered, useSite.getState().counts)
-    // Taking the mission's blocks down gives them back, so nothing the player gathered is lost.
-    const refund = new Map<string, number>()
-    for (const cell of cells) {
-      if (cell.mission !== mission || !builtIn(world, cell)) continue
-      const key = blocks[world.get(cell.x, cell.y, cell.z)].key
-      world.set(cell.x, cell.y, cell.z, Block.air)
-      refund.set(key, (refund.get(key) ?? 0) + 1)
-    }
-    const [x, , z] = progress.player
-    for (const [item, count] of refund) {
-      for (let left = count; left > 0; left -= 64) {
-        const stack = { item, count: Math.min(64, left) }
-        const rest = inventory.add(stack)
-        if (rest) spawnDrop({ item, count: rest }, x, getWorld().surface(x, z) + 0.5, z)
-      }
-    }
-    set({
-      progress: { ...progress, completed: false, celebrated: progress.celebrated.filter((id) => id !== mission) },
-      panel: null, milestone: null,
-    })
+    const shared = useShared.getState()
+    const mission = activeMission(shared.discovered, useSite.getState().counts)
+    if (mission !== 'discover') apply({ type: 'restart', mission, at: get().player })
+    share({ completed: false, celebrated: useShared.getState().celebrated.filter((id) => id !== mission) })
+    set({ panel: null, milestone: null })
   },
   reset: () => {
     resetWorld()
     resetInventory()
     clearDrops()
-    set({ screen: 'menu', panel: null, mode: 'explore', progress: initialProgress(), milestone: null, notice: null, facts: [] })
+    useShared.setState(initialShared())
+    set({ screen: 'menu', panel: null, mode: 'explore', player: [...spawn], milestone: null, notice: null, facts: [] })
   },
   dismissMilestone: () => set({ milestone: null }),
-  setTime: (time) => set((state) => ({ progress: { ...state.progress, time } })),
+  setTime: (time) => share({ time }),
   setCreative: (creative) => {
-    set((state) => ({ progress: { ...state.progress, creative } }))
+    share({ creative })
     if (creative) stockCreativeHotbar()
   },
   learn: (fact) => {
-    const { progress, facts } = get()
-    if (progress.facts.includes(fact) || facts.includes(fact)) return
-    set({ facts: [...facts, fact], progress: { ...progress, facts: [...progress.facts, fact] } })
+    const { facts } = get()
+    const found = useShared.getState().facts
+    if (found.includes(fact) || facts.includes(fact)) return
+    share({ facts: [...found, fact] })
+    set({ facts: [...facts, fact] })
   },
   dismissFact: () => set((state) => ({ facts: state.facts.slice(1) })),
 }))
@@ -308,14 +305,14 @@ migrateLegacy(loaded.legacy)
 
 useSite.subscribe((site, previous) => {
   const state = useGame.getState()
-  const { progress } = state
-  if (!progress.discovered) return
+  const shared = useShared.getState()
+  if (!shared.discovered) return
   const mission = activeMission(true, previous.counts)
   // A correct block in the current mission rings like the old placement chime.
   if (state.screen === 'game' && state.settings.sound && site.counts[mission] > previous.counts[mission]) placementSound()
-  const fresh = finishedInOrder().filter((id) => !progress.celebrated.includes(id))
+  const fresh = finishedInOrder().filter((id) => !shared.celebrated.includes(id))
   if (!fresh.length) return
-  useGame.setState({ progress: { ...progress, celebrated: [...progress.celebrated, ...fresh] } })
+  share({ celebrated: [...shared.celebrated, ...fresh] })
   if (state.screen === 'game') useGame.setState(celebrate(fresh.at(-1)!))
 })
 
@@ -336,10 +333,14 @@ useGame.subscribe((state, previous) => {
   if (state.photo && (state.panel || state.screen !== previous.screen || state.mode !== previous.mode)) useGame.setState({ photo: false })
 })
 
+function save() {
+  const { player, settings } = useGame.getState()
+  writeRecord('game', { version: 3, shared: useShared.getState(), player: { position: player }, settings } satisfies SavedGame)
+}
 useGame.subscribe((state, previous) => {
-  if (state.progress === previous.progress && state.settings === previous.settings) return
-  writeRecord('game', { version: 2, progress: state.progress, settings: state.settings } satisfies SavedGame)
+  if (state.player !== previous.player || state.settings !== previous.settings) save()
 })
+useShared.subscribe(save)
 
 onSaveStatus((ok) => {
   const saveStatus = ok ? 'ready' : 'unavailable'
@@ -347,8 +348,4 @@ onSaveStatus((ok) => {
 })
 
 // An upgraded prefab-era save is rewritten at once, so its pieces are never rebuilt twice.
-if (loaded.legacy.length) {
-  useGame.setState((state) => ({
-    progress: { ...state.progress, celebrated: state.progress.discovered ? finishedInOrder() : [] },
-  }))
-}
+if (loaded.legacy.length) share({ celebrated: useShared.getState().discovered ? finishedInOrder() : [] })

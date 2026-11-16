@@ -3,7 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import { BoxGeometry, EdgesGeometry, Group, LineBasicMaterial, LineSegments, Mesh, MeshBasicMaterial } from 'three'
 import { blockSound } from '../game/audio'
 import { copy } from '../game/el'
-import { useGame } from '../game/store'
+import { useGame, useShared } from '../game/store'
+import { apply } from '../game/actions'
 import { siteMarker, tourMarker } from '../game/theatre'
 import { inventory, useInventory } from '../game/inventory'
 import { itemByKey, mining, rollDrop } from '../game/items'
@@ -11,9 +12,8 @@ import { Block, blocks, isEmpty, isWater } from '../voxel/blocks'
 import { PLAYER } from '../voxel/physics'
 import { raycast, type VoxelHit } from '../voxel/raycast'
 import { S, getWorld, index, inside, wx, wy, wz } from '../voxel/world'
-import { spawnDrop } from './dropState'
 import { pickAnimal } from './wildlife'
-import { herd, strikeAnimal, tendAnimal } from './herd'
+import { herd } from './herd'
 import { blockInput, playerState } from './player'
 
 export const REACH = 4.6
@@ -126,13 +126,13 @@ export function BlockInteraction() {
       hit = null
       if (pressing && !m.struck) {
         m.struck = true
-        strikeAnimal(target.animal)
+        apply({ type: 'strike', animal: target.animal.id })
         blockInput.swing = performance.now()
       }
       if (blockInput.placeOnce) {
         blockInput.placeOnce = false
         blockInput.placing = false
-        tendAnimal(target.animal)
+        apply({ type: 'tend', animal: target.animal.id })
         blockInput.swing = performance.now()
       }
     }
@@ -175,7 +175,7 @@ export function BlockInteraction() {
         const held = useInventory.getState().slots[state.hotbar]
         const { time, harvest } = mining(def, held)
         // Creative play breaks at once, with a short pause between blocks while the button is held.
-        const creative = state.progress.creative
+        const creative = useShared.getState().creative
         if (creative) m.progress = m.cooldown <= 0 ? 1 : 0
         else m.progress += dt / Math.max(0.05, time)
         m.chip -= dt
@@ -185,14 +185,10 @@ export function BlockInteraction() {
           assets.shade.opacity = Math.min(0.55, m.progress * 0.55)
         }
         if (m.progress >= 1) {
-          world.set(hit.x, hit.y, hit.z, Block.air)
+          apply({ type: 'break', x: hit.x, y: hit.y, z: hit.z, drop: harvest && !creative ? rollDrop(def) : null })
           blockInput.swing = performance.now()
           if (state.settings.sound) blockSound(def.sound, 'break')
           burst(hit.x, hit.y, hit.z, id)
-          const cx = wx(hit.x) + S / 2, cy = wy(hit.y) + S / 2, cz = wz(hit.z) + S / 2
-          const drop = harvest && !creative ? rollDrop(def) : null
-          if (drop) spawnDrop(drop, cx, cy, cz)
-          if (id === Block.kiln) for (const stack of inventory.removeKiln(String(index(hit.x, hit.y, hit.z)))) spawnDrop(stack, cx, cy, cz)
           if (!creative && held && itemByKey.get(held.item)?.tool && inventory.wear(state.hotbar) && state.settings.sound) blockSound('wood', 'break')
           if (creative) m.cooldown = 0.22
           m.progress = 0
@@ -223,7 +219,7 @@ export function BlockInteraction() {
       blockInput.placeClick = false
       blockInput.placing = false
       if (isProtected(water.x, water.y, water.z)) { notify(copy.protectedSite); return }
-      world.set(water.x, water.y, water.z, Block.air)
+      apply({ type: 'set', x: water.x, y: water.y, z: water.z, block: Block.air })
       inventory.replace(state.hotbar, { item: 'hydriaFull', count: 1 })
       blockInput.swing = performance.now()
       state.learn('hydria')
@@ -239,7 +235,7 @@ export function BlockInteraction() {
       const x = hit.x + nx, y = hit.y + ny, z = hit.z + nz
       if (!(nx || ny || nz) || !inside(x, y, z) || !isEmpty(world.get(x, y, z))) return
       if (isProtected(x, y, z)) { notify(copy.protectedSite); return }
-      world.set(x, y, z, Block.water)
+      apply({ type: 'set', x, y, z, block: Block.water })
       inventory.replace(state.hotbar, { item: 'hydria', count: 1 })
       blockInput.swing = performance.now()
       if (state.settings.sound) blockSound('water', 'place')
@@ -266,9 +262,9 @@ export function BlockInteraction() {
       if (!(nx || ny || nz) || !inside(x, y, z) || !isEmpty(world.get(x, y, z))) return
       if (isProtected(x, y, z)) { notify(copy.protectedSite); return }
       if (overlapsPlayer(x, y, z)) return
-      if (world.set(x, y, z, id)) {
+      if (apply({ type: 'set', x, y, z, block: id })) {
         blockInput.swing = performance.now()
-        if (!state.progress.creative) inventory.take(state.hotbar)
+        if (!useShared.getState().creative) inventory.take(state.hotbar)
         if (id === Block.lamp) state.learn('lamp')
         if (state.settings.sound) blockSound(blocks[id].sound, 'place')
         if (!state.settings.reducedMotion) popped.current = { x, y, z, at: performance.now() }

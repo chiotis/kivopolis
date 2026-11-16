@@ -5,7 +5,7 @@ import { ModeChoice } from './ModeChoice'
 import { PartInfo } from './Parts'
 import { buildings, copy, missions } from '../game/el'
 import { BUILDING_ORDER, buildingStatus, previousBuilding, siteProgress } from '../game/buildings'
-import { fovRange, sensitivityRange, useGame, type Panel, type Settings } from '../game/store'
+import { fovRange, sensitivityRange, useGame, useShared, type Panel, type Settings } from '../game/store'
 import { objectives } from '../game/theatre'
 import { complete, earnedPoints, useSite } from '../game/site'
 
@@ -20,7 +20,8 @@ const icons = {
 }
 
 export function Dialogs() {
-  const { panel, part, building, congrats, setPanel, settings, settingsChange, progress, screen, restartMission, goHome, reset, start, setCreative } = useGame()
+  const { panel, part, building, congrats, setPanel, settings, settingsChange, screen, restartMission, goHome, reset, start, setCreative } = useGame()
+  const progress = useShared()
   const [newCreative, setNewCreative] = useState(false)
   const ref = useRef<HTMLDialogElement>(null)
   const counts = useSite((state) => state.counts)
@@ -125,7 +126,7 @@ export function Dialogs() {
 
 /** What a new area's signpost says: the story of the building, and whether it is open yet. */
 function BuildingSign({ id }: { id: (typeof BUILDING_ORDER)[number] }) {
-  const progress = useGame((state) => state.progress)
+  const progress = useShared()
   const status = buildingStatus(progress, id)
   return (
     <>

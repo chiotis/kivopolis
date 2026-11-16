@@ -1,5 +1,5 @@
 import { ground, islandEdge, streamBed } from '../game/terrain'
-import { AREAS, ROADS, ROAD_WIDTH, RIDGE, STREAM, STREAM_WIDTH, areaWeight, bridges, nearest, onRoad, roadDistance, type Point2 } from '../game/regions'
+import { AREAS, ROADS, ROAD_WIDTH, RIDGE, STREAM, STREAM_WIDTH, areaWeight, bridges, farFrom, nearest, onRoad, oreHill, roadDistance, type Point2 } from '../game/regions'
 import { KOILON_EDGE, parodosZ, siteMarker, spawn, tourMarker } from '../game/theatre'
 import { cells } from '../game/blueprints/theatre'
 import { Block } from './blocks'
@@ -88,13 +88,15 @@ function terrain(grid: Grid) {
       const top = Math.max(1, Math.min(SY - 2, shelf, OY + level(height) - 1))
       const beach = height < -0.2 || radius > edge - 2.2
       const ridge = pz < -12 && pz > -19.5 && Math.abs(px) < 19 && hash(x, z, 3) > 0.35
-      const rocky = height > 3.2 && hash(x, z, 5) > 0.55
+      // The ore hill is mostly bare rock, with about three times the usual copper and tin.
+      const mine = oreHill(px, pz) > 0.3
+      const rocky = height > 3.2 && hash(x, z, 5) > (mine ? 0.15 : 0.55)
       // Pale marble breaks the surface on the northern ridge; clay lies under the beaches.
       const marbleVein = pz < -11 && Math.abs(px) < 20 && hash(x >> 2, z >> 2, 21) > 0.62
       const clayBed = beach && hash(x >> 1, z >> 1, 17) > 0.5
       const quarry = !beach && inQuarry(px, pz)
       // The stream: a gravel bed with one block of still water on it, away from the theatre valley.
-      const stream = radius > 20 && !beach ? streamBed(px, pz) : null
+      const stream = radius > 20 && !beach && !farFrom(STREAM, px, pz, STREAM_WIDTH.water) ? streamBed(px, pz) : null
       const brook = stream !== null && stream.distance < STREAM_WIDTH.water
       for (let y = 0; y <= top; y++) {
         let id: number = top - y >= 3 ? Block.limestone : Block.soil
@@ -105,11 +107,11 @@ function terrain(grid: Grid) {
           else if (brook) id = Block.gravel
           else if (onPath(px, pz)) id = Block.path
           else if (marbleVein && (ridge || rocky)) id = Block.marble
-          else if (ridge || rocky) id = hash(x, z, 9) > 0.7 ? Block.gravel : ore(x, y, z, 0.03) ?? Block.limestone
+          else if (ridge || rocky) id = hash(x, z, 9) > 0.7 ? Block.gravel : ore(x, y, z, mine ? 0.09 : 0.03) ?? Block.limestone
           else id = Block.grass
         } else if (beach && top - y < 2) id = Block.sand
         else if (clayBed && top - y < 4) id = Block.clay
-        else if (id === Block.limestone) id = (marbleVein && top - y < 7 ? Block.marble : null) ?? ore(x, y, z, 0.022) ?? Block.limestone
+        else if (id === Block.limestone) id = (marbleVein && top - y < 7 ? Block.marble : null) ?? ore(x, y, z, mine ? 0.06 : 0.022) ?? Block.limestone
         grid.fill(x, y, z, id)
       }
       if (brook && top + 1 < SY) grid.fill(x, top + 1, z, Block.water)
@@ -141,7 +143,7 @@ export function wildGroves(): [number, number, number, 'olive' | 'cypress'][] {
       const radius = Math.hypot(x, z)
       if (radius < 25 || radius > islandEdge(Math.atan2(x, -z)) - 7 || ground(x, z) < 0.4) continue
       if (AREAS.some((item) => areaWeight(item, x, z) > 0.02) || roadDistance(x, z) < 2.6) continue
-      if (nearest(STREAM, x, z).distance < STREAM_WIDTH.cut + 1.5) continue
+      if (nearest(STREAM, x, z).distance < STREAM_WIDTH.cut + 1.5 || oreHill(x, z) > 0.3) continue
       const wooded = nearest(RIDGE.line, x, z).distance < 7
       if (hash(cx, cz, 41) > (wooded ? 0.85 : 0.24)) continue
       result.push([x, z, 0.85 + hash(cx, cz, 43) * 0.45, hash(cx, cz, 47) > (wooded ? 0.35 : 0.6) ? 'cypress' : 'olive'])

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { advance, daylight, DAY_SECONDS, isNight, sunDirection } from '../src/game/daylight'
 import { inventory, resetInventory, useInventory } from '../src/game/inventory'
 import { matchRecipe } from '../src/game/recipes'
-import { useGame } from '../src/game/store'
+import { useGame, useShared } from '../src/game/store'
 import { Block } from '../src/voxel/blocks'
 import { meshChunk, type Sampler } from '../src/voxel/mesher'
 import { newBody, stepBody, type Limits } from '../src/voxel/physics'
@@ -170,7 +170,7 @@ describe('creative mode and history notes', () => {
     const slots = useInventory.getState().slots
     expect(slots[0]).toEqual({ item: 'stick', count: 3 })
     expect(slots.slice(1, 9).every((slot) => slot && slot.count === 64)).toBe(true)
-    expect(useGame.getState().progress.creative).toBe(true)
+    expect(useShared.getState().creative).toBe(true)
   })
 
   it('queues each history note once and remembers it in the save', () => {
@@ -180,7 +180,7 @@ describe('creative mode and history notes', () => {
     useGame.getState().dismissFact()
     expect(useGame.getState().facts).toEqual(['night'])
     learn('sheep')
-    expect(useGame.getState().progress.facts).toEqual(['sheep', 'night'])
+    expect(useShared.getState().facts).toEqual(['sheep', 'night'])
   })
 
   it('gives instant palette stacks', () => {
