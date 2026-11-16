@@ -7,6 +7,7 @@ import {
 import { useGame } from '../game/store'
 import { sky } from '../game/daylight'
 import { islandEdge } from '../game/terrain'
+import { signposts } from '../game/buildings'
 import { siteMarker, tourMarker, type Point } from '../game/theatre'
 import { S, SEA_FLOOR_Y, SEA_LEVEL, SX, SZ, getWorld, wx, wy, wz } from '../voxel/world'
 import { waterMaterial } from './water'
@@ -107,6 +108,7 @@ export function Landscape() {
       <DistantIslands />
       <Sign x={siteMarker[0]} z={siteMarker[2]} />
       <Sign x={tourMarker[0]} z={tourMarker[2]} small />
+      {signposts.map(({ id, x, z }) => <Sign key={id} x={x} z={z} />)}
     </>
   )
 }

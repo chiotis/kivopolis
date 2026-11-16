@@ -588,3 +588,9 @@ progress::-moz-progress-bar { background: #6f8b66; border-radius: 10px; }
 .in-game .modal .part-congrats strong { color: #ffe36a; font-weight: 400; }
 .in-game .modal .part-congrats svg { color: #ffe36a; filter: drop-shadow(2px 2px 0 #2f3f2a); }
 .in-game .modal .part-next { font-size: 17px; }
+
+/* A new area's signpost: whether the building is open yet */
+.building-status { display: flex; gap: 7px; align-items: flex-start; margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: #f3eddc; color: #5d5747; font-size: 13px; line-height: 1.45; }
+.building-status:empty { display: none; }
+.building-status svg { flex: none; margin-top: 2px; }
+.journal-heading { margin: 14px 0 4px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #7a6f58; }

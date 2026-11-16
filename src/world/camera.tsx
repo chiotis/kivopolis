@@ -9,6 +9,7 @@ import { raycast } from '../voxel/raycast'
 import { SX, SZ, getWorld, bx, by, bz, wx, wz } from '../voxel/world'
 import { blocks } from '../voxel/blocks'
 import { blockSound } from '../game/audio'
+import { signposts } from '../game/buildings'
 import { playerState } from './player'
 
 export const movementKeys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', ' ', 'c'])
@@ -17,6 +18,7 @@ export const keys = new Set<string>()
 const staticObstacles: Obstacle[] = [
   { x: siteMarker[0], z: siteMarker[2], radius: 0.4 },
   { x: tourMarker[0], z: tourMarker[2], radius: 0.35 },
+  ...signposts.map(({ x, z }) => ({ x, z, radius: 0.4 })),
 ]
 /** The island and a strip of sea to swim in, kept inside the block world. */
 const islandBounds = (x: number, z: number) => Math.hypot(x, z) < islandEdge(Math.atan2(x, -z)) + 2.5
