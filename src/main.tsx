@@ -9,6 +9,7 @@ void openSave({ chunkOf: oldChunkOf, seed: SEED })
   .then(() => joinRequestedRoom())
   .then(() => import('./App'))
   .then(async ({ mount }) => {
-    mount()
+    // The room's animals and items are in place before the world is first drawn.
     if (inRoom()) (await import('./net/sync')).startSync()
+    mount()
   })

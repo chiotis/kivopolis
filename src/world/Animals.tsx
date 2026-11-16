@@ -4,7 +4,7 @@ import { BoxGeometry, Color, Group, Mesh, MeshLambertMaterial } from 'three'
 import { isNight, sky } from '../game/daylight'
 import { useGame } from '../game/store'
 import { type Animal, type AnimalKind } from './wildlife'
-import { ensureHerd, stepHerd } from './herd'
+import { ensureHerd, herd, stepHerd } from './herd'
 
 type Part = 'body' | 'head' | 'leg' | 'wool' | 'detail'
 interface Piece { part: Part; size: [number, number, number]; at: [number, number, number]; color: string; tilt?: number }
@@ -101,7 +101,8 @@ export function Animals({ shadows }: { shadows: boolean }) {
     const dt = Math.min(elapsed, 0.05)
     const paused = state.screen !== 'game' || state.panel === 'pause'
     const night = isNight(state.settings.dayCycle && state.screen === 'game' ? sky.time : 0.4)
-    if (!paused) stepHerd(dt, night)
+    // In a room the animals go on for everyone while this player has a panel open.
+    if (!paused || herd.remote) stepHerd(dt, night)
     for (const animal of ensureHerd()) {
       const rig = rigs.current.get(animal.id)
       if (!rig) continue

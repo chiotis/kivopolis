@@ -1,21 +1,13 @@
 import { create } from 'zustand'
-import { fuel, itemByKey, maxStack, SMELT_TIME, smelting, type Stack } from './items'
+import { fuel, itemByKey, maxStack, smelting, type Stack } from './items'
+import { emptyKiln, kilnContents, stepKiln, validKiln, validStack, type Kiln } from './kiln'
 import { matchRecipe } from './recipes'
 import { readRecord, writeRecord } from './save'
 
 export const HOTBAR = 9
 export const SLOTS = 36
 
-export interface Kiln {
-  input: Stack | null
-  fuel: Stack | null
-  output: Stack | null
-  /** Seconds of fuel left, and the length of the current fuel item. */
-  burn: number
-  burnMax: number
-  /** Smelting progress of the current item, 0–1. */
-  progress: number
-}
+export type { Kiln }
 export type Area = 'inv' | 'craft' | 'kilnInput' | 'kilnFuel' | 'kilnOutput'
 export interface SlotRef { area: Area; index: number }
 
@@ -30,22 +22,11 @@ interface InventoryState {
   openKiln: string | null
 }
 
-const emptyKiln = (): Kiln => ({ input: null, fuel: null, output: null, burn: 0, burnMax: 0, progress: 0 })
 const fresh = (): InventoryState => ({
   slots: Array(SLOTS).fill(null), cursor: null, craft: Array(9).fill(null), craftSize: 2, kilns: {}, openKiln: null,
 })
 
-const copy = (stack: Stack | null): Stack | null => (stack ? { ...stack } : null)
 const same = (a: Stack | null, b: Stack | null) => Boolean(a && b && a.item === b.item && !a.damage && !b.damage)
-
-function validStack(value: unknown): Stack | null {
-  const stack = value as Stack | null
-  if (!stack || typeof stack.item !== 'string' || !itemByKey.has(stack.item)) return null
-  const count = Math.min(maxStack(stack.item), Math.floor(Number(stack.count)))
-  if (!(count > 0)) return null
-  const damage = Number(stack.damage) > 0 ? Math.floor(Number(stack.damage)) : undefined
-  return damage ? { item: stack.item, count, damage } : { item: stack.item, count }
-}
 
 function load(): InventoryState {
   const state = fresh()
@@ -55,11 +36,7 @@ function load(): InventoryState {
     if (Array.isArray(data.slots)) data.slots.slice(0, SLOTS).forEach((stack, i) => { state.slots[i] = validStack(stack) })
     for (const [cell, kiln] of Object.entries(data.kilns ?? {})) {
       if (!/^\d+$/.test(cell) || !kiln) continue
-      state.kilns[cell] = {
-        ...emptyKiln(), input: validStack(kiln.input), fuel: validStack(kiln.fuel), output: validStack(kiln.output),
-        burn: Math.max(0, Number(kiln.burn) || 0), burnMax: Math.max(0, Number(kiln.burnMax) || 0),
-        progress: Math.min(1, Math.max(0, Number(kiln.progress) || 0)),
-      }
+      state.kilns[cell] = validKiln(kiln)
     }
   } catch {
     // Fall back to an empty inventory.
@@ -103,7 +80,8 @@ function accepts(area: Area, stack: Stack) {
 export const useInventory = create<InventoryState>(() => load())
 
 function kilnOf(state: InventoryState) {
-  return state.openKiln ? state.kilns[state.openKiln] ?? emptyKiln() : null
+  // In a room the kiln's contents come from the room server; until they arrive it cannot be used.
+  return state.openKiln ? state.kilns[state.openKiln] ?? null : null
 }
 
 function read(state: InventoryState, ref: SlotRef): Stack | null {
@@ -188,6 +166,7 @@ export const inventory = {
     const state = useInventory.getState()
     const slot = read(state, ref)
     const cursor = state.cursor
+    if (ref.area !== 'inv' && ref.area !== 'craft' && !kilnOf(state)) return
 
     if (shift && slot) {
       // Quick move: containers → inventory; inventory → kiln (if open) or between hotbar and main.
@@ -289,11 +268,28 @@ export const inventory = {
     }
   },
 
-  open(craftSize: 2 | 3, kiln: string | null = null) {
+  /** Opens the crafting grid, or a kiln; `create` is false in a room, where the room sends the kiln's contents. */
+  open(craftSize: 2 | 3, kiln: string | null = null, create = true) {
     useInventory.setState((state) => ({
       craftSize, openKiln: kiln,
-      kilns: kiln && !state.kilns[kiln] ? { ...state.kilns, [kiln]: emptyKiln() } : state.kilns,
+      kilns: kiln && create && !state.kilns[kiln] ? { ...state.kilns, [kiln]: emptyKiln() } : state.kilns,
     }))
+  },
+
+  /** How many of a stack fit into the inventory. */
+  fits(stack: Stack) {
+    const slots = [...useInventory.getState().slots]
+    return stack.count - insert(slots, stack, hotbarFirst)
+  },
+
+  /** Puts a kiln's contents in place (from the room server), or removes the kiln with null. */
+  setKiln(cell: string, kiln: Kiln | null) {
+    useInventory.setState((state) => {
+      const kilns = { ...state.kilns }
+      if (kiln) kilns[cell] = kiln
+      else delete kilns[cell]
+      return { kilns }
+    })
   },
 
   /** Returns the crafting grid and carried stack to the inventory; whatever does not fit is returned for dropping. */
@@ -318,7 +314,7 @@ export const inventory = {
     const rest = { ...kilns }
     delete rest[cell]
     useInventory.setState({ kilns: rest, openKiln: openKiln === cell ? null : openKiln })
-    return [kiln.input, kiln.fuel, kiln.output].filter(Boolean).map((stack) => ({ ...stack! }))
+    return kilnContents(kiln)
   },
 
   /** Advances every kiln: burn fuel while there is something to smelt and room for the result. */
@@ -327,26 +323,8 @@ export const inventory = {
     let changed = false
     const next: Record<string, Kiln> = {}
     for (const [cell, current] of Object.entries(kilns)) {
-      const kiln = { ...current, input: copy(current.input), fuel: copy(current.fuel), output: copy(current.output) }
-      const product = kiln.input ? smelting[kiln.input.item] : undefined
-      const room = product && (!kiln.output || (kiln.output.item === product && kiln.output.count < maxStack(product)))
-      if (kiln.burn > 0) kiln.burn = Math.max(0, kiln.burn - dt)
-      if (room && kiln.burn <= 0 && kiln.fuel) {
-        kiln.burn = kiln.burnMax = fuel[kiln.fuel.item] ?? 0
-        kiln.fuel = kiln.fuel.count > 1 ? { ...kiln.fuel, count: kiln.fuel.count - 1 } : null
-      }
-      if (room && kiln.burn > 0) {
-        kiln.progress += dt / SMELT_TIME
-        if (kiln.progress >= 1) {
-          kiln.progress = 0
-          kiln.input = kiln.input!.count > 1 ? { ...kiln.input!, count: kiln.input!.count - 1 } : null
-          kiln.output = { item: product!, count: (kiln.output?.count ?? 0) + 1 }
-        }
-      } else if (kiln.progress) {
-        kiln.progress = Math.max(0, kiln.progress - dt / SMELT_TIME)
-      }
-      if (kiln.burn !== current.burn || kiln.progress !== current.progress || kiln.fuel?.count !== current.fuel?.count) changed = true
-      next[cell] = kiln
+      next[cell] = stepKiln(current, dt)
+      if (next[cell] !== current) changed = true
     }
     if (changed) useInventory.setState({ kilns: next })
   },

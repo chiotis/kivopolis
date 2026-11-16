@@ -2,6 +2,9 @@ import { connection, leaveRoomWith, reconnect } from './client'
 import { bubbles, markers, others, roomActions, useRoom } from './roomState'
 import type { ClientMessage, PlayerInfo, ServerMessage, Welcome, WorldAction } from './protocol'
 import { network } from '../game/actions'
+import { blockSound } from '../game/audio'
+import { inventory } from '../game/inventory'
+import type { Kiln } from '../game/kiln'
 import { cells } from '../game/blueprints/theatre'
 import { sky } from '../game/daylight'
 import { useInventory } from '../game/inventory'
@@ -10,6 +13,8 @@ import { useGame } from '../game/store'
 import { Block } from '../voxel/blocks'
 import { getWorld } from '../voxel/world'
 import { playerState } from '../world/player'
+import { addDrop, dropNetwork, drops, setDrops, spawnDrop } from '../world/dropState'
+import { herd, setHerd } from '../world/herd'
 
 /** How long a phrase stays on screen, in milliseconds. */
 const SAID_FOR = 6000
@@ -40,6 +45,47 @@ export function startSync() {
   roomActions.say = (phrase) => send({ type: 'say', phrase })
   roomActions.point = (cell) => send({ type: 'point', cell })
   roomActions.kick = (id) => send({ type: 'kick', id })
+
+  // The room runs the dropped items, the animals and the kilns; this game shows them and asks for them.
+  setDrops(welcome.drops)
+  setHerd(welcome.animals)
+  dropNetwork.spawn = (stack, from, velocity, delay) => send({ type: 'throw', stack, from, velocity, delay })
+  network.pickup = (drop, count) => send({ type: 'pickup', drop, count })
+  network.openKiln = (cell) => send({ type: 'kilnOpen', cell })
+  herd.send = (animal, act) => send({ type: 'animal', animal, act })
+
+  // While this player has a kiln open it burns here, and its contents go to the room: at once after
+  // a click, at most twice a second while it only burns. Closing it hands it back to the room.
+  let kilnSent = 0
+  let kilnLater: ReturnType<typeof setTimeout> | undefined
+  const sendKiln = (cell: string, kiln: Kiln) => { clearTimeout(kilnLater); kilnSent = performance.now(); send({ type: 'kilnSet', cell, kiln }) }
+  const sameStacks = (a: Kiln, b: Kiln) => (['input', 'fuel', 'output'] as const).every((key) => JSON.stringify(a[key]) === JSON.stringify(b[key]))
+  let fromRoomKiln = false
+  useInventory.subscribe((state, previous) => {
+    const was = previous.openKiln
+    if (was && state.openKiln !== was) {
+      const kiln = previous.kilns[was]
+      if (kiln) sendKiln(was, kiln)
+      send({ type: 'kilnClose', cell: was })
+      inventory.setKiln(was, null)
+      return
+    }
+    const cell = state.openKiln
+    const kiln = cell ? state.kilns[cell] : undefined
+    const before = cell ? previous.kilns[cell] : undefined
+    if (!cell || !kiln || kiln === before || fromRoomKiln) return
+    if (!before || !sameStacks(kiln, before) || performance.now() - kilnSent > 500) { sendKiln(cell, kiln); return }
+    clearTimeout(kilnLater)
+    kilnLater = setTimeout(() => { const now = useInventory.getState(); if (now.openKiln === cell && now.kilns[cell]) sendKiln(cell, now.kilns[cell]) }, 500)
+  })
+  const closeKiln = (cell: string, notice: string) => {
+    if (useInventory.getState().openKiln !== cell) return
+    const game = useGame.getState()
+    if (game.panel === 'kiln') game.setPanel(null)
+    else useInventory.setState({ openKiln: null })
+    inventory.setKiln(cell, null)
+    game.setNotice(notice)
+  }
 
   // Shared progress made here goes to the room; the clock is the room's, so time is not sent.
   let remote = false
@@ -83,6 +129,11 @@ export function startSync() {
     waiting.clear()
     others.clear()
     getWorld().regenerate(fresh.edits)
+    setDrops(fresh.drops)
+    setHerd(fresh.animals)
+    // The room may have restarted: a kiln left open here is closed rather than trusted.
+    const open = useInventory.getState().openKiln
+    if (open) closeKiln(open, 'Το καμίνι έκλεισε· άνοιξέ το ξανά.')
     fromRoom(fresh.shared)
     sky.time = fresh.shared.time
     useRoom.setState({ me, players: fresh.players, status: 'connected' })
@@ -152,6 +203,32 @@ export function startSync() {
         return
       }
       case 'kicked': leaveRoomWith('kicked'); return
+      case 'dropped':
+        if (!drops.some((drop) => drop.id === message.drop.id)) addDrop(drops, { ...message.drop, stack: { ...message.drop.stack } })
+        return
+      case 'taken': {
+        const drop = drops.find((item) => item.id === message.id)
+        if (drop) { drop.stack.count = message.left; drop.asked = undefined }
+        return
+      }
+      case 'gave': {
+        const left = inventory.add(message.stack)
+        const { x, y, z } = playerState.body.position
+        if (left) spawnDrop({ ...message.stack, count: left }, x, y + 0.9, z, undefined, 1.5)
+        if (useGame.getState().settings.sound) blockSound('soft', 'place')
+        return
+      }
+      case 'herd':
+        for (const pose of message.animals) herd.goals.set(pose[0], pose)
+        return
+      case 'kiln':
+        if (useInventory.getState().openKiln !== message.cell) { send({ type: 'kilnClose', cell: message.cell }); return }
+        fromRoomKiln = true
+        inventory.setKiln(message.cell, message.kiln)
+        fromRoomKiln = false
+        return
+      case 'kilnBusy': closeKiln(message.cell, 'Κάποιος άλλος χρησιμοποιεί αυτό το καμίνι.'); return
+      case 'kilnGone': closeKiln(message.cell, 'Το καμίνι χάλασε· ό,τι είχε μέσα έπεσε κάτω.'); return
       case 'error': void retry(); return
     }
   }

@@ -102,9 +102,10 @@ export function mount() {
   createRoot(document.getElementById('root')!).render(<App />)
 }
 
-// Development only: lets browser tests read live player and animal state.
+// Development only: lets browser tests read live player, animal and item state, and act as a player would.
 if (import.meta.env.DEV) {
-  void Promise.all([import('./world/player'), import('./world/herd')]).then(([player, herd]) => {
-    Object.assign(window, { __polis: { player: player.playerState, herd: herd.herd } })
-  })
+  void Promise.all([import('./world/player'), import('./world/herd'), import('./world/dropState'), import('./game/actions'), import('./game/inventory')])
+    .then(([player, herd, dropState, actions, inventory]) => {
+      Object.assign(window, { __polis: { player: player.playerState, herd: herd.herd, drops: dropState.drops, apply: actions.apply, inventory: inventory.useInventory } })
+    })
 }
