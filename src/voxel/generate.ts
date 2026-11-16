@@ -54,6 +54,18 @@ export const groves: [number, number, number, 'olive' | 'cypress'][] = [
   [5.1, -18.1, 1.05, 'olive'], [9.0, -15.7, 0.8, 'olive'], [16.8, -12.5, 1.17, 'cypress'],
 ]
 
+/**
+ * The marble quarry: a bright outcrop on the northern ridge, just behind the top of the koilon.
+ * Its marble starts at the surface and runs six blocks deep, enough for every seat row, both
+ * stairways and the gateway lintels, with plenty to spare.
+ */
+export const QUARRY = { x: -0.5, z: -15.6, rx: 4, rz: 2.3, depth: 6 }
+export function inQuarry(x: number, z: number) {
+  const d = ((x - QUARRY.x) / QUARRY.rx) ** 2 + ((z - QUARRY.z) / QUARRY.rz) ** 2
+  // A ragged rim, so the outcrop reads as broken rock rather than a painted ellipse.
+  return d < 1 - 0.22 * hash(bx(x) >> 1, bz(z) >> 1, 23)
+}
+
 /** Copper is commoner than tin, as in the real Bronze Age trade. Ores cluster in small pockets. */
 function ore(x: number, y: number, z: number, chance: number) {
   const pocket = hash(x >> 1, z >> 1, y >> 1)
@@ -78,9 +90,11 @@ function terrain(grid: Grid) {
       // Pale marble breaks the surface on the northern ridge; clay lies under the beaches.
       const marbleVein = pz < -11 && Math.abs(px) < 20 && hash(x >> 2, z >> 2, 21) > 0.62
       const clayBed = beach && hash(x >> 1, z >> 1, 17) > 0.5
+      const quarry = !beach && inQuarry(px, pz)
       for (let y = 0; y <= top; y++) {
         let id: number = top - y >= 3 ? Block.limestone : Block.soil
         if (y === 0) id = Block.bedrock
+        else if (quarry && top - y < QUARRY.depth) id = Block.marble
         else if (y === top) {
           if (beach) id = clayBed && hash(x, z, 19) > 0.8 ? Block.clay : Block.sand
           else if (onPath(px, pz)) id = Block.path
@@ -179,7 +193,7 @@ function boulders(grid: Grid) {
   for (let i = 0; i < 70; i++) {
     const x = (rng() - 0.5) * 56, z = (rng() - 0.5) * 56
     const radius = Math.hypot(x, z)
-    if (radius < KOILON_EDGE + 1.6 || radius > islandEdge(Math.atan2(x, -z)) - 3.5 || onPath(x, z)
+    if (radius < KOILON_EDGE + 1.6 || radius > islandEdge(Math.atan2(x, -z)) - 3.5 || onPath(x, z) || inQuarry(x, z)
       || keepClear.some(([px, , pz]) => Math.hypot(px - x, pz - z) < 2.5)) continue
     const ix = bx(x), iz = bz(z)
     const top = topOf(grid, ix, iz)

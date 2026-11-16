@@ -22,7 +22,6 @@ export interface Cell {
   legacy: string
 }
 
-const stone = [Block.limestone, Block.ashlar, Block.marble]
 const dressed = [Block.ashlar, Block.marble]
 
 /** Polar angle as the old theatre used it: zero points uphill (-Z), positive towards +X. */
@@ -78,7 +77,7 @@ function build(): Cell[] {
       if (r >= 4.18 && r < KOILON_EDGE && inAisle(angle)) {
         const terrace = terraceOf(r)
         const sector = angle < 0 ? 0 : 1
-        add({ x: ix, y: OY + terrace - 1, z: iz, block: Block.limestone, accept: stone, mission: 'stairs', footing: true, legacy: `step-${sector}-${terrace}` })
+        add({ x: ix, y: OY + terrace - 1, z: iz, block: Block.marble, accept: [Block.marble], mission: 'stairs', footing: true, legacy: `step-${sector}-${terrace}` })
         continue
       }
 
@@ -90,15 +89,13 @@ function build(): Cell[] {
 
       // Seats: one block high, one block deep, following each curved row on its terrace.
       // The two rows below the diazoma make the lower tier; the two above it, the upper tier.
+      // Every row is marble, from the prohedria at the front to the top of the koilon.
       if (Math.abs(angle) > SEAT_EDGE || inAisle(angle)) continue
       rowRadii.forEach((radius, row) => {
         if (Math.abs(r - radius) >= 0.31) return
-        // The front row is the prohedria: marble seats of honour.
-        const front = row === 0
-        const terrace = rowTerraces[row]
         add({
-          x: ix, y: OY + terrace, z: iz, block: front ? Block.marble : Block.limestone,
-          accept: front ? [Block.marble] : stone, mission: row < 2 ? 'seats' : 'koilon', footing: true, legacy: seatLegacy(row, angle),
+          x: ix, y: OY + rowTerraces[row], z: iz, block: Block.marble,
+          accept: [Block.marble], mission: row < 2 ? 'seats' : 'koilon', footing: true, legacy: seatLegacy(row, angle),
         })
       })
     }
