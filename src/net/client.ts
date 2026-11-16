@@ -28,6 +28,13 @@ export function leaveRoom() {
   location.reload()
 }
 
+/** Leaves the room and says why on the menu, e.g. after the room's creator removed this player. */
+export function leaveRoomWith(reason: RoomError) {
+  session()?.removeItem(REQUEST_KEY)
+  session()?.setItem(ERROR_KEY, reason)
+  location.reload()
+}
+
 function storedRequest(): Request | null {
   try { return JSON.parse(session()?.getItem(REQUEST_KEY) ?? 'null') as Request | null } catch { return null }
 }
@@ -60,22 +67,29 @@ function connect(request: Request): Promise<Welcome | RoomError> {
     let socket: WebSocket
     try { socket = new WebSocket(ROOM_SERVER) } catch { finish('unavailable'); return }
     socket.addEventListener('open', () => {
-      socket.send(JSON.stringify(request.create ? { type: 'create', name: request.name } : { type: 'join', code: request.code, name: request.name }))
+      socket.send(JSON.stringify(request.create ? { type: 'create', name: request.name } : { type: 'join', code: request.code, name: request.name, token: request.token }))
     })
     socket.addEventListener('message', (event) => {
       let message: ServerMessage
       try { message = JSON.parse(String(event.data)) as ServerMessage } catch { return }
       if (!settled) {
-        if (message.type === 'welcome') { connection.socket = socket; connection.welcome = message; finish(message) }
-        else if (message.type === 'error') finish(message.reason)
+        if (message.type === 'welcome') {
+          connection.socket = socket
+          connection.welcome = message
+          // Remember the room and this player's secret, so a reload or a dropped connection rejoins.
+          session()?.setItem(REQUEST_KEY, JSON.stringify({ create: false, code: message.code, name: message.you.name, token: message.token } satisfies Request))
+          finish(message)
+        } else if (message.type === 'error') finish(message.reason)
         return
       }
+      if (connection.socket !== socket) return
       if (connection.listener) connection.listener(message)
       else connection.early.push(message)
     })
     socket.addEventListener('close', () => {
       finish('unavailable')
-      connection.listener?.({ type: 'error', reason: 'unavailable' })
+      // Only the current connection reports a loss; an old one closing after a rejoin is expected.
+      if (connection.socket === socket) connection.listener?.({ type: 'error', reason: 'unavailable' })
     })
     socket.addEventListener('error', () => finish('unavailable'))
   })
@@ -111,8 +125,13 @@ export async function joinRequestedRoom() {
     session()?.setItem(ERROR_KEY, result)
     return false
   }
-  // A new room keeps its code for the next reload, so reloading rejoins the same room.
-  if (request.create) session()?.setItem(REQUEST_KEY, JSON.stringify({ create: false, code: result.code, name: request.name } satisfies Request))
   enterRoomRecords(roomRecords(result))
   return true
+}
+
+/** Opens a new connection to the same room after the old one dropped. */
+export async function reconnect(): Promise<Welcome | RoomError> {
+  const request = storedRequest()
+  if (!request || !ROOM_SERVER) return 'unknown-room'
+  return connect(request)
 }

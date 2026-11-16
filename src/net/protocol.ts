@@ -30,18 +30,39 @@ export interface PlayerInfo {
 
 export interface Pose { id: string; p: Vec3; yaw: number; item: string | null }
 
-/** What a player brings into a room: a new one, or an existing room's code. */
-export type Request = { create: true; name: string } | { create: false; code: string; name: string }
+/**
+ * What a player brings into a room: a new one, or an existing room's code. `token` is the secret the
+ * room gave this player on joining: with it, a dropped connection can take the player's place back.
+ */
+export type Request = { create: true; name: string } | { create: false; code: string; name: string; token?: string }
+
+/**
+ * The phrases players can say to each other. There is no free text chat: the players are children.
+ * Messages carry the phrase's number, so a room can only ever show these words.
+ */
+export const PHRASES = [
+  'Έλα εδώ!', 'Χρειάζομαι μάρμαρο', 'Χρειάζομαι ασβεστόλιθο', 'Χρειάζομαι ξύλο', 'Βοήθησέ με εδώ',
+  'Πάω να μαζέψω υλικά', 'Περίμενε με', 'Μπράβο!', 'Ευχαριστώ!',
+] as const
+
+/** How long a player removed by the room's creator must wait before joining again. */
+export const KICK_MINUTES = 10
 
 export type ClientMessage =
   | { type: 'create'; name: string }
-  | { type: 'join'; code: string; name: string }
+  | { type: 'join'; code: string; name: string; token?: string }
   | { type: 'action'; action: WorldAction; ref: number }
   | { type: 'shared'; patch: Partial<Shared> }
   | { type: 'move'; p: Vec3; yaw: number; item: string | null }
   | { type: 'inventory'; slots: unknown[] }
+  /** Say one of the preset phrases, by its number. */
+  | { type: 'say'; phrase: number }
+  /** Point everyone to a block. */
+  | { type: 'point'; cell: Vec3 }
+  /** The room's creator removes a player. */
+  | { type: 'kick'; id: string }
 
-export type RoomError = 'full' | 'unknown-room' | 'bad-name' | 'name-taken' | 'bad-message' | 'unavailable'
+export type RoomError = 'full' | 'unknown-room' | 'bad-name' | 'name-taken' | 'bad-message' | 'unavailable' | 'kicked'
 
 export interface Welcome {
   type: 'welcome'
@@ -55,6 +76,8 @@ export interface Welcome {
   /** This player's saved inventory and position in the room, if they have played here before. */
   inventory: unknown[] | null
   position: Vec3 | null
+  /** This player's secret for taking their place back after a dropped connection. */
+  token: string
 }
 
 export type ServerMessage =
@@ -66,6 +89,10 @@ export type ServerMessage =
   | { type: 'left'; id: string }
   | { type: 'poses'; poses: Pose[] }
   | { type: 'time'; time: number }
+  | { type: 'said'; from: string; phrase: number }
+  | { type: 'pointed'; from: string; cell: Vec3 }
+  /** Sent to a player the room's creator removed, just before the connection closes. */
+  | { type: 'kicked' }
 
 /** Words a nickname may not contain (checked without accents, in Greek and Latin letters). */
 const BANNED = ['μαλακ', 'πουστ', 'γαμ', 'σκατ', 'fuck', 'shit', 'bitch', 'cunt', 'nazi', 'sex']

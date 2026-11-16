@@ -2,8 +2,11 @@ import { useEffect } from 'react'
 import { inventory } from '../game/inventory'
 import { interactionAvailable, useGame, useShared } from '../game/store'
 import { apply } from '../game/actions'
-import { jumpTapped, playerState } from '../world/player'
+import { blockInput, jumpTapped, playerState } from '../world/player'
 import { keys, movementKeys, viewMode } from '../world/camera'
+import { inRoom } from '../game/save'
+import { roomActions, useRoom } from '../net/roomState'
+import { PHRASES } from '../net/protocol'
 import { savePicture } from '../world/picture'
 
 /** Name a key by its physical position for letters and digits, so W/A/S/D and
@@ -61,6 +64,14 @@ export function useControls() {
           const [lx, ly, lz] = playerState.look
           apply({ type: 'throw', stack: thrown, from: [x + lx * 0.5, y - 0.2, z + lz * 0.5], velocity: [lx * 4, ly * 4 + 1.5, lz * 4], delay: 1.5 })
         }
+      }
+      // In a room: T opens the phrase menu (then 1–9 say a phrase), G points everyone to the block in sight.
+      if (inRoom() && state.mode === 'explore' && key === 't') { useRoom.setState((room) => ({ phrasing: !room.phrasing })); return }
+      if (inRoom() && state.mode === 'explore' && key === 'g' && blockInput.aim) { roomActions.point(blockInput.aim); return }
+      if (inRoom() && useRoom.getState().phrasing && /^[1-9]$/.test(key)) {
+        if (Number(key) <= PHRASES.length) roomActions.say(Number(key) - 1)
+        useRoom.setState({ phrasing: false })
+        return
       }
       if (state.mode === 'explore' && /^[1-9]$/.test(key)) state.setHotbar(Number(key) - 1)
       if (key === 'v' && state.mode === 'explore') viewMode.third = !viewMode.third

@@ -1,6 +1,6 @@
-import { connection } from './client'
-import { others, useRoom } from './roomState'
-import type { ClientMessage, ServerMessage, WorldAction } from './protocol'
+import { connection, leaveRoomWith, reconnect } from './client'
+import { bubbles, markers, others, roomActions, useRoom } from './roomState'
+import type { ClientMessage, PlayerInfo, ServerMessage, Welcome, WorldAction } from './protocol'
 import { network } from '../game/actions'
 import { cells } from '../game/blueprints/theatre'
 import { sky } from '../game/daylight'
@@ -11,16 +11,23 @@ import { Block } from '../voxel/blocks'
 import { getWorld } from '../voxel/world'
 import { playerState } from '../world/player'
 
+/** How long a phrase stays on screen, in milliseconds. */
+const SAID_FOR = 6000
+
 /**
  * Keeps this game in step with its room (Phase 12): sends this player's changes, shared progress,
- * position and inventory, and applies everyone else's.
+ * position, inventory, phrases and pointing, and applies everyone else's. A dropped connection is
+ * reopened in place, and the game catches up from the room's new snapshot.
  */
 export function startSync() {
-  const { socket, welcome } = connection
-  if (!socket || !welcome) return
-  const me = welcome.you
-  const send = (message: ClientMessage) => { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message)) }
-  useRoom.setState({ code: welcome.code, me, players: welcome.players, status: 'connected' })
+  const { welcome } = connection
+  if (!connection.socket || !welcome) return
+  let me: PlayerInfo = welcome.you
+  const send = (message: ClientMessage) => {
+    const socket = connection.socket
+    if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message))
+  }
+  useRoom.setState({ code: welcome.code, me, players: welcome.players, status: 'connected', messages: [] })
 
   // This player's world changes: shown at once, put back if the room refuses them.
   let ref = 0
@@ -30,6 +37,9 @@ export function startSync() {
     waiting.set(ref, { action, before })
     send({ type: 'action', action, ref })
   }
+  roomActions.say = (phrase) => send({ type: 'say', phrase })
+  roomActions.point = (cell) => send({ type: 'point', cell })
+  roomActions.kick = (id) => send({ type: 'kick', id })
 
   // Shared progress made here goes to the room; the clock is the room's, so time is not sent.
   let remote = false
@@ -58,11 +68,43 @@ export function startSync() {
 
   // The inventory is kept by the room, so it is there when this player comes back.
   let saving: ReturnType<typeof setTimeout> | undefined
+  const sendInventory = () => send({ type: 'inventory', slots: useInventory.getState().slots })
   useInventory.subscribe((state, previous) => {
     if (state.slots === previous.slots) return
     clearTimeout(saving)
-    saving = setTimeout(() => send({ type: 'inventory', slots: useInventory.getState().slots }), 1000)
+    saving = setTimeout(sendInventory, 1000)
   })
+
+  const name = (id: string) => id === me.id ? me : useRoom.getState().players.find((player) => player.id === id)
+
+  /** After a rejoin: the room's world and progress replace what this game had; the inventory stays. */
+  const catchUp = (fresh: Welcome) => {
+    me = fresh.you
+    waiting.clear()
+    others.clear()
+    getWorld().regenerate(fresh.edits)
+    fromRoom(fresh.shared)
+    sky.time = fresh.shared.time
+    useRoom.setState({ me, players: fresh.players, status: 'connected' })
+    last = ''
+    sendInventory()
+  }
+
+  // A dropped connection: try again, waiting a little longer each time, for about two minutes.
+  let retrying = false
+  const retry = async () => {
+    if (retrying) return
+    retrying = true
+    useRoom.setState({ status: 'reconnecting' })
+    for (const wait of [500, 1000, 2000, 4000, 8000, 15000, 30000, 30000, 30000]) {
+      await new Promise((resolve) => setTimeout(resolve, wait))
+      const result = await reconnect()
+      if (typeof result !== 'string') { catchUp(result); retrying = false; return }
+      if (result === 'kicked' || result === 'unknown-room') { leaveRoomWith(result); return }
+    }
+    retrying = false
+    useRoom.setState({ status: 'lost' })
+  }
 
   const receive = (message: ServerMessage) => {
     const world = getWorld()
@@ -88,12 +130,29 @@ export function startSync() {
       case 'joined': useRoom.setState((state) => ({ players: [...state.players.filter((p) => p.id !== message.player.id), message.player] })); return
       case 'left':
         others.delete(message.id)
+        bubbles.delete(message.id)
+        markers.delete(message.id)
         useRoom.setState((state) => ({ players: state.players.filter((p) => p.id !== message.id) }))
         return
       case 'poses':
         for (const pose of message.poses) if (pose.id !== me.id) others.set(pose.id, { ...pose, at: performance.now() })
         return
-      case 'error': useRoom.setState({ status: 'lost' }); return
+      case 'said': {
+        const who = name(message.from)
+        if (!who) return
+        bubbles.set(message.from, { phrase: message.phrase, at: performance.now() })
+        const key = performance.now()
+        useRoom.setState((state) => ({ messages: [...state.messages, { key, from: message.from, name: who.name, color: who.color, phrase: message.phrase }].slice(-4) }))
+        setTimeout(() => useRoom.setState((state) => ({ messages: state.messages.filter((item) => item.key !== key) })), SAID_FOR)
+        return
+      }
+      case 'pointed': {
+        const who = name(message.from)
+        if (who) markers.set(message.from, { cell: message.cell, at: performance.now(), color: who.color })
+        return
+      }
+      case 'kicked': leaveRoomWith('kicked'); return
+      case 'error': void retry(); return
     }
   }
   connection.listener = receive

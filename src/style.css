@@ -604,7 +604,7 @@ progress::-moz-progress-bar { background: #6f8b66; border-radius: 10px; }
 .room-privacy { font-size: 12px; color: #7a6f58; }
 .room-banner { display: flex; gap: 7px; align-items: center; margin: 10px 0; }
 .room-button { margin-top: 10px; }
-.hud-room { padding: 6px 9px; min-width: 150px; }
+.hud-room { position: relative; z-index: 7; padding: 6px 9px; min-width: 150px; }
 .hud-room .room-head { display: flex; gap: 6px; align-items: center; font-size: 11px; }
 .hud-room .room-head strong { margin-left: auto; letter-spacing: 0.12em; font-size: 14px; }
 .hud-room ul { margin: 5px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; font-size: 12px; }
@@ -612,5 +612,14 @@ progress::-moz-progress-bar { background: #6f8b66; border-radius: 10px; }
 .hud-room small { opacity: 0.7; }
 .room-dot { width: 9px; height: 9px; border-radius: 2px; flex: none; }
 .room-lost { margin-top: 6px; display: grid; gap: 4px; font-size: 12px; color: #ffd4cc; }
-.player-tag { pointer-events: none; white-space: nowrap; }
-.player-tag span { display: block; padding: 1px 7px; border: 2px solid; border-radius: 6px; background: #1d1a14cc; color: #f6f0de; font-size: 13px; font-weight: 700; }
+.hud-room .hud-mini { margin-top: 6px; }
+.room-keys { display: block; margin-top: 3px; font-size: 10.5px; opacity: 0.7; }
+.room-remove { margin-left: auto; display: grid; place-items: center; width: 18px; height: 18px; border: 0; border-radius: 4px; background: #ffffff1a; color: inherit; cursor: pointer; }
+.room-remove:hover { background: #b3261e88; }
+.phrase-menu { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); padding: 8px; width: min(320px, calc(100vw - 32px)); z-index: 6; }
+.phrase-menu ol { margin: 0 0 6px; padding: 0; list-style: none; display: grid; gap: 3px; }
+.phrase-menu button { display: flex; gap: 8px; align-items: center; width: 100%; padding: 5px 8px; border: 1px solid #ffffff1a; background: #ffffff12; color: #f2ecdd; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.phrase-menu button:hover { background: #ffffff26; }
+.phrase-menu kbd { min-width: 18px; text-align: center; }
+.room-messages { position: absolute; left: 12px; bottom: 150px; margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; z-index: 5; pointer-events: none; }
+.room-messages li { padding: 4px 9px; font-size: 13px; color: #f2ecdd; }
