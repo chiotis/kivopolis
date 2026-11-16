@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import { islandEdge } from '../src/game/terrain'
-import { Block, isEmpty } from '../src/voxel/blocks'
+import { Block, isEmpty, isWater } from '../src/voxel/blocks'
+import { strength, submerged } from '../src/voxel/flow'
+import { matchRecipe } from '../src/game/recipes'
 import { meshChunk, meshWater, type Sampler } from '../src/voxel/mesher'
 import { newBody, stepBody, type Limits } from '../src/voxel/physics'
 import { raycast } from '../src/voxel/raycast'
 import { OX, OY, OZ, S, SEA_LEVEL, SEA_Y, SX, VoxelWorld, bx, bz, wx, wy } from '../src/voxel/world'
+
+/** Runs water ticks until nothing moves any more. */
+function settle(world: VoxelWorld) {
+  let ticks = 0
+  while (world.flowing && ticks < 400) { world.tickWater(); ticks++ }
+  expect(world.flowing).toBe(false)
+  return ticks
+}
 
 const open: Limits = { circles: [], bounds: () => true }
 const input = { x: 0, z: 0, sprint: false, jump: false, crouch: false }
@@ -52,18 +62,132 @@ describe('the sea', () => {
     expect(shore.get(x, SEA_Y - 1, z - 1)).toBe(Block.air)
     // Breaking the shore block lets the sea in; it runs down and along into the pocket.
     shore.set(x, SEA_Y, z, Block.air)
+    // The water arrives on the next tick, not at once.
+    expect(shore.get(x, SEA_Y, z)).toBe(Block.air)
+    settle(shore)
     expect(shore.get(x, SEA_Y, z)).toBe(Block.water)
     shore.set(x, SEA_Y - 1, z, Block.air)
+    settle(shore)
     expect(shore.get(x, SEA_Y - 1, z)).toBe(Block.water)
     expect(shore.get(x, SEA_Y - 1, z - 1)).toBe(Block.water)
     // Above sea level a dug hole stays dry.
     shore.set(x, SEA_Y + 1, z, Block.air)
+    settle(shore)
     expect(shore.get(x, SEA_Y + 1, z)).toBe(Block.air)
   })
 
   it('is passed through by the crosshair, so blocks behind or under water can be reached', () => {
     const water = grid([[OX, OY, OZ - 2, Block.water], [OX, OY, OZ - 4, Block.limestone]])
     expect(raycast(water, [S / 2, S / 2, 0], [0, 0, -1], 5)).toMatchObject({ z: OZ - 4 })
+  })
+})
+
+/** A flat stone floor high above the theatre, where nothing else is in the way. */
+const FLOOR = 38
+function terrace(world: VoxelWorld, half = 10) {
+  for (let x = -half; x <= half; x++) for (let z = -half; z <= half; z++) world.set(OX + x, FLOOR, OZ + z, Block.limestone)
+}
+
+describe('flowing water', () => {
+  it('spreads seven blocks from a source on flat ground, one level lower each block', () => {
+    const world = new VoxelWorld()
+    terrace(world)
+    world.set(OX, FLOOR + 1, OZ, Block.water)
+    const ticks = settle(world)
+    // One block per tick, so the flow is seen running rather than appearing all at once.
+    expect(ticks).toBeGreaterThanOrEqual(7)
+    for (let d = 1; d <= 7; d++) {
+      expect(strength(world.get(OX + d, FLOOR + 1, OZ))).toBe(8 - d)
+      expect(strength(world.get(OX + d - 3, FLOOR + 1, OZ + 3))).toBe(Math.max(0, 8 - Math.abs(d - 3) - 3))
+    }
+    expect(world.get(OX + 8, FLOOR + 1, OZ)).toBe(Block.air)
+    // Water never climbs: the cell above the source stays dry.
+    expect(world.get(OX, FLOOR + 2, OZ)).toBe(Block.air)
+  })
+
+  it('falls over a step and spreads again below it', () => {
+    const world = new VoxelWorld()
+    terrace(world)
+    // A drop of three blocks at x = +3: the floor continues lower down.
+    for (let x = 3; x <= 10; x++) for (let z = -10; z <= 10; z++) world.set(OX + x, FLOOR, OZ + z, Block.air)
+    for (let x = 3; x <= 12; x++) for (let z = -10; z <= 10; z++) world.set(OX + x, FLOOR - 3, OZ + z, Block.limestone)
+    world.set(OX, FLOOR + 1, OZ, Block.water)
+    settle(world)
+    // Strength 5 at the edge; it falls, then starts again at 7 on the lower floor.
+    expect(strength(world.get(OX + 3, FLOOR + 1, OZ))).toBe(5)
+    expect(strength(world.get(OX + 3, FLOOR - 1, OZ))).toBe(7)
+    expect(strength(world.get(OX + 4, FLOOR - 2, OZ))).toBe(6)
+    expect(strength(world.get(OX + 9, FLOOR - 2, OZ))).toBe(1)
+    // Falling water does not spread sideways in mid-air.
+    expect(world.get(OX + 4, FLOOR + 1, OZ)).toBe(Block.air)
+  })
+
+  it('dries up when its source is taken away', () => {
+    const world = new VoxelWorld()
+    terrace(world)
+    world.set(OX, FLOOR + 1, OZ, Block.water)
+    settle(world)
+    world.set(OX, FLOOR + 1, OZ, Block.air)
+    settle(world)
+    for (let x = -8; x <= 8; x++) for (let z = -8; z <= 8; z++) expect(world.get(OX + x, FLOOR + 1, OZ + z)).toBe(Block.air)
+  })
+
+  it('gives the same water for the same edits, even when a save is reloaded halfway', () => {
+    const run = (stopAt?: number) => {
+      let world = new VoxelWorld()
+      terrace(world)
+      world.set(OX - 2, FLOOR + 1, OZ, Block.water)
+      world.set(OX + 3, FLOOR + 1, OZ + 1, Block.water)
+      for (let i = 0; stopAt !== undefined && i < stopAt; i++) world.tickWater()
+      if (stopAt !== undefined) {
+        // Saving keeps only the edits; loading them must carry the water on.
+        const edits = [...world.edits]
+        world = new VoxelWorld()
+        world.regenerate(edits)
+      }
+      settle(world)
+      return [...world.edits].filter(([, id]) => isWater(id)).sort((a, b) => a[0] - b[0])
+    }
+    const whole = run()
+    expect(whole.length).toBeGreaterThan(100)
+    expect(run(3)).toEqual(whole)
+  })
+
+  it('is only deep enough to swim in near its source', () => {
+    const world = new VoxelWorld()
+    terrace(world)
+    world.set(OX, FLOOR + 1, OZ, Block.water)
+    settle(world)
+    const get = (x: number, y: number, z: number) => world.get(x, y, z)
+    expect(submerged(get, OX, FLOOR + 1.3, OZ)).toBe(true)
+    // A thin edge of the flow only wets the feet.
+    expect(submerged(get, OX + 6, FLOOR + 1.05, OZ)).toBe(true)
+    expect(submerged(get, OX + 6, FLOOR + 1.3, OZ)).toBe(false)
+  })
+
+  it('slopes its surface down from the source', () => {
+    const world = new VoxelWorld()
+    terrace(world)
+    world.set(OX, FLOOR + 1, OZ, Block.water)
+    settle(world)
+    const cx = Math.floor(OX / 16), cz = Math.floor(OZ / 16)
+    const mesh = meshWater(world, cx, cz)
+    let high = -Infinity, low = Infinity
+    for (let i = 1; i < mesh.positions.length; i += 3) {
+      const y = mesh.positions[i]
+      if (y <= wy(FLOOR + 1) + 0.001) continue
+      high = Math.max(high, y)
+      low = Math.min(low, y)
+    }
+    expect(high).toBeLessThanOrEqual(wy(FLOOR + 1) + S / 2 + 0.001)
+    expect(low).toBeLessThan(wy(FLOOR + 1) + S * 0.2)
+  })
+})
+
+describe('the hydria', () => {
+  it('is shaped from three terracotta tiles at the workshop', () => {
+    const t = { item: 'terracotta', count: 1 }
+    expect(matchRecipe([t, null, t, null, t, null, null, null, null], 3)?.result).toEqual({ item: 'hydria', count: 1 })
   })
 })
 

@@ -24,6 +24,14 @@ export const Block = {
   lamp: 20,
   wool: 21,
   water: 22,
+  // Flowing water, weakest to strongest: each step from a source loses one level.
+  flow1: 23,
+  flow2: 24,
+  flow3: 25,
+  flow4: 26,
+  flow5: 27,
+  flow6: 28,
+  flow7: 29,
 } as const
 export type BlockId = (typeof Block)[keyof typeof Block]
 
@@ -89,6 +97,10 @@ const defs: Omit<BlockDef, 'id'>[] = [
   { key: 'wool', hardness: 0.35, opaque: true, solid: true, tiles: all(Tile.wool), color: '#ece6d6', sound: 'soft', tier: 0 },
   // Sea water: drawn in its own see-through mesh, swum through, never mined.
   { key: 'water', hardness: Infinity, opaque: false, solid: false, tiles: all(0), color: '#4f93a0', sound: 'soft', tier: 9, drop: null },
+  // Flowing water (see flow.ts): the same see-through water, never placed or mined by hand.
+  ...([1, 2, 3, 4, 5, 6, 7] as const).map((level) => ({
+    key: `flow${level}` as const, hardness: Infinity, opaque: false, solid: false, tiles: all(0), color: '#4f93a0', sound: 'soft' as const, tier: 9, drop: null,
+  })),
 ]
 
 export const blocks: BlockDef[] = defs.map((def, id) => ({ ...def, id: id as BlockId }))
@@ -104,8 +116,9 @@ for (const def of blocks) {
 export const isOpaque = (id: number) => opaqueTable[id] === 1
 export const isSolid = (id: number) => solidTable[id] === 1
 export const isKnownBlock = (id: number) => id >= 0 && id < blocks.length
-export const isWater = (id: number) => id === Block.water
+export const isFlowing = (id: number) => id >= Block.flow1 && id <= Block.flow7
+export const isWater = (id: number) => id === Block.water || isFlowing(id)
 /** Blocks a ray or a placed block treats as empty space. */
-export const isEmpty = (id: number) => id === Block.air || id === Block.water
+export const isEmpty = (id: number) => id === Block.air || isWater(id)
 
 export const blockByKey = new Map(blocks.map((def) => [def.key as string, def]))
