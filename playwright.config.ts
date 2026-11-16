@@ -10,9 +10,19 @@ export default defineConfig({
     { name: 'chromium', use: { browserName: 'chromium' } },
     { name: 'touch', use: { ...devices['Pixel 7'], defaultBrowserType: 'chromium' } },
   ],
-  webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort',
-    url: 'http://127.0.0.1:4173',
-    reuseExistingServer: true,
-  },
+  webServer: [
+    {
+      command: 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort',
+      url: 'http://127.0.0.1:4173',
+      reuseExistingServer: true,
+      // The rooms test talks to its own room server (Phase 12).
+      env: { VITE_ROOM_SERVER: 'ws://127.0.0.1:8788' },
+    },
+    {
+      command: 'npm run server',
+      url: 'http://127.0.0.1:8788/health',
+      reuseExistingServer: true,
+      env: { PORT: '8788', DATA_DIR: 'test-results/rooms' },
+    },
+  ],
 })

@@ -6,6 +6,9 @@ import WebSocket from 'ws'
 import { cleanCode, cleanName, type ServerMessage, type Welcome } from '../src/net/protocol'
 import { Block } from '../src/voxel/blocks'
 import { OX, OY, OZ, index, wx, wy, wz } from '../src/voxel/grid'
+import { emptyKiln, stepKiln, type Kiln } from '../src/game/kiln'
+import { spawnAnimals } from '../src/world/wildlife'
+import { VoxelWorld } from '../src/voxel/world'
 
 const dir = await mkdtemp(join(tmpdir(), 'kivopolis-rooms-'))
 process.env.DATA_DIR = dir
@@ -53,6 +56,23 @@ describe('names and codes', () => {
     expect(originAllowed('https://kivopolis.netlify.app', ['https://kivopolis.netlify.app'])).toBe(true)
     expect(originAllowed('https://elsewhere.example', ['https://kivopolis.netlify.app'])).toBe(false)
     expect(originAllowed(undefined, [])).toBe(false)
+  })
+})
+
+describe('the pieces the room runs', () => {
+  it('burns a kiln the same way the game does', () => {
+    let kiln: Kiln = { ...emptyKiln(), input: { item: 'clay', count: 1 }, fuel: { item: 'stick', count: 1 } }
+    kiln = stepKiln(kiln, 0.2)
+    expect(kiln.fuel).toBeNull()
+    expect(kiln.burn).toBeGreaterThan(0)
+    expect(stepKiln(emptyKiln(), 0.2)).toEqual(emptyKiln())
+  })
+
+  it('places the same animals with the same ids every time', () => {
+    const world = new VoxelWorld()
+    const first = spawnAnimals(world), second = spawnAnimals(world)
+    expect(second.map((animal) => [animal.id, animal.kind, animal.x])).toEqual(first.map((animal) => [animal.id, animal.kind, animal.x]))
+    expect(first[0].id).toBe(1)
   })
 })
 
@@ -176,6 +196,91 @@ describe('a room', () => {
     const again = await player(server.port, { type: 'join', code: room, name: 'Μαρία', token: backWelcome.token })
     expect((await again.next('error')).reason).toBe('kicked')
     host.socket.close()
+  })
+
+  it('runs the dropped items, the animals and the kilns for everyone', async () => {
+    const a = await player(server.port, { type: 'create', name: 'Άρης' })
+    const welcome = await a.next('welcome')
+    const b = await player(server.port, { type: 'join', code: welcome.code, name: 'Δάφνη' })
+    const welcomeB = await b.next('welcome')
+    expect(welcomeB.animals.map((animal) => animal.id)).toEqual(welcome.animals.map((animal) => animal.id))
+    expect((await b.next('herd')).animals).toHaveLength(welcome.animals.length)
+
+    // Both stand on the theatre's floor; Aris breaks a block and the room drops what it gives.
+    const floor = OY + 1
+    const stand: [number, number, number] = [wx(OX), wy(floor + 1), wz(OZ)]
+    a.send({ type: 'move', p: stand, yaw: 0, item: null })
+    b.send({ type: 'move', p: stand, yaw: 0, item: null })
+    await new Promise((resolve) => setTimeout(resolve, 60))
+    a.send({ type: 'action', ref: 1, action: { type: 'set', x: OX + 2, y: floor + 1, z: OZ, block: Block.marble } })
+    await a.next('applied')
+    let from = b.inbox.length
+    a.send({ type: 'action', ref: 2, action: { type: 'break', x: OX + 2, y: floor + 1, z: OZ, drop: { item: 'marble', count: 1 } } })
+    const dropped = await b.next('dropped', from)
+    expect(dropped.drop.stack).toEqual({ item: 'marble', count: 1 })
+    // A block cannot give more, or something else, than it gives.
+    a.send({ type: 'action', ref: 3, action: { type: 'set', x: OX + 2, y: floor + 1, z: OZ, block: Block.marble } })
+    from = b.inbox.length
+    a.send({ type: 'action', ref: 4, action: { type: 'break', x: OX + 2, y: floor + 1, z: OZ, drop: { item: 'bronzeIngot', count: 64 } } })
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(b.inbox.slice(from).some((m) => m.type === 'dropped')).toBe(false)
+
+    // Daphne picks it up once it has settled: it goes to her, and is gone for Aris.
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    from = a.inbox.length
+    b.send({ type: 'pickup', drop: dropped.drop.id, count: 5 })
+    expect((await b.next('gave')).stack).toEqual({ item: 'marble', count: 1 })
+    expect(await a.next('taken', from)).toEqual({ type: 'taken', id: dropped.drop.id, left: 0 })
+
+    // Throwing: near the player it lands for everyone; from across the island it is refused.
+    from = b.inbox.length
+    a.send({ type: 'throw', stack: { item: 'stick', count: 3 }, from: stand, velocity: [1, 1, 0], delay: 1.5 })
+    a.send({ type: 'throw', stack: { item: 'stick', count: 3 }, from: [60, 5, 60], velocity: [1, 1, 0], delay: 1.5 })
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(b.inbox.slice(from).filter((m) => m.type === 'dropped')).toHaveLength(1)
+
+    // A goat gives milk to whoever tends it; a woolly sheep drops wool for everyone when hit.
+    const goat = welcome.animals.find((animal) => animal.kind === 'goat')!
+    const sheep = welcome.animals.find((animal) => animal.kind === 'sheep')!
+    const at = async (animal: { id: number }) => {
+      const pose = (await b.next('herd', b.inbox.length)).animals.find((item) => item[0] === animal.id)!
+      a.send({ type: 'move', p: [pose[1], pose[2], pose[3] + 1], yaw: 0, item: null })
+      await new Promise((resolve) => setTimeout(resolve, 40))
+    }
+    await at(goat)
+    a.send({ type: 'animal', animal: goat.id, act: 'tend' })
+    expect((await a.next('gave', a.inbox.length)).stack).toEqual({ item: 'milk', count: 1 })
+    await at(sheep)
+    from = b.inbox.length
+    a.send({ type: 'animal', animal: sheep.id, act: 'strike' })
+    expect((await b.next('dropped', from)).drop.stack.item).toBe('wool')
+
+    // A kiln: one player uses it at a time; it keeps burning in the room once they close it.
+    a.send({ type: 'move', p: stand, yaw: 0, item: null })
+    await new Promise((resolve) => setTimeout(resolve, 40))
+    a.send({ type: 'action', ref: 5, action: { type: 'set', x: OX + 2, y: floor + 1, z: OZ, block: Block.kiln } })
+    await new Promise((resolve) => setTimeout(resolve, 60))
+    const cell = String(index(OX + 2, floor + 1, OZ))
+    a.send({ type: 'kilnOpen', cell })
+    expect((await a.next('kiln')).kiln).toEqual(emptyKiln())
+    b.send({ type: 'kilnOpen', cell })
+    expect((await b.next('kilnBusy')).cell).toBe(cell)
+    a.send({ type: 'kilnSet', cell, kiln: { ...emptyKiln(), input: { item: 'clay', count: 4 }, fuel: { item: 'stick', count: 2 } } })
+    a.send({ type: 'kilnClose', cell })
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    b.send({ type: 'kilnOpen', cell })
+    const burning = (await b.next('kiln')).kiln
+    expect(burning.burn).toBeGreaterThan(0)
+    expect(burning.fuel).toEqual({ item: 'stick', count: 1 })
+
+    // Breaking it spills what it holds, and tells whoever has it open.
+    from = b.inbox.length
+    a.send({ type: 'action', ref: 6, action: { type: 'break', x: OX + 2, y: floor + 1, z: OZ, drop: { item: 'kiln', count: 1 } } })
+    expect((await b.next('kilnGone', from)).cell).toBe(cell)
+    await new Promise((resolve) => setTimeout(resolve, 60))
+    const spilled = b.inbox.slice(from).flatMap((m) => m.type === 'dropped' ? [m.drop.stack.item] : [])
+    expect(spilled).toEqual(expect.arrayContaining(['kiln', 'clay', 'stick']))
+    a.socket.close(); b.socket.close()
   })
 
   it('refuses connections from other sites', async () => {

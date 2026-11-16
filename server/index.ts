@@ -154,11 +154,15 @@ export async function start(port = PORT) {
     last = now
     for (const room of rooms.values()) room.step(seconds)
   }, TICK * 1000)
-  // Save changed rooms every five seconds, and let empty rooms go from memory once saved.
+  // Save changed rooms every five seconds, and let empty rooms go from memory once saved. A room
+  // used in the last half minute stays, so a new room is never let go before its creator is in it,
+  // and a player who reloads finds the same room.
   const saver = setInterval(() => {
     for (const room of [...rooms.values()]) {
       const work = room.dirty ? saveRoom(room) : Promise.resolve()
-      void work.then(() => { if (!room.size && !room.dirty) rooms.delete(room.code) }).catch((error) => console.error('save failed', room.code, error))
+      void work.then(() => {
+        if (!room.size && !room.dirty && Date.now() - room.used > 30_000 && rooms.get(room.code) === room) rooms.delete(room.code)
+      }).catch((error) => console.error('save failed', room.code, error))
     }
   }, 5000)
 

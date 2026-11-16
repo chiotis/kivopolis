@@ -110,8 +110,8 @@ test('activates the plan and lays an orchestra block by hand in first person', a
   await expect(page.getByRole('list', { name: copy.needs })).toContainText(itemName('ashlar'))
 
   // Stand on the skene site facing the orchestra with a stack of dressed stone in hand.
-  await expect.poll(async () => (await saved(page))?.progress.discovered).toBe(true)
-  const progress = (await saved(page)).progress
+  await expect.poll(async () => (await saved(page))?.shared.discovered).toBe(true)
+  const progress = (await saved(page)).shared
   const empty = Array.from({ length: 36 }, () => null)
   await seed(page, {
     [saveKey]: { version: 2, settings: (await saved(page)).settings, progress: { ...progress, player: [0, 0, 4.55] } },
@@ -146,8 +146,8 @@ test('rebuilds an old prefab save as blocks and finishes with the tour', async (
     },
   })
   // The upgrade rewrites the save at once and stores the theatre as world edits.
-  await expect.poll(async () => (await saved(page))?.version).toBe(2)
-  expect((await saved(page)).progress.placed).toBeUndefined()
+  await expect.poll(async () => (await saved(page))?.version).toBe(3)
+  expect((await saved(page)).shared.placed).toBeUndefined()
   await expect.poll(async () => Object.keys(await edits(page)).length).toBeGreaterThanOrEqual(642)
   // The LocalStorage copy is gone once IndexedDB holds the save, so it is never imported twice.
   expect(await page.evaluate((keys) => keys.map((key) => localStorage.getItem(key)), Object.values(legacyKeys))).toEqual([null, null, null])
@@ -162,7 +162,7 @@ test('rebuilds an old prefab save as blocks and finishes with the tour', async (
   await page.getByRole('button', { name: copy.finishTour }).click()
   await expect(page.getByText(copy.finishTitle)).toBeVisible()
   await expect(page.getByRole('heading', { name: buildings.sanctuary.title })).toBeVisible()
-  await expect.poll(async () => (await saved(page)).progress.completed).toBe(true)
+  await expect.poll(async () => (await saved(page)).shared.completed).toBe(true)
   await expect(page.getByTestId('points')).toHaveText((1350).toLocaleString('el'))
   expect(errorsSeen).toEqual([])
 })

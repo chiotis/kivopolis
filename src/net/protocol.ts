@@ -1,4 +1,9 @@
 import type { Shared } from '../game/shared'
+import type { Stack } from '../game/items'
+import type { Kiln } from '../game/kiln'
+import type { DropEntity } from '../world/dropState'
+import type { Animal } from '../world/wildlife'
+import type { AnimalPose } from '../world/herd'
 
 /**
  * The messages between the game and the room server (Phase 12), as plain JSON. Both sides import
@@ -16,7 +21,8 @@ type Vec3 = [number, number, number]
 /** A player's change to the shared world, as the room server checks, orders and relays it. */
 export type WorldAction =
   | { type: 'set'; x: number; y: number; z: number; block: number }
-  | { type: 'break'; x: number; y: number; z: number }
+  /** `drop` is what the block gives with the player's tool; the room drops it for everyone. */
+  | { type: 'break'; x: number; y: number; z: number; drop?: Stack | null }
   | { type: 'restart'; mission: string }
 
 export interface PlayerInfo {
@@ -61,6 +67,16 @@ export type ClientMessage =
   | { type: 'point'; cell: Vec3 }
   /** The room's creator removes a player. */
   | { type: 'kick'; id: string }
+  /** Throw items into the world; the room gives them an id and shows them to everyone. */
+  | { type: 'throw'; stack: Stack; from: Vec3; velocity: Vec3; delay: number }
+  /** Take up to `count` of a dropped item. */
+  | { type: 'pickup'; drop: number; count: number }
+  /** Hit or tend an animal. */
+  | { type: 'animal'; animal: number; act: 'strike' | 'tend' }
+  /** Use a kiln: ask for it, send its contents while using it, and let it go. */
+  | { type: 'kilnOpen'; cell: string }
+  | { type: 'kilnSet'; cell: string; kiln: Kiln }
+  | { type: 'kilnClose'; cell: string }
 
 export type RoomError = 'full' | 'unknown-room' | 'bad-name' | 'name-taken' | 'bad-message' | 'unavailable' | 'kicked'
 
@@ -78,6 +94,9 @@ export interface Welcome {
   position: Vec3 | null
   /** This player's secret for taking their place back after a dropped connection. */
   token: string
+  /** The items lying in the room's world, and its animals. */
+  drops: DropEntity[]
+  animals: Animal[]
 }
 
 export type ServerMessage =
@@ -93,6 +112,17 @@ export type ServerMessage =
   | { type: 'pointed'; from: string; cell: Vec3 }
   /** Sent to a player the room's creator removed, just before the connection closes. */
   | { type: 'kicked' }
+  /** A new dropped item, and what is left of one after someone took from it (0: it is gone). */
+  | { type: 'dropped'; drop: DropEntity }
+  | { type: 'taken'; id: number; left: number }
+  /** Items for this player's inventory: a pickup, or milk. */
+  | { type: 'gave'; stack: Stack }
+  /** Where the animals are, five times a second. */
+  | { type: 'herd'; animals: AnimalPose[] }
+  /** The contents of the kiln this player asked for; or someone else is using it; or it was broken. */
+  | { type: 'kiln'; cell: string; kiln: Kiln }
+  | { type: 'kilnBusy'; cell: string }
+  | { type: 'kilnGone'; cell: string }
 
 /** Words a nickname may not contain (checked without accents, in Greek and Latin letters). */
 const BANNED = ['μαλακ', 'πουστ', 'γαμ', 'σκατ', 'fuck', 'shit', 'bitch', 'cunt', 'nazi', 'sex']

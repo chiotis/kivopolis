@@ -8,8 +8,9 @@ import { useGame, type Panel } from '../game/store'
 import { blocks } from '../voxel/blocks'
 import { sharedAtlas } from '../voxel/atlas'
 import { tileUV } from '../voxel/mesher'
-import { getWorld, bx, by, bz, wy } from '../voxel/world'
-import { clearDrops, drops, LIFETIME } from './dropState'
+import { getWorld } from '../voxel/world'
+import { inRoom } from '../game/save'
+import { clearDrops, drops, stepDrop } from './dropState'
 import { apply } from '../game/actions'
 import { playerState } from './player'
 
@@ -61,7 +62,7 @@ export function Drops() {
     if (previous.panel && containers.has(previous.panel) && !(state.panel && containers.has(state.panel))) {
       dropNearPlayer(inventory.close())
     }
-    if (state.screen !== previous.screen && state.screen === 'menu') clearDrops()
+    if (state.screen !== previous.screen && state.screen === 'menu' && !inRoom()) clearDrops()
   }), [])
 
   useEffect(() => () => {
@@ -93,26 +94,14 @@ export function Drops() {
 
     const world = getWorld()
     const body = playerState.body.position
+    // Alone, the world stands still while a panel is open; in a room it goes on for the others.
+    const moving = !state.panel || inRoom()
     const live = new Set<number>()
     for (let i = drops.length - 1; i >= 0; i--) {
       const drop = drops[i]
-      if (!state.panel) {
-        drop.age += dt
-        drop.vy = Math.max(-20, drop.vy - 18 * dt)
-        const nx = drop.x + drop.vx * dt, nz = drop.z + drop.vz * dt
-        if (!world.solidAt(bx(nx), by(drop.y + 0.02), bz(drop.z))) drop.x = nx; else drop.vx *= -0.3
-        if (!world.solidAt(bx(drop.x), by(drop.y + 0.02), bz(nz))) drop.z = nz; else drop.vz *= -0.3
-        const ny = drop.y + drop.vy * dt
-        if (world.solidAt(bx(drop.x), by(ny), bz(drop.z))) {
-          drop.y = wy(by(ny) + 1)
-          drop.vy = 0
-          drop.vx *= 0.8
-          drop.vz *= 0.8
-        } else {
-          drop.y = ny
-        }
-        // Items embedded in a newly placed block pop up on top of it.
-        if (world.solidAt(bx(drop.x), by(drop.y + 0.01), bz(drop.z))) drop.y = wy(by(drop.y + 0.01) + 1)
+      if (moving && !stepDrop(drop, dt, world)) {
+        drops.splice(i, 1)
+        continue
       }
 
       const exploring = state.screen === 'game' && state.mode === 'explore' && !state.panel
@@ -120,7 +109,7 @@ export function Drops() {
       if (exploring && drop.age > drop.delay && distance < PICKUP) {
         if (apply({ type: 'pickup', drop: drop.id }) && state.settings.sound) blockSound('soft', 'place')
       }
-      if (drop.stack.count <= 0 || drop.age > LIFETIME || drop.y < -8) {
+      if (drop.stack.count <= 0) {
         drops.splice(i, 1)
         continue
       }

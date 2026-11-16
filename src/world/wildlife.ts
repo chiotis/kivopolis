@@ -1,5 +1,6 @@
 import { islandEdge } from '../game/terrain'
 import { isSolid, Block } from '../voxel/blocks'
+import type { Stack } from '../game/items'
 import type { Sampler } from '../voxel/mesher'
 import { S, bx, by, bz, wy } from '../voxel/grid'
 
@@ -82,15 +83,14 @@ export function canStep(world: Sampler, animal: Pick<Animal, 'kind' | 'y'>, x: n
   return clearAt(world, x, ground, z, height, radius)
 }
 
-let nextId = 1
-function create(kind: AnimalKind, x: number, y: number, z: number, rng: () => number): Animal {
+function create(id: number, kind: AnimalKind, x: number, y: number, z: number, rng: () => number): Animal {
   return {
-    id: nextId++, kind, x, y, z, yaw: rng() * Math.PI * 2, tx: x, tz: z, walking: false,
+    id, kind, x, y, z, yaw: rng() * Math.PI * 2, tx: x, tz: z, walking: false,
     timer: 1 + rng() * 4, vy: 0, sheared: 0, cooldown: 0, flee: 0, hurt: 0, lay: 40 + rng() * 60, stride: 0,
   }
 }
 
-/** Places each herd on open grass around its meadow. The same seed gives the same animals. */
+/** Places each herd on open grass around its meadow. The same seed gives the same animals, with the same ids. */
 export function spawnAnimals(world: Sampler, seed = 7) {
   const rng = random(seed)
   const list: Animal[] = []
@@ -103,7 +103,7 @@ export function spawnAnimals(world: Sampler, seed = 7) {
       const y = groundBelow(world, x, z, 20)
       if (world.get(bx(x), by(y - 0.01), bz(z)) !== Block.grass) continue
       if (list.some((other) => Math.hypot(other.x - x, other.z - z) < 1.1)) continue
-      const animal = create(kind, x, y, z, rng)
+      const animal = create(list.length + 1, kind, x, y, z, rng)
       if (!canStep(world, animal, x, z)) continue
       list.push(animal)
       placed++
@@ -219,4 +219,37 @@ export function pickAnimal(list: readonly Animal[], origin: readonly number[], d
     if (hit && (!best || near < best.distance)) best = { animal, distance: near }
   }
   return best
+}
+
+/**
+ * One step of a whole herd. Plain code with no rendering, so the room server runs the animals for
+ * everyone (Phase 12). `feather` is called where a chicken drops one on its own.
+ */
+export function stepAnimals(list: Animal[], dt: number, context: Context, feather: (x: number, y: number, z: number) => void) {
+  for (const animal of list) {
+    if (updateAnimal(animal, dt, context) === 'feather') feather(animal.x, animal.y + 0.3, animal.z)
+  }
+}
+
+/** Hit from (px, pz): the animal runs off; a woolly sheep gives wool, a chicken a feather now and then. */
+export function strikeGives(animal: Animal, px: number, pz: number, random = Math.random): Stack | null {
+  startle(animal, px, pz)
+  if (animal.kind === 'sheep' && animal.sheared <= 0) {
+    animal.sheared = 120
+    return { item: 'wool', count: 1 + Math.round(random()) }
+  }
+  if (animal.kind === 'chicken' && animal.cooldown <= 0) {
+    animal.cooldown = 10
+    return { item: 'feather', count: 1 }
+  }
+  return null
+}
+
+/** Tended: the animal stops for a moment, and a goat gives milk every half minute. */
+export function tendGives(animal: Animal): Stack | null {
+  animal.walking = false
+  animal.timer = 2
+  if (animal.kind !== 'goat' || animal.cooldown > 0) return null
+  animal.cooldown = 30
+  return { item: 'milk', count: 1 }
 }

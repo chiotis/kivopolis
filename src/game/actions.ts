@@ -42,7 +42,13 @@ export type Action =
  * While playing in a room, changes to the world are also sent to the room server, with the block
  * that was there before so a refused change can be put back (Phase 12).
  */
-export const network: { send: ((action: WorldAction, before: number) => void) | null } = { send: null }
+export const network: {
+  send: ((action: WorldAction, before: number) => void) | null
+  /** Asks the room for (part of) a dropped item; it answers with what this player gets. */
+  pickup: ((drop: number, count: number) => void) | null
+  /** Asks the room for a kiln's contents; only one player at a time uses a kiln. */
+  openKiln: ((cell: string) => void) | null
+} = { send: null, pickup: null, openKiln: null }
 
 /** Applies one action. Returns false when it changed nothing. */
 export function apply(action: Action): boolean {
@@ -59,7 +65,8 @@ export function apply(action: Action): boolean {
       const { x, y, z } = action
       const id = world.get(x, y, z)
       if (!world.set(x, y, z, Block.air)) return false
-      network.send?.({ type: 'break', x, y, z }, id)
+      // In a room the room drops what the block gives, and spills a kiln, so everyone sees the same items.
+      if (network.send) { network.send({ type: 'break', x, y, z, drop: action.drop }, id); return true }
       const cx = wx(x) + S / 2, cy = wy(y) + S / 2, cz = wz(z) + S / 2
       if (action.drop) spawnDrop(action.drop, cx, cy, cz)
       if (id === Block.kiln) for (const stack of inventory.removeKiln(String(index(x, y, z)))) spawnDrop(stack, cx, cy, cz)
@@ -95,6 +102,14 @@ export function apply(action: Action): boolean {
     case 'pickup': {
       const drop = drops.find((item) => item.id === action.drop)
       if (!drop || drop.stack.count <= 0) return false
+      if (network.pickup) {
+        const count = inventory.fits(drop.stack)
+        const now = performance.now()
+        if (!count || (drop.asked && now - drop.asked < 2000)) return false
+        drop.asked = now
+        network.pickup(drop.id, count)
+        return false
+      }
       const left = inventory.add(drop.stack)
       const taken = left < drop.stack.count
       drop.stack.count = left
@@ -104,7 +119,8 @@ export function apply(action: Action): boolean {
       spawnDrop(action.stack, ...action.from, action.velocity, action.delay)
       return true
     case 'open':
-      inventory.open(action.craftSize, action.kiln)
+      inventory.open(action.craftSize, action.kiln, !network.openKiln)
+      if (action.kiln) network.openKiln?.(action.kiln)
       return true
     case 'slot':
       inventory.click(action.ref, action.button, action.shift)
