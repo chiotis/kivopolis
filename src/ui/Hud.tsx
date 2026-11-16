@@ -6,7 +6,7 @@ import {
 import { AnimatePresence, motion } from 'motion/react'
 import { buildings, copy, itemName, missions } from '../game/el'
 import { buildingHere, buildingStatus, previousBuilding, signNear } from '../game/buildings'
-import { interactionRadius, useGame } from '../game/store'
+import { interactionRadius, useGame, useShared } from '../game/store'
 import { objectives, siteMarker, tourMarker } from '../game/theatre'
 import { activeMission, builtTotal, earnedPoints, entrancesReady, missionCounts, materials, partStates, totalCells, useSite } from '../game/site'
 import { blocks } from '../voxel/blocks'
@@ -36,7 +36,9 @@ function Materials({ list }: { list: ReturnType<typeof materials> }) {
 }
 
 export function MissionPanel() {
-  const { progress, setPanel } = useGame()
+  const { setPanel } = useGame()
+  const progress = useShared()
+  const player = useGame((state) => state.player)
   const { counts, missing, wrong } = useSite()
   const [brief, setBrief] = useState(() => !globalThis.matchMedia?.('(max-width: 760px)').matches)
   const mission = activeMission(progress.discovered, counts)
@@ -47,7 +49,7 @@ export function MissionPanel() {
   const states = partStates(progress.discovered, progress.completed, counts)
   const misplaced = wrong.filter((i) => cells[i].mission === mission).length
   // In one of the new areas the panel tells about the building there instead of the theatre's step.
-  const here = buildingHere(progress.player[0], progress.player[2])
+  const here = buildingHere(player[0], player[2])
   if (here && here !== 'theatre') {
     const status = buildingStatus(progress, here)
     return (
@@ -96,12 +98,13 @@ export function MissionPanel() {
 export function StageOverlay({ blueprint, setBlueprint, marker }: {
   blueprint: boolean; setBlueprint: (value: boolean) => void; marker: RefObject<HTMLDivElement | null>
 }) {
-  const { progress, mode, toggleOverview, interact, setPanel, endTour, saveStatus, photo, setPhoto } = useGame()
+  const { player, mode, toggleOverview, interact, setPanel, endTour, saveStatus, photo, setPhoto } = useGame()
+  const progress = useShared()
   const started = progress.discovered
   const gates = entrancesReady(useSite((state) => state.counts))
   const point = started ? tourMarker : siteMarker
-  const nearby = Math.hypot(progress.player[0] - point[0], progress.player[2] - point[2]) <= interactionRadius
-  const sign = signNear(progress.player[0], progress.player[2])
+  const nearby = Math.hypot(player[0] - point[0], player[2] - point[2]) <= interactionRadius
+  const sign = signNear(player[0], player[2])
   const showInteract = mode === 'explore' && (Boolean(sign) || ((!started || gates) && nearby))
   const overview = mode === 'overview'
   if (photo) return <PhotoBar leave={() => setPhoto(false)} />
@@ -247,7 +250,7 @@ function TouchActions() {
     <div className="touch-actions">
       <button aria-label={copy.breakBlock} {...holdButton(() => { blockInput.breaking = true; blockInput.breakOnce = true }, () => { blockInput.breaking = false })}><Pickaxe size={20} /></button>
       <button aria-label={copy.placeBlock} {...holdButton(() => { blockInput.placeOnce = true; blockInput.placing = true }, () => { blockInput.placing = false })}><Plus size={22} /></button>
-      <button aria-label={copy.jump} {...holdButton(() => { keys.add(' '); jumpTapped(useGame.getState().progress.creative) }, () => keys.delete(' '))}><ChevronsUp size={22} /></button>
+      <button aria-label={copy.jump} {...holdButton(() => { keys.add(' '); jumpTapped(useShared.getState().creative) }, () => keys.delete(' '))}><ChevronsUp size={22} /></button>
       <button aria-label={copy.backpack} onClick={() => useGame.getState().openContainer('inventory')}><Backpack size={20} /></button>
     </div>
   )

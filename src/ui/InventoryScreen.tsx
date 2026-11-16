@@ -4,7 +4,8 @@ import { copy, itemName } from '../game/el'
 import { HOTBAR, inventory, SLOTS, useInventory, type Area } from '../game/inventory'
 import { recipes, type Recipe } from '../game/recipes'
 import { items } from '../game/items'
-import { useGame } from '../game/store'
+import { useGame, useShared } from '../game/store'
+import { apply } from '../game/actions'
 import { ItemIcon, StackView } from './ItemIcon'
 
 function Slot({ area, index, label }: { area: Area; index: number; label?: string }) {
@@ -17,7 +18,7 @@ function Slot({ area, index, label }: { area: Area; index: number; label?: strin
   const name = stack ? `${itemName(stack.item)}${stack.count > 1 ? ` × ${stack.count}` : ''}` : copy.emptyHand
   const click = (button: 'left' | 'right') => (event: MouseEvent) => {
     event.preventDefault()
-    inventory.click({ area, index }, button, event.shiftKey)
+    apply({ type: 'slot', ref: { area, index }, button, shift: event.shiftKey })
   }
   return (
     <button className="inv-slot" data-testid={`slot-${area}-${index}`} aria-label={label ? `${label}: ${name}` : name} title={stack ? itemName(stack.item) : label}
@@ -112,7 +113,7 @@ function Palette() {
 export function InventoryScreen({ kind }: { kind: 'inventory' | 'workshop' | 'kiln' }) {
   const cursor = useInventory((state) => state.cursor)
   const craftSize = useInventory((state) => state.craftSize)
-  const creative = useGame((state) => state.progress.creative)
+  const creative = useShared((state) => state.creative)
   const carried = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const move = (event: PointerEvent) => {

@@ -17,7 +17,7 @@ import '@fontsource/tiny5/latin-400.css'
 import '@fontsource/tiny5/greek-400.css'
 import './style.css'
 import { copy } from './game/el'
-import { useGame } from './game/store'
+import { useGame, useShared } from './game/store'
 import { World } from './world/World'
 import { useControls } from './ui/controls'
 import { Dialogs } from './ui/Dialogs'
@@ -26,7 +26,8 @@ import { ModeChoice } from './ui/ModeChoice'
 import { Logo } from './ui/Logo'
 
 function App() {
-  const { screen, progress, start, setPanel } = useGame()
+  const { screen, start, setPanel } = useGame()
+  const progress = useShared()
   const marker = useRef<HTMLDivElement>(null)
   const [blueprint, setBlueprint] = useState(true)
   const [creative, setCreative] = useState(false)

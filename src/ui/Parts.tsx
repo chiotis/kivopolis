@@ -1,6 +1,6 @@
 import { Award, ChevronLeft, ChevronRight } from 'lucide-react'
 import { copy, missions } from '../game/el'
-import { useGame } from '../game/store'
+import { useGame, useShared } from '../game/store'
 import { AISLES, ANALEMMA_ANGLE, KOILON_EDGE, SEAT_EDGE, TERRACE_START, TERRACE_WIDTH, DIAZOMA, objectives, rowRadii, type Mission } from '../game/theatre'
 import { partStates, useSite, type PartState } from '../game/site'
 
@@ -49,7 +49,7 @@ export function PartPlan({ part, state, size = 30 }: { part: Mission; state: Par
 const stateLabel: Record<PartState, string> = { done: copy.partDone, active: copy.partActive, todo: copy.partTodo }
 
 function useParts() {
-  const progress = useGame((state) => state.progress)
+  const progress = useShared()
   const counts = useSite((state) => state.counts)
   return partStates(progress.discovered, progress.completed, counts)
 }

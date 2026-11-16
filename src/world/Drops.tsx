@@ -9,7 +9,8 @@ import { blocks } from '../voxel/blocks'
 import { sharedAtlas } from '../voxel/atlas'
 import { tileUV } from '../voxel/mesher'
 import { getWorld, bx, by, bz, wy } from '../voxel/world'
-import { clearDrops, drops, LIFETIME, spawnDrop } from './dropState'
+import { clearDrops, drops, LIFETIME } from './dropState'
+import { apply } from '../game/actions'
 import { playerState } from './player'
 
 const containers = new Set<Panel>(['inventory', 'workshop', 'kiln'])
@@ -43,7 +44,7 @@ function spriteGeometry(tile: number) {
 export function dropNearPlayer(stacks: { item: string; count: number; damage?: number }[], delay = 1.5) {
   const [x, y, z] = playerState.eye
   const [lx, , lz] = playerState.look
-  for (const stack of stacks) spawnDrop(stack, x + lx * 0.6, y - 0.3, z + lz * 0.6, [lx * 2.5, 1.5, lz * 2.5], delay)
+  for (const stack of stacks) apply({ type: 'throw', stack, from: [x + lx * 0.6, y - 0.3, z + lz * 0.6], velocity: [lx * 2.5, 1.5, lz * 2.5], delay })
 }
 
 export function Drops() {
@@ -117,9 +118,7 @@ export function Drops() {
       const exploring = state.screen === 'game' && state.mode === 'explore' && !state.panel
       const distance = Math.hypot(body.x - drop.x, body.y + 0.7 - drop.y, body.z - drop.z)
       if (exploring && drop.age > drop.delay && distance < PICKUP) {
-        const left = inventory.add(drop.stack)
-        if (left < drop.stack.count && state.settings.sound) blockSound('soft', 'place')
-        drop.stack.count = left
+        if (apply({ type: 'pickup', drop: drop.id }) && state.settings.sound) blockSound('soft', 'place')
       }
       if (drop.stack.count <= 0 || drop.age > LIFETIME || drop.y < -8) {
         drops.splice(i, 1)

@@ -2,7 +2,7 @@ import { blockSound } from '../game/audio'
 import { inventory } from '../game/inventory'
 import { useGame } from '../game/store'
 import { getWorld } from '../voxel/world'
-import { spawnAnimals, startle, type Animal } from './wildlife'
+import { spawnAnimals, startle, updateAnimal, type Animal } from './wildlife'
 import { spawnDrop } from './dropState'
 import { playerState } from './player'
 
@@ -12,6 +12,17 @@ export const herd: { list: Animal[] } = { list: [] }
 export function ensureHerd() {
   if (!herd.list.length) herd.list = spawnAnimals(getWorld())
   return herd.list
+}
+
+/**
+ * One step of the herd: every animal wanders, grazes or rests, and chickens now and then drop a
+ * feather. Plain code with no rendering, so a room server can run the animals for everyone (Phase 12).
+ */
+export function stepHerd(dt: number, night: boolean) {
+  const world = getWorld()
+  for (const animal of ensureHerd()) {
+    if (updateAnimal(animal, dt, { world, night }) === 'feather') spawnDrop({ item: 'feather', count: 1 }, animal.x, animal.y + 0.3, animal.z)
+  }
 }
 
 /** Left click: sheep give wool (once until it grows back), chickens a feather; every animal runs off. */

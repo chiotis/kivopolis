@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { cells, cellTotals, legacySlots, missionCells } from '../src/game/blueprints/theatre'
 import { activeMission, earnedPoints, materials, measure, missionCounts, partStates, useSite } from '../src/game/site'
-import { migrateLegacy, useGame } from '../src/game/store'
+import { migrateLegacy, useGame, useShared } from '../src/game/store'
 import { canWalk, obstacles } from '../src/game/terrain'
 import { objectives } from '../src/game/theatre'
 import { Block } from '../src/voxel/blocks'
@@ -81,14 +81,14 @@ describe('missions counted from world blocks', () => {
 
   it('advances when every cell holds an accepted block and goes back when one breaks', () => {
     const world = getWorld()
-    expect(useGame.getState().progress.discovered).toBe(true)
+    expect(useShared.getState().discovered).toBe(true)
     fill('orchestra')
     let { counts } = useSite.getState()
     expect(activeMission(true, counts)).toBe('analemmata')
     expect(earnedPoints(true, counts, false)).toBe(100)
     // The finished step is congratulated in the window of the next one.
     expect(useGame.getState()).toMatchObject({ panel: 'part', part: 'analemmata', congrats: 'orchestra', milestone: null })
-    expect(useGame.getState().progress.celebrated).toEqual(['orchestra'])
+    expect(useShared.getState().celebrated).toEqual(['orchestra'])
     useGame.getState().setPanel(null)
     expect(useGame.getState().congrats).toBeNull()
 

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { BUILDING_ORDER, buildingHere, buildingStatus, readBuildings, signNear, signposts, SIGN_RADIUS, unlocked, type ProgressView } from '../src/game/buildings'
 import { ROADS, ROAD_WIDTH, nearest, roadDistance } from '../src/game/regions'
-import { interactionAvailable, useGame } from '../src/game/store'
+import { interactionAvailable, useGame, useShared } from '../src/game/store'
 import { VoxelWorld, S, bx, bz } from '../src/voxel/world'
 import { Block } from '../src/voxel/blocks'
 
@@ -59,14 +59,14 @@ describe('reading a signpost', () => {
     expect(interactionAvailable(useGame.getState())).toBe(true)
     useGame.getState().interact()
     expect(useGame.getState()).toMatchObject({ panel: 'building', building: 'sanctuary' })
-    expect(useGame.getState().progress.buildings.sanctuary).toBeUndefined()
+    expect(useShared.getState().buildings.sanctuary).toBeUndefined()
   })
 
   it('marks an open building as found and keeps it in the saved game', () => {
-    useGame.setState((state) => ({ progress: { ...state.progress, discovered: true, completed: true } }))
+    useShared.setState({ discovered: true, completed: true })
     const [sign] = signposts
     useGame.getState().updatePlayer([sign.x + 1, 0, sign.z])
     useGame.getState().interact()
-    expect(useGame.getState().progress.buildings.sanctuary).toEqual({ discovered: true, completed: false, celebrated: [] })
+    expect(useShared.getState().buildings.sanctuary).toEqual({ discovered: true, completed: false, celebrated: [] })
   })
 })

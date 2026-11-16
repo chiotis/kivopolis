@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { inventory } from '../game/inventory'
-import { interactionAvailable, useGame } from '../game/store'
-import { spawnDrop } from '../world/dropState'
+import { interactionAvailable, useGame, useShared } from '../game/store'
+import { apply } from '../game/actions'
 import { jumpTapped, playerState } from '../world/player'
 import { keys, movementKeys, viewMode } from '../world/camera'
 import { savePicture } from '../world/picture'
@@ -47,7 +47,7 @@ export function useControls() {
         keys.add(key)
       }
       if (event.repeat) return
-      if (key === ' ' && state.mode === 'explore') jumpTapped(state.progress.creative)
+      if (key === ' ' && state.mode === 'explore') jumpTapped(useShared.getState().creative)
       if (key === 'b') state.toggleOverview()
       if (key === 'e') {
         if (interactionAvailable(state)) state.interact()
@@ -58,7 +58,7 @@ export function useControls() {
         if (thrown) {
           const [x, y, z] = playerState.eye
           const [lx, ly, lz] = playerState.look
-          spawnDrop(thrown, x + lx * 0.5, y - 0.2, z + lz * 0.5, [lx * 4, ly * 4 + 1.5, lz * 4], 1.5)
+          apply({ type: 'throw', stack: thrown, from: [x + lx * 0.5, y - 0.2, z + lz * 0.5], velocity: [lx * 4, ly * 4 + 1.5, lz * 4], delay: 1.5 })
         }
       }
       if (state.mode === 'explore' && /^[1-9]$/.test(key)) state.setHotbar(Number(key) - 1)

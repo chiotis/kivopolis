@@ -3,10 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import { BoxGeometry, Color, Group, Mesh, MeshLambertMaterial } from 'three'
 import { isNight, sky } from '../game/daylight'
 import { useGame } from '../game/store'
-import { getWorld } from '../voxel/world'
-import { updateAnimal, type Animal, type AnimalKind } from './wildlife'
-import { spawnDrop } from './dropState'
-import { ensureHerd } from './herd'
+import { type Animal, type AnimalKind } from './wildlife'
+import { ensureHerd, stepHerd } from './herd'
 
 type Part = 'body' | 'head' | 'leg' | 'wool' | 'detail'
 interface Piece { part: Part; size: [number, number, number]; at: [number, number, number]; color: string; tilt?: number }
@@ -103,11 +101,8 @@ export function Animals({ shadows }: { shadows: boolean }) {
     const dt = Math.min(elapsed, 0.05)
     const paused = state.screen !== 'game' || state.panel === 'pause'
     const night = isNight(state.settings.dayCycle && state.screen === 'game' ? sky.time : 0.4)
-    const world = getWorld()
+    if (!paused) stepHerd(dt, night)
     for (const animal of ensureHerd()) {
-      if (!paused && updateAnimal(animal, dt, { world, night }) === 'feather') {
-        spawnDrop({ item: 'feather', count: 1 }, animal.x, animal.y + 0.3, animal.z)
-      }
       const rig = rigs.current.get(animal.id)
       if (!rig) continue
       place(rig, animal, clock.elapsedTime, state.settings.reducedMotion)

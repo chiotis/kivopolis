@@ -19,7 +19,10 @@ const open: Limits = { circles: [], bounds: () => true }
 describe('voxel world', () => {
   it('generates the same island every time and keeps the theatre tiers on block tops', () => {
     const a = new VoxelWorld(), b = new VoxelWorld()
-    expect(a.data).toEqual(b.data)
+    // A plain loop: a deep equality check on 7 million cells is far too slow.
+    let differences = 0
+    for (let i = 0; i < a.data.length; i++) if (a.data[i] !== b.data[i]) differences++
+    expect(differences).toBe(0)
     // Every seat of the blueprint sits directly on its terrace, one block per row.
     for (const seat of cells.filter((cell) => cell.mission === 'seats' || cell.mission === 'koilon')) {
       expect(a.solidAt(seat.x, seat.y - 1, seat.z)).toBe(true)
