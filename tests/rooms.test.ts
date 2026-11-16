@@ -140,6 +140,44 @@ describe('a room', () => {
     back.socket.close()
   })
 
+  it('carries phrases and pointing, lets the creator remove a player, and lets a dropped player back in', async () => {
+    const host = await player(server.port, { type: 'create', name: 'Δάσκαλος' })
+    const welcome = await host.next('welcome')
+    const room = welcome.code
+    const kid = await player(server.port, { type: 'join', code: room, name: 'Μαρία' })
+    const kidWelcome = await kid.next('welcome')
+    expect(kidWelcome.token).toMatch(/[0-9a-f-]{36}/)
+
+    // A phrase by its number reaches everyone; a second one straight after is dropped, and so is a made-up one.
+    kid.send({ type: 'say', phrase: 1 })
+    kid.send({ type: 'say', phrase: 2 })
+    kid.send({ type: 'say', phrase: 99 })
+    expect(await host.next('said')).toEqual({ type: 'said', from: kidWelcome.you.id, phrase: 1 })
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(host.inbox.filter((m) => m.type === 'said')).toHaveLength(1)
+    kid.send({ type: 'point', cell: [OX, OY, OZ] })
+    expect((await host.next('pointed')).cell).toEqual([OX, OY, OZ])
+
+    // The same name without the secret is refused; with it, the player takes their place back.
+    const impostor = await player(server.port, { type: 'join', code: room, name: 'Μαρία' })
+    expect((await impostor.next('error')).reason).toBe('name-taken')
+    const back = await player(server.port, { type: 'join', code: room, name: 'Μαρία', token: kidWelcome.token })
+    const backWelcome = await back.next('welcome')
+    expect(backWelcome.you.name).toBe('Μαρία')
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(kid.socket.readyState).toBe(WebSocket.CLOSED)
+
+    // Only the creator removes players; the removed player cannot come straight back.
+    back.send({ type: 'kick', id: welcome.you.id })
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(host.socket.readyState).toBe(WebSocket.OPEN)
+    host.send({ type: 'kick', id: backWelcome.you.id })
+    expect((await back.next('kicked')).type).toBe('kicked')
+    const again = await player(server.port, { type: 'join', code: room, name: 'Μαρία', token: backWelcome.token })
+    expect((await again.next('error')).reason).toBe('kicked')
+    host.socket.close()
+  })
+
   it('refuses connections from other sites', async () => {
     await expect(player(server.port, { type: 'create', name: 'X' }, 'https://elsewhere.example')).rejects.toBeTruthy()
   })

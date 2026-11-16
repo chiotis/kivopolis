@@ -5,7 +5,8 @@ import { cells } from '../src/game/blueprints/theatre'
 import { initialShared, type Shared } from '../src/game/shared'
 import { SEED } from '../src/voxel/generate'
 import { DAY_SECONDS } from '../src/game/daylight'
-import { MAX_PLAYERS, type ClientMessage, type PlayerInfo, type Pose, type RoomError, type ServerMessage, type WorldAction } from '../src/net/protocol'
+import { randomUUID } from 'node:crypto'
+import { KICK_MINUTES, MAX_PLAYERS, PHRASES, type ClientMessage, type PlayerInfo, type Pose, type RoomError, type ServerMessage, type WorldAction } from '../src/net/protocol'
 
 type Vec3 = [number, number, number]
 
@@ -23,7 +24,18 @@ export interface SavedRoom {
   players: Record<string, { inventory: unknown[] | null; position: Vec3 | null }>
 }
 
-interface Member { info: PlayerInfo; send: (message: ServerMessage) => void; pose: Pose | null }
+interface Member {
+  info: PlayerInfo
+  send: (message: ServerMessage) => void
+  /** Closes this player's connection. */
+  close: () => void
+  pose: Pose | null
+  /** Secret that lets this player take their place back after a dropped connection. */
+  token: string
+  /** When they last said a phrase or pointed, to keep a room from being flooded. */
+  said: number
+  pointed: number
+}
 
 /** How far from a player a block change may be: the game's reach plus room for lag. */
 const REACH = 9
@@ -48,6 +60,8 @@ export class Room {
   /** Saved inventory and position of everyone who has played here, by nickname. */
   players: SavedRoom['players']
   private members = new Map<string, Member>()
+  /** Players the creator removed, by nickname, and until when they may not rejoin. */
+  private kicked = new Map<string, number>()
   private seq = 0
   private nextId = 1
   private clock = { water: 0, time: 0, poses: 0 }
@@ -67,22 +81,34 @@ export class Room {
   get size() { return this.members.size }
   get names() { return [...this.members.values()].map((member) => member.info.name) }
 
-  /** Adds a player; returns their id, or why they cannot join. */
-  join(name: string, send: (message: ServerMessage) => void): { id: string } | { error: RoomError } {
+  /**
+   * Adds a player; returns their id, or why they cannot join. A player whose connection dropped
+   * comes back with their token and takes over their old place, even before the old connection
+   * has timed out.
+   */
+  join(name: string, send: (message: ServerMessage) => void, close: () => void = () => undefined, token?: string): { id: string } | { error: RoomError } {
+    if ((this.kicked.get(name) ?? 0) > Date.now()) return { error: 'kicked' }
+    const [oldId, old] = [...this.members].find(([, member]) => member.info.name === name) ?? []
+    if (old && oldId) {
+      if (!token || token !== old.token) return { error: 'name-taken' }
+      this.members.delete(oldId)
+      old.close()
+      this.broadcast({ type: 'left', id: oldId })
+    }
     if (this.members.size >= MAX_PLAYERS) return { error: 'full' }
-    if (this.names.includes(name)) return { error: 'name-taken' }
     const taken = new Set([...this.members.values()].map((member) => member.info.color))
     const color = [0, 1, 2, 3, 4].find((c) => !taken.has(c)) ?? 0
     const id = `p${this.nextId++}`
     const info: PlayerInfo = { id, name, color, host: name === this.host }
     const saved = this.players[name]
+    const secret = randomUUID()
     send({
       type: 'welcome', code: this.code, you: info, seed: SEED, edits: [...this.world.edits], shared: this.shared,
       players: [...this.members.values()].map((member) => member.info),
-      inventory: saved?.inventory ?? null, position: saved?.position ?? null,
+      inventory: saved?.inventory ?? null, position: saved?.position ?? null, token: secret,
     })
     this.broadcast({ type: 'joined', player: info })
-    this.members.set(id, { info, send, pose: null })
+    this.members.set(id, { info, send, close, pose: old?.pose ?? null, token: secret, said: 0, pointed: 0 })
     this.players[name] ??= { inventory: null, position: null }
     this.touch()
     return { id }
@@ -129,6 +155,34 @@ export class Room {
         const { p, yaw, item } = message
         if (!Array.isArray(p) || p.length !== 3 || !p.every(Number.isFinite) || !Number.isFinite(yaw)) return
         member.pose = { id, p: [p[0], p[1], p[2]], yaw, item: typeof item === 'string' ? item.slice(0, 32) : null }
+        return
+      }
+      case 'say': {
+        // One phrase every second and a half at most; only the room's own phrases, by number.
+        const now = Date.now()
+        if (!isInt(message.phrase) || message.phrase < 0 || message.phrase >= PHRASES.length || now - member.said < 1500) return
+        member.said = now
+        this.broadcast({ type: 'said', from: id, phrase: message.phrase })
+        return
+      }
+      case 'point': {
+        const now = Date.now()
+        const cell = message.cell
+        if (!Array.isArray(cell) || cell.length !== 3 || !cell.every(isInt) || !inside(cell[0], cell[1], cell[2]) || now - member.pointed < 1000) return
+        member.pointed = now
+        this.broadcast({ type: 'pointed', from: id, cell: [cell[0], cell[1], cell[2]] })
+        return
+      }
+      case 'kick': {
+        // Only the creator removes players; the removed player may not come back for a while.
+        const target = this.members.get(message.id)
+        if (!member.info.host || !target || message.id === id) return
+        this.kicked.set(target.info.name, Date.now() + KICK_MINUTES * 60_000)
+        target.send({ type: 'kicked' })
+        this.members.delete(message.id)
+        target.close()
+        this.broadcast({ type: 'left', id: message.id })
+        this.touch()
         return
       }
       case 'inventory': {

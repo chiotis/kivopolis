@@ -138,6 +138,7 @@ export function BlockInteraction() {
     }
     if (!pressing) m.struck = false
     m.hit = hit
+    blockInput.aim = hit ? [hit.x, hit.y, hit.z] : null
     // An empty hydria looks for still water: the crosshair passes through flowing water and stops on
     // the first source behind it (the sea, a pool, the head of a stream).
     const holding = useInventory.getState().slots[state.hotbar]?.item

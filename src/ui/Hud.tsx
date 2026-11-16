@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import {
-  ArrowDown, ArrowDownLeft, RefreshCw, Users, ArrowLeft, ArrowRight, ArrowUp, Award, BookOpen, Check, ChevronDown, ChevronUp, CircleHelp, Compass,
+  ArrowDown, ArrowDownLeft, MapPin, MessageCircle, RefreshCw, Users, ArrowLeft, ArrowRight, ArrowUp, Award, BookOpen, Check, ChevronDown, ChevronUp, CircleHelp, Compass,
   Backpack, Camera, ChevronsUp, DraftingCompass, Eye, EyeOff, Footprints, Lightbulb, Maximize, Minimize, Landmark, Mouse, Move, Pause, Pickaxe, Plus, Route, Settings2, Sparkles, X,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { buildings, copy, itemName, missions } from '../game/el'
 import { inRoom } from '../game/save'
-import { TUNICS, useRoom } from '../net/roomState'
+import { TUNICS, roomActions, useRoom } from '../net/roomState'
+import { PHRASES, type PlayerInfo } from '../net/protocol'
 import { buildingHere, buildingStatus, previousBuilding, signNear } from '../game/buildings'
 import { interactionRadius, useGame, useShared } from '../game/store'
 import { objectives, siteMarker, tourMarker } from '../game/theatre'
@@ -137,6 +138,7 @@ export function StageOverlay({ blueprint, setBlueprint, marker }: {
         {mode !== 'tour' && <MissionPanel />}
       </div>
       {mode === 'explore' && <><Crosshair /><TouchMovement /><TouchActions /><Notice /><BreakMeter /></>}
+      {inRoom() && mode === 'explore' && <><PhraseMenu /><RoomMessages /></>}
       {mode === 'explore' && (!started || gates) && <div ref={marker} className="scene-marker">
         {started ? <Route size={17} /> : <Landmark size={17} />}
         <span>{started ? copy.tour : copy.site}</span>
@@ -378,20 +380,53 @@ export function Milestone() {
 
 /** The room's code to share, and who is playing: each name in the colour of their tunic. */
 function RoomPanel() {
-  const { code, me, players, status } = useRoom()
+  const { code, me, players, status, phrasing } = useRoom()
   if (!code || !me) return null
   const everyone = [me, ...players]
+  const remove = (player: PlayerInfo) => { if (confirm(copy.removeConfirm(player.name))) roomActions.kick(player.id) }
   return (
     <section className="hud-panel hud-room" aria-label={copy.inRoom}>
       <div className="room-head"><Users size={14} /><span className="pixel">{copy.inRoom}</span><strong className="pixel" title={copy.roomCodeShare}>{code}</strong></div>
       <ul>
         {everyone.map((player) => (
           <li key={player.id}><span className="room-dot" style={{ background: TUNICS[player.color % TUNICS.length] }} />
-            {player.name}{player.id === me.id && <small> · {copy.roomYou}</small>}{player.host && <small> · {copy.roomHost}</small>}</li>
+            {player.name}{player.id === me.id && <small> · {copy.roomYou}</small>}{player.host && <small> · {copy.roomHost}</small>}
+            {me.host && player.id !== me.id && <button className="room-remove" onClick={() => remove(player)} aria-label={`${copy.removePlayer}: ${player.name}`} title={copy.removePlayer}><X size={12} /></button>}</li>
         ))}
       </ul>
+      <button className="hud-mini wide" onClick={() => useRoom.setState({ phrasing: !phrasing })} aria-expanded={phrasing}><MessageCircle size={13} />{copy.phrases}</button>
+      <small className="room-keys">{copy.phraseKeys}</small>
+      {status === 'reconnecting' && <div className="room-lost" role="status">{copy.reconnecting}</div>}
       {status === 'lost' && <div className="room-lost" role="alert">{copy.roomLost}
         <button className="hud-mini wide" onClick={() => location.reload()}><RefreshCw size={13} />{copy.reconnect}</button></div>}
     </section>
+  )
+}
+
+/** The preset phrases (T, then 1–9), and pointing at the block in sight. */
+function PhraseMenu() {
+  const phrasing = useRoom((state) => state.phrasing)
+  if (!phrasing) return null
+  const close = () => useRoom.setState({ phrasing: false })
+  return (
+    <section className="hud-panel phrase-menu" aria-label={copy.phrases}>
+      <ol>
+        {PHRASES.map((phrase, i) => <li key={phrase}><button onClick={() => { roomActions.say(i); close() }}><kbd>{i + 1}</kbd>{phrase}</button></li>)}
+      </ol>
+      <button className="hud-mini wide" onClick={() => { if (blockInput.aim) roomActions.point(blockInput.aim); close() }}><MapPin size={13} />{copy.pointHere} <kbd>G</kbd></button>
+    </section>
+  )
+}
+
+/** What players said in the last few seconds, in their colours. */
+function RoomMessages() {
+  const messages = useRoom((state) => state.messages)
+  if (!messages.length) return null
+  return (
+    <ul className="room-messages" aria-live="polite">
+      {messages.map((message) => (
+        <li key={message.key} className="hud-panel"><strong style={{ color: TUNICS[message.color % TUNICS.length] }}>{message.name}</strong> {PHRASES[message.phrase]}</li>
+      ))}
+    </ul>
   )
 }

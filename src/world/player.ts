@@ -18,6 +18,8 @@ export const playerState: {
 /** Mouse/touch buttons currently driving block interaction. */
 export const blockInput = {
   breaking: false,
+  /** The block under the crosshair, if any, so a player in a room can point others to it. */
+  aim: null as [number, number, number] | null,
   /** How far the block under the crosshair has cracked (0–1), for the HUD meter. */
   progress: 0,
   /** Time (performance.now) of the last block broken or placed, which swings the held item. */

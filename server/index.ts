@@ -100,7 +100,7 @@ function connect(socket: WebSocket) {
       if (!target) return refuse('unknown-room')
     }
     if (!target) return refuse('unavailable')
-    const result = target.join(name, send)
+    const result = target.join(name, send, () => socket.close(), message.type === 'join' && typeof message.token === 'string' ? message.token : undefined)
     if ('error' in result) return refuse(result.error)
     room = target
     id = result.id
