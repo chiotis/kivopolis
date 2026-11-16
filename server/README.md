@@ -6,7 +6,7 @@ WebSocket (`wss://`).
 
 ```
 browser ── loads the game ──▶ Netlify
-   └────── wss:// room ─────▶ rooms.<domain>  (nginx → Node, port 8787)
+   └────── wss:// room ─────▶ rooms.kivopolis.com  (nginx → Node, port 3000)
 ```
 
 ## What it stores
@@ -20,14 +20,14 @@ server starts.
 
 | Variable | Meaning | Example |
 | --- | --- | --- |
-| `PORT` | Port the server listens on | `8787` |
-| `DATA_DIR` | Folder for the room files | `/home/kivopolis/rooms` |
-| `ALLOWED_ORIGINS` | Sites allowed to connect, comma-separated (localhost is always allowed) | `https://<your-site>.netlify.app` |
+| `PORT` | Port the server listens on (8787 if not set) | `3000` |
+| `DATA_DIR` | Folder for the room files | `/home/kivopolis-rooms/rooms` |
+| `ALLOWED_ORIGINS` | Sites allowed to connect, comma-separated with no spaces (localhost is always allowed) | `https://game.kivopolis.com,https://kivopolis.netlify.app` |
 
 ## Setting it up on CloudPanel
 
-1. **Create a Node.js site** in CloudPanel for a subdomain such as `rooms.<domain>`, with Node 22 and
-   app port `8787`. Point the subdomain's DNS at the server first.
+1. **Create a Node.js site** in CloudPanel for the subdomain (here `rooms.kivopolis.com`), with Node 22
+   or newer and an app port (here `3000`). Point the subdomain's DNS at the server first.
 2. **Issue a Let's Encrypt certificate** for the site (SSL/TLS → Actions → New Let's Encrypt
    Certificate). The game runs on https, so browsers only allow a `wss://` connection.
 3. **Let WebSockets through nginx.** In the site's Vhost editor, make sure the `location /` block
@@ -41,34 +41,41 @@ server starts.
    proxy_send_timeout 600s;
    ```
 
-4. **Get the code onto the server** as the site's user (SSH). If the repository is private, add a
-   read-only deploy key for the server in GitHub first.
+4. **Get the code onto the server** as the site's own user (`ssh kivopolis-rooms@…`): CloudPanel
+   installs Node only for that user, so `npm` is missing for other SSH users. If the repository is
+   private, add a read-only deploy key for the server in GitHub first.
 
    ```bash
-   git clone https://github.com/chiotis/kivopolis.git ~/kivopolis
-   cd ~/kivopolis
+   git clone https://github.com/chiotis/kivopolis.git ~/htdocs/rooms.kivopolis.com/kivopolis
+   cd ~/htdocs/rooms.kivopolis.com/kivopolis
    npm ci
    npm run build:server
    ```
 
-5. **Run it with PM2**, so it restarts after a crash or a reboot:
+5. **Run it with PM2**, so it restarts after a crash or a reboot. The port must be the site's app
+   port, and `ALLOWED_ORIGINS` every address the game is opened from:
 
    ```bash
    npm install -g pm2
-   PORT=8787 DATA_DIR=$HOME/rooms ALLOWED_ORIGINS=https://<your-site>.netlify.app pm2 start server/dist/index.mjs --name kivopolis-rooms --update-env
+   PORT=3000 DATA_DIR=$HOME/rooms ALLOWED_ORIGINS=https://game.kivopolis.com,https://kivopolis.netlify.app pm2 start server/dist/index.mjs --name kivopolis-rooms --update-env
    pm2 save
-   pm2 startup   # prints one command to run once, so PM2 starts on boot
+   pm2 startup
    ```
 
-6. **Check it:** `https://rooms.<domain>/health` should answer `ok`.
+   `pm2 startup` prints one `sudo env PATH=…` command; run it once as a user who may use `sudo`
+   (root or the server's admin), so PM2 starts again after a reboot.
+
+6. **Check it:** `curl -s http://localhost:3000/health` on the server, then
+   `https://rooms.kivopolis.com/health` in a browser, should both answer `ok`. If the browser shows
+   a 502, nothing is listening on the port: see `pm2 status` and `pm2 logs kivopolis-rooms`.
 7. **Tell the game where it is:** on Netlify, Site configuration → Environment variables, add
-   `VITE_ROOM_SERVER` = `wss://rooms.<domain>`, then trigger a new deploy. The start menu then shows
+   `VITE_ROOM_SERVER` = `wss://rooms.kivopolis.com`, then trigger a new deploy. The start menu then shows
    «Παιχνίδι με φίλους». Without the variable the game stays single-player only.
 
 ## Updating
 
 ```bash
-cd ~/kivopolis && git pull && npm ci && npm run build:server && pm2 restart kivopolis-rooms
+cd ~/htdocs/rooms.kivopolis.com/kivopolis && git pull && npm ci && npm run build:server && pm2 restart kivopolis-rooms
 ```
 
 Rooms are saved every five seconds and when the server stops, so a restart only drops players for
