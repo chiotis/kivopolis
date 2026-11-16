@@ -6,8 +6,8 @@ import { level } from '../src/voxel/generate'
 import { meshChunk, type Sampler } from '../src/voxel/mesher'
 import { newBody, stepBody, type Limits } from '../src/voxel/physics'
 import { raycast } from '../src/voxel/raycast'
-import { CHUNK, OX, OY, OZ, S, VoxelWorld, affectedChunks, bx, by, bz, chunkOfCell, getWorld, resetWorld, wy } from '../src/voxel/world'
-import { chunkKey, fromLegacy, readRecord, type ChunkRecord } from '../src/game/save'
+import { CHUNK, OX, OY, OZ, S, SX, SZ, VoxelWorld, affectedChunks, bx, by, bz, chunkOfCell, getWorld, index, resetWorld, wy } from '../src/voxel/world'
+import { chunkKey, fromLegacy, fromOldCell, oldChunkOf, readRecord, upgradeRecords, type ChunkRecord } from '../src/game/save'
 
 /** A tiny in-memory grid for isolated mesher/physics checks. */
 function grid(cells: [number, number, number, number][]): Sampler {
@@ -56,12 +56,12 @@ describe('voxel world', () => {
     const original = world.get(OX, 40, OZ)
     world.set(OX, 40, OZ, Block.terracotta)
     await new Promise((resolve) => setTimeout(resolve, 450))
-    const cell = (40 * 144 + OZ) * 144 + OX
+    const cell = index(OX, 40, OZ)
     const key = chunkKey(chunkOfCell(cell))
     const record = readRecord<ChunkRecord>(key)!
     expect([...record.cells]).toEqual([cell])
     expect([...record.ids]).toEqual([Block.terracotta])
-    expect(readRecord('world')).toEqual({ version: 2, seed: 0 })
+    expect(readRecord('world')).toEqual({ version: 3, seed: 0, size: [SX, SZ] })
     resetWorld()
     expect(world.get(OX, 40, OZ)).toBe(original)
     expect(readRecord(key)).toBeUndefined()
@@ -73,13 +73,35 @@ describe('voxel world', () => {
       'ancient-polis-save': JSON.stringify({ version: 1, progress: { placed: ['x'] }, settings: {} }),
       'ancient-polis-world': JSON.stringify({ version: 1, edits: [a, Block.marble, b, Block.air, 'bad', 3] }),
     }
-    const records = fromLegacy((key) => storage[key] ?? null, chunkOfCell, 0)!
+    const records = fromLegacy((key) => storage[key] ?? null, oldChunkOf, 0)!
     expect(records.get('game')).toEqual({ version: 1, progress: { placed: ['x'] }, settings: {} })
     expect(records.has('inventory')).toBe(false)
     expect([...(records.get(chunkKey(0)) as ChunkRecord).cells]).toEqual([a])
-    expect([...(records.get(chunkKey(chunkOfCell(b))) as ChunkRecord).ids]).toEqual([Block.air])
-    expect(chunkOfCell(b)).toBe(6 * 9 + 7)
-    expect(fromLegacy(() => null, chunkOfCell, 0)).toBeNull()
+    expect([...(records.get(chunkKey(oldChunkOf(b))) as ChunkRecord).ids]).toEqual([Block.air])
+    expect(oldChunkOf(b)).toBe(6 * 9 + 7)
+    expect(fromLegacy(() => null, oldChunkOf, 0)).toBeNull()
+  })
+
+  it('moves version 2 saves onto the larger grid, kilns included', () => {
+    const a = (40 * 144 + 3) * 144 + 3, b = (20 * 144 + 100) * 144 + 120
+    const records = new Map<string, unknown>([
+      ['world', { version: 2, seed: 0 }],
+      [chunkKey(oldChunkOf(a)), { cells: Uint32Array.from([a]), ids: Uint8Array.from([Block.marble]) }],
+      [chunkKey(oldChunkOf(b)), { cells: Uint32Array.from([b]), ids: Uint8Array.from([Block.kiln]) }],
+      ['inventory', { version: 1, slots: [], kilns: { [String(b)]: { progress: 0.5 } } }],
+    ])
+    const changes = upgradeRecords(records, 0)
+    const shift = (SX - 144) / 2
+    const na = index(3 + shift, 40, 3 + shift), nb = index(120 + shift, 20, 100 + shift)
+    expect(fromOldCell(a)).toBe(na)
+    expect([...(changes.get(chunkKey(chunkOfCell(na))) as ChunkRecord).cells]).toEqual([na])
+    expect([...(changes.get(chunkKey(chunkOfCell(nb))) as ChunkRecord).ids]).toEqual([Block.kiln])
+    // The old chunk keys are removed, unless a new chunk happens to reuse the same key.
+    expect(changes.has(chunkKey(oldChunkOf(a)))).toBe(true)
+    expect((changes.get('inventory') as { kilns: Record<string, unknown> }).kilns).toEqual({ [String(nb)]: { progress: 0.5 } })
+    expect(changes.get('world')).toEqual({ version: 3, seed: 0, size: [SX, SZ] })
+    // A version 3 save is left alone.
+    expect(upgradeRecords(new Map([['world', changes.get('world')]]), 0).size).toBe(0)
   })
 })
 

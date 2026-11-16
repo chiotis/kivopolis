@@ -53,8 +53,8 @@ function waterLines() {
   const positions: number[] = []
   const colors: number[] = []
   const tint = new Color('#a9dce0')
-  for (let i = 0; i < 2600; i++) {
-    const x = (rng() - 0.5) * 230, z = (rng() - 0.64) * 220
+  for (let i = 0; i < 6000; i++) {
+    const x = (rng() - 0.5) * 420, z = (rng() - 0.5) * 420
     if (Math.hypot(x, z) < islandEdge(Math.atan2(x, -z)) + 1.5) continue
     const w = 0.32 + rng() * 2.15
     positions.push(x - w, -0.735, z, x + w, -0.735, z + 0.08)
@@ -111,13 +111,14 @@ export function Landscape() {
   )
 }
 
+// Islets out at sea, beyond the larger island's shore (radius about 85).
 const islets: Instance[] = [
-  { p: [-30, -1.6, -41], s: [16, 5.5, 7.3], r: [0, 0.24, 0], color: '#7c987f' },
-  { p: [-39, -1.9, -45], s: [10.2, 6.8, 9], r: [0, 0.65, 0], color: '#819b83' },
-  { p: [-2, -2.2, -49], s: [7.4, 5.2, 5.6], color: '#829987' },
-  { p: [15, -2.4, -60], s: [17, 7.3, 7.6], r: [0, -0.3, 0], color: '#819b8e' },
-  { p: [-52, -2.4, -4], s: [10, 6.3, 7.6], r: [0, 0.2, 0], color: '#7e9d8d' },
-  { p: [-76, -1.9, -32], s: [24, 11, 10], color: '#91a9a0' },
+  { p: [-62, -2.2, -118], s: [22, 7.5, 10], r: [0, 0.24, 0], color: '#7c987f' },
+  { p: [-86, -2.6, -104], s: [14, 9, 12], r: [0, 0.65, 0], color: '#819b83' },
+  { p: [-8, -2.8, -128], s: [11, 7, 8], color: '#829987' },
+  { p: [44, -3, -122], s: [24, 10, 11], r: [0, -0.3, 0], color: '#819b8e' },
+  { p: [-124, -3, -18], s: [14, 8.5, 11], r: [0, 0.2, 0], color: '#7e9d8d' },
+  { p: [-132, -2.6, -74], s: [32, 14, 14], color: '#91a9a0' },
 ]
 function DistantIslands() { return <Batch geometry={rock} items={islets} /> }
 

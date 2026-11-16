@@ -1,8 +1,8 @@
-import { openSave } from './game/save'
+import { oldChunkOf, openSave } from './game/save'
 import { SEED } from './voxel/generate'
-import { chunkOfCell } from './voxel/grid'
 
 // The save is read from IndexedDB before the game modules load, so they can read it synchronously.
-void openSave({ chunkOf: chunkOfCell, seed: SEED })
+// Version 1 saves were made on the old grid; they are upgraded to version 3 as they are opened.
+void openSave({ chunkOf: oldChunkOf, seed: SEED })
   .then(() => import('./App'))
   .then(({ mount }) => mount())

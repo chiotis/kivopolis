@@ -1,5 +1,7 @@
+import { OLD_SX, OLD_SZ, SX, SY, SZ, chunkOfCell, index } from '../voxel/grid'
+
 /**
- * Save version 2: one IndexedDB store holds the game, the inventory, the world header and one
+ * Save version 3 (version 2 on a larger grid): one IndexedDB store holds the game, the inventory, the world header and one
  * record per edited chunk. Everything is read once at boot (`openSave`), so the rest of the game
  * reads its records synchronously; writes are queued and flushed together in one transaction.
  *
@@ -13,7 +15,9 @@ export const STORE = 'save'
 export const legacyKeys = { game: 'ancient-polis-save', inventory: 'ancient-polis-inventory', world: 'ancient-polis-world' } as const
 
 export interface ChunkRecord { cells: Uint32Array; ids: Uint8Array }
-export interface WorldRecord { version: 2; seed: number }
+export interface WorldRecord { version: 2 | 3; seed: number; size?: [number, number] }
+/** The current world header. */
+export const worldHeader = (seed: number): WorldRecord => ({ version: 3, seed, size: [SX, SZ] })
 
 const cache = new Map<string, unknown>()
 const pending = new Map<string, unknown>()
@@ -122,6 +126,53 @@ export function fromLegacy(getItem: (key: string) => string | null, chunkOf: (ce
   return records
 }
 
+/** Chunk of a grid index on the old 144 × 144 grid, where version 1 and 2 saves were made. */
+export const oldChunkOf = (cell: number) => Math.floor(Math.floor(cell / OLD_SX) % OLD_SZ / 16) * (OLD_SX / 16) + Math.floor(cell % OLD_SX / 16)
+
+/** Moves a grid index of the old 144 × 144 grid onto the current grid, which keeps the island centred. */
+export function fromOldCell(cell: number) {
+  const x = cell % OLD_SX, z = Math.floor(cell / OLD_SX) % OLD_SZ, y = Math.floor(cell / (OLD_SX * OLD_SZ))
+  if (y >= SY) return -1
+  return index(x + (SX - OLD_SX) / 2, y, z + (SZ - OLD_SZ) / 2)
+}
+
+/**
+ * Version 2 → 3: the grid grew around the same centre, so every saved cell index (world edits and
+ * kilns) moves by the same offset and the edits are regrouped into the new chunks. Returns the
+ * records to write; nothing changes for a version 3 save or an empty one.
+ */
+export function upgradeRecords(records: Map<string, unknown>, seed: number) {
+  const header = records.get('world') as WorldRecord | undefined
+  const changes = new Map<string, unknown>()
+  if (header?.version === 3) return changes
+  const hasChunks = [...records.keys()].some((key) => key.startsWith('chunk:'))
+  if (!header && !hasChunks) return changes
+  const byChunk = new Map<number, [number[], number[]]>()
+  for (const [key, value] of records) {
+    if (!key.startsWith('chunk:')) continue
+    changes.set(key, undefined)
+    const { cells, ids } = (value ?? {}) as Partial<ChunkRecord>
+    if (!(cells instanceof Uint32Array) || !(ids instanceof Uint8Array) || cells.length !== ids.length) continue
+    for (let i = 0; i < cells.length; i++) {
+      const cell = fromOldCell(cells[i])
+      if (cell < 0) continue
+      const chunk = chunkOfCell(cell)
+      if (!byChunk.has(chunk)) byChunk.set(chunk, [[], []])
+      byChunk.get(chunk)![0].push(cell)
+      byChunk.get(chunk)![1].push(ids[i])
+    }
+  }
+  for (const [chunk, [cells, ids]] of byChunk) changes.set(chunkKey(chunk), { cells: Uint32Array.from(cells), ids: Uint8Array.from(ids) } satisfies ChunkRecord)
+  const inventory = records.get('inventory') as { kilns?: Record<string, unknown> } | undefined
+  if (inventory?.kilns) {
+    const kilns = Object.fromEntries(Object.entries(inventory.kilns).flatMap(([cell, kiln]) =>
+      /^\d+$/.test(cell) && fromOldCell(Number(cell)) >= 0 ? [[String(fromOldCell(Number(cell))), kiln]] : []))
+    changes.set('inventory', { ...inventory, kilns })
+  }
+  changes.set('world', worldHeader(seed))
+  return changes
+}
+
 /**
  * Opens the save and reads it into memory. Old LocalStorage saves win over IndexedDB (they only
  * exist when they have not been moved yet), and are removed once the move has committed.
@@ -146,6 +197,7 @@ export async function openSave(options: { chunkOf: (cell: number) => number; see
       try { for (const key of Object.values(legacyKeys)) globalThis.localStorage?.removeItem(key) } catch { /* optional */ }
     }
     available = true
+    for (const [key, value] of upgradeRecords(cache, options.seed)) writeRecord(key, value, 0)
     // Write what is queued before the tab goes away.
     globalThis.addEventListener?.('visibilitychange', () => { if (document.visibilityState === 'hidden') void flush() })
     globalThis.addEventListener?.('pagehide', () => void flush())
@@ -155,5 +207,9 @@ export async function openSave(options: { chunkOf: (cell: number) => number; see
     available = false
     cache.clear()
     if (legacy) for (const [key, value] of legacy) cache.set(key, value)
+    for (const [key, value] of upgradeRecords(cache, options.seed)) {
+      if (value === undefined) cache.delete(key)
+      else cache.set(key, value)
+    }
   }
 }
