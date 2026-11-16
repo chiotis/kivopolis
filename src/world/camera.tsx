@@ -11,6 +11,7 @@ import { blocks } from '../voxel/blocks'
 import { blockSound } from '../game/audio'
 import { signposts } from '../game/buildings'
 import { playerState } from './player'
+import { OVERVIEW_PAN } from './view'
 
 export const movementKeys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', ' ', 'c'])
 export const keys = new Set<string>()
@@ -96,6 +97,15 @@ export function CameraRig({ view, player, marker }: {
       center.set(-0.4, 0.85, -1.5)
       eye.set(12.0, 11.9, 23.5)
     } else if (state.mode === 'overview') {
+      // W A S D or the arrows slide the view over the island, relative to where it looks; Shift is faster.
+      const ahead = (keys.has('w') || keys.has('arrowup') ? 1 : 0) - (keys.has('s') || keys.has('arrowdown') ? 1 : 0)
+      const side = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0)
+      if ((ahead || side) && !state.panel) {
+        const speed = (8 + orbit.zoom * 0.45) * (keys.has('shift') ? 2.5 : 1) * dt / Math.hypot(ahead, side)
+        const sin = Math.sin(orbit.yaw), cos = Math.cos(orbit.yaw)
+        orbit.x = MathUtils.clamp(orbit.x + (-sin * ahead + cos * side) * speed, -OVERVIEW_PAN, OVERVIEW_PAN)
+        orbit.z = MathUtils.clamp(orbit.z + (-cos * ahead - sin * side) * speed, -OVERVIEW_PAN, OVERVIEW_PAN)
+      }
       center.set(orbit.x, 0.95, orbit.z - 0.60)
       eye.set(
         center.x + Math.sin(orbit.yaw) * Math.cos(orbit.pitch) * orbit.zoom,

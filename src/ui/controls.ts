@@ -42,7 +42,8 @@ export function useControls() {
       }
       if (state.screen !== 'game' || state.panel || event.ctrlKey || event.metaKey || event.altKey) return
       if (movementKeys.has(key)) {
-        if (state.mode !== 'explore') return
+        // Walking moves the player; in the overview the same keys slide the camera across the island.
+        if (state.mode === 'tour') return
         event.preventDefault()
         keys.add(key)
       }

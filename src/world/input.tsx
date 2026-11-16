@@ -4,9 +4,7 @@ import { MathUtils } from 'three'
 import { useGame } from '../game/store'
 import type { View } from './camera'
 
-/** How far the overview camera can pull back and pan: far enough to see the whole island. */
-const OVERVIEW_ZOOM = 150
-const OVERVIEW_PAN = 80
+import { OVERVIEW_PAN, OVERVIEW_ZOOM } from './view'
 import { blockInput } from './player'
 
 const LOOK_SPEED = 0.0024
