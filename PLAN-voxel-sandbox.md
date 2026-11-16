@@ -1,5 +1,7 @@
 # Plan: Making Theatre Valley play like a voxel sandbox
 
+> Phases 1–8 are done. The next phases (flowing water, a larger island with an ancient road, the sanctuary of Dionysus, the agora and the stadium) are in [PLAN-buildings.md](PLAN-buildings.md). Survival comes last.
+
 ## Where the game is today
 
 | Area | Current implementation | Gap compared with a voxel sandbox game |
@@ -145,7 +147,9 @@ Implemented in `src/voxel/` and `src/world/{VoxelTerrain,BlockInteraction,camera
 ## Phase 8: Polish
 Water rendering (transparent, animated UV), fog, footstep sounds per block, a block-place "pop" animation (reuse `effect` in the store), screenshot mode, and settings for FOV, mouse sensitivity, and invert-Y.
 
-## Phase 9: Survival (last, by request)
+## Phase 9: Survival (moved to the very end)
+Survival now comes after the new buildings, as Phase 15 in [PLAN-buildings.md](PLAN-buildings.md).
+
 - *Survival* mode: health, hunger from food like olives, bread, figs, and milk, and fall damage.
 - Give milk and feathers (already dropped by animals in Phase 6) their uses as food and in crafts.
 
@@ -171,7 +175,8 @@ Physics and voxel data must **not** live in React state. Mutate them in `useFram
 | 6 Day-night/animals/creative | medium | Living world |
 | 7 Save/perf | medium | |
 | 8 Polish | ongoing | |
-| 9 Survival | medium | Full loop |
+| 10–14 Water, larger island, new buildings | see [PLAN-buildings.md](PLAN-buildings.md) | |
+| 15 Survival (last) | medium | Full loop |
 
 Phases 1–3 are the minimum to *feel* like the genre. Do them first, in order, because each one depends on the previous. Phases 4 and 6 can then be developed in parallel.
 
