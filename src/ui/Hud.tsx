@@ -141,7 +141,7 @@ export function StageOverlay({ blueprint, setBlueprint, marker }: {
       <div className="stage-bottom">
         <div className="stage-keys">
           {mode === 'tour' ? <span><Route size={15} />{copy.tourHint}</span>
-            : overview ? <><span><Move size={15} />{copy.orbit}</span><span><Mouse size={15} />{copy.zoom}</span></>
+            : overview ? <><span><kbd>W A S D</kbd>{copy.slide}</span><span><Move size={15} />{copy.orbit}</span><span><Mouse size={15} />{copy.zoom}</span></>
               : <><span><kbd>W A S D</kbd>{copy.movement}</span><span><Mouse size={15} />{copy.blocksHint}</span><span><kbd>E</kbd>{copy.backpackKey}</span></>}
         </div>
         <div className="stage-actions">
