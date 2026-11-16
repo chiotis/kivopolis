@@ -28,7 +28,7 @@ Implemented in `src/voxel/` and `src/world/{VoxelTerrain,BlockInteraction,camera
 
 ## Status (2026-11-12): Phase 4 done
 - The player starts with an empty inventory and progresses by tier. Punch olive logs, then craft planks, sticks and a workshop. Make wooden tools, then limestone tools, then mine copper and tin (stone pickaxe or better), fire them in a kiln, and alloy bronze (3 copper + 1 tin).
-- Clay comes from under the beaches and fires into terracotta. Marble comes from veins on the northern ridge and needs a stone pickaxe.
+- Clay comes from under the beaches and fires into terracotta. Marble comes from veins on the northern ridge and needs a stone pickaxe. Since 2026-11-16 a marble quarry on that ridge, just behind the top of the koilon, holds enough for every seat row, both stairways and the gate lintels, which are all marble now.
 - Tools wear out. The wrong tool, or none, is slower and drops nothing from blocks that need a tool.
 - Not done yet: dropped items are not saved (they vanish on reload, as they do on leaving the world). There is no drag-to-spread across slots.
 

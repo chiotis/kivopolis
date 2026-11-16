@@ -5,6 +5,8 @@ import { migrateLegacy, useGame } from '../src/game/store'
 import { canWalk, obstacles } from '../src/game/terrain'
 import { objectives } from '../src/game/theatre'
 import { Block } from '../src/voxel/blocks'
+import { inQuarry } from '../src/voxel/generate'
+import { S, SX, SY, SZ, wx, wz } from '../src/voxel/grid'
 import { OY, getWorld } from '../src/voxel/world'
 
 const fill = (mission: string, id?: number) => {
@@ -19,10 +21,11 @@ describe('theatre blueprint', () => {
       discover: 0, orchestra: 48, analemmata: 114, seats: 64, diazoma: 94, koilon: 100, stairs: 74, skene: 122, finish: 26,
     })
     for (const cell of cells) expect(cell.accept[0]).toBe(cell.block)
-    // The lower tier: a marble front row, then limestone one block up.
+    // All four seat rows and both stairways are marble, and only marble completes them.
+    for (const mission of ['seats', 'koilon', 'stairs'] as const) {
+      expect(missionCells(mission).every((cell) => cell.block === Block.marble && cell.accept.length === 1)).toBe(true)
+    }
     const lower = missionCells('seats')
-    expect(lower.filter((cell) => cell.y === OY).every((cell) => cell.block === Block.marble)).toBe(true)
-    expect(lower.filter((cell) => cell.y === OY + 1).every((cell) => cell.block === Block.limestone)).toBe(true)
     expect(new Set(lower.map((cell) => cell.y))).toEqual(new Set([OY, OY + 1]))
     // The diazoma takes the third terrace, so the upper tier starts a block higher.
     expect(new Set(missionCells('koilon').map((cell) => cell.y))).toEqual(new Set([OY + 3, OY + 4]))
@@ -44,6 +47,19 @@ describe('theatre blueprint', () => {
     expect(wrong).toHaveLength(0)
     expect(missing).toHaveLength(cells.length)
     for (const cell of cells.filter((item) => item.footing)) expect(world.solidAt(cell.x, cell.y - 1, cell.z)).toBe(true)
+  })
+
+  it('leaves enough quarry marble for every marble cell', () => {
+    const world = getWorld()
+    world.regenerate()
+    let stock = 0
+    for (let x = 0; x < SX; x++) for (let z = 0; z < SZ; z++) {
+      if (!inQuarry(wx(x) + S / 2, wz(z) + S / 2)) continue
+      for (let y = 1; y < SY; y++) if (world.get(x, y, z) === Block.marble) stock++
+    }
+    const needed = cells.filter((cell) => cell.block === Block.marble).length
+    expect(needed).toBe(248)
+    expect(stock).toBeGreaterThan(needed * 2)
   })
 
   it('keeps the ocean edge closed and the site approach open', () => {
