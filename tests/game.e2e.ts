@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { copy, itemName, missions } from '../src/game/el'
+import { buildings, copy, itemName, missions } from '../src/game/el'
 import { cellTotals, legacySlots } from '../src/game/blueprints/theatre'
 import { Block } from '../src/voxel/blocks'
 import { DB_NAME, STORE, legacyKeys } from '../src/game/save'
@@ -161,7 +161,7 @@ test('rebuilds an old prefab save as blocks and finishes with the tour', async (
   await page.keyboard.press('e')
   await page.getByRole('button', { name: copy.finishTour }).click()
   await expect(page.getByText(copy.finishTitle)).toBeVisible()
-  await expect(page.getByRole('heading', { name: copy.agora })).toBeVisible()
+  await expect(page.getByRole('heading', { name: buildings.sanctuary.title })).toBeVisible()
   await expect.poll(async () => (await saved(page)).progress.completed).toBe(true)
   await expect(page.getByTestId('points')).toHaveText((1350).toLocaleString('el'))
   expect(errorsSeen).toEqual([])

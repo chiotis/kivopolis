@@ -44,11 +44,12 @@ This is the work left over from Phase 8. Today water fills only cells at or belo
 
 ## Phase 11: A larger island, the ancient road, and more than one building
 
-**Status (2026-11-16): first half done** (the larger island and the road). Still to do: more than one building, and the "Ready for multiplayer" store split and actions.
+**Status (2026-11-16): island, road and building support done.** Still to do: the "Ready for multiplayer" store split and actions.
 - The grid is 384 × 384 blocks. Within 20 units of the theatre the ground is exactly the first island's; it blends into the new land by 30 units, and the old shore now slopes into land instead of sea.
 - The layout lives in `src/game/regions.ts`: the areas (sanctuary at (-31, 20), agora at (-60, 4), stadium at (24, 40)), the stream, the road, the ridge with its pass and the stadium hills. New groves grow thick on the ridge and scattered elsewhere.
 - The stream is one block of still water on a gravel bed; the road crosses it on two ashlar bridges with ramps and parapets. Boundary stones flank the road at each new area, and a herm stands at the fork below the theatre.
 - Save version 3 moves version 1 and 2 saves (edits and kilns) onto the new grid. Chunks are meshed nearest first, 8 ms per frame. The overview zooms out to 150 units and pans 80 units, with the haze pushed back. Generating the world takes about 0.4 s.
+- More than one building: `src/game/buildings.ts` keeps the opening order (theatre → sanctuary → agora → stadium) and per-building progress (`progress.buildings`; the theatre keeps its own fields). Each new area has a signpost beside the road; E shows the building's story and whether it is open, and an open building is marked as found and listed in the journal. While the player stands in a new area, the mission panel shows that building instead of the theatre's step. The completion screen now points to the sanctuary. Buildings without a plan yet say so; their steps arrive in Phases 13–15.
 - Tests: `tests/island.test.ts` checks the unchanged theatre valley, the shore, level and dry building areas, both bridges, a walkable road with no step over one block, and water along the stream.
 
 ### A larger island

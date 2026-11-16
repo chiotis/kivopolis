@@ -4,7 +4,8 @@ import {
   Backpack, Camera, ChevronsUp, DraftingCompass, Eye, EyeOff, Footprints, Lightbulb, Maximize, Minimize, Landmark, Mouse, Move, Pause, Pickaxe, Plus, Route, Settings2, Sparkles, X,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { copy, itemName, missions } from '../game/el'
+import { buildings, copy, itemName, missions } from '../game/el'
+import { buildingHere, buildingStatus, previousBuilding, signNear } from '../game/buildings'
 import { interactionRadius, useGame } from '../game/store'
 import { objectives, siteMarker, tourMarker } from '../game/theatre'
 import { activeMission, builtTotal, earnedPoints, entrancesReady, missionCounts, materials, partStates, totalCells, useSite } from '../game/site'
@@ -45,6 +46,18 @@ export function MissionPanel() {
   const points = earnedPoints(progress.discovered, counts, progress.completed)
   const states = partStates(progress.discovered, progress.completed, counts)
   const misplaced = wrong.filter((i) => cells[i].mission === mission).length
+  // In one of the new areas the panel tells about the building there instead of the theatre's step.
+  const here = buildingHere(progress.player[0], progress.player[2])
+  if (here && here !== 'theatre') {
+    const status = buildingStatus(progress, here)
+    return (
+      <aside className="hud-panel hud-quest" aria-label={copy.mission}>
+        <div className="quest-head"><span className="pixel quest-step">{copy.buildingHere}</span></div>
+        <h2 className="pixel">{buildings[here].title}</h2>
+        <p className="quest-text">{status === 'locked' ? copy.buildingLocked(buildings[previousBuilding(here)].title.toLocaleLowerCase('el')) : copy.buildingComing}</p>
+      </aside>
+    )
+  }
   return (
     <aside className="hud-panel hud-quest" aria-label={copy.mission}>
       <div className="quest-head">
@@ -88,7 +101,8 @@ export function StageOverlay({ blueprint, setBlueprint, marker }: {
   const gates = entrancesReady(useSite((state) => state.counts))
   const point = started ? tourMarker : siteMarker
   const nearby = Math.hypot(progress.player[0] - point[0], progress.player[2] - point[2]) <= interactionRadius
-  const showInteract = mode === 'explore' && ((!started || gates) && nearby)
+  const sign = signNear(progress.player[0], progress.player[2])
+  const showInteract = mode === 'explore' && (Boolean(sign) || ((!started || gates) && nearby))
   const overview = mode === 'overview'
   if (photo) return <PhotoBar leave={() => setPhoto(false)} />
   return (
@@ -130,7 +144,7 @@ export function StageOverlay({ blueprint, setBlueprint, marker }: {
         <div className="stage-actions">
           {mode === 'tour' && <button className="button stage-button" onClick={endTour}>{copy.finishTour}</button>}
           {mode !== 'tour' && progress.completed && <button className="button stage-button" onClick={() => setPanel('complete')}><Award size={17} />{copy.showResult}</button>}
-          {showInteract && <button className="button primary stage-button" onClick={interact}><kbd>E</kbd>{started ? copy.startTour : copy.interact}</button>}
+          {showInteract && <button className="button primary stage-button" onClick={interact}><kbd>E</kbd>{sign ? copy.readSign : started ? copy.startTour : copy.interact}</button>}
           {mode !== 'tour' && started && <button className="button stage-button" onClick={toggleOverview}>
             {overview ? <Footprints size={17} /> : <DraftingCompass size={17} />}{overview ? copy.explore : copy.overview}<kbd>B</kbd>
           </button>}

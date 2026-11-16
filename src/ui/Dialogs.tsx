@@ -1,25 +1,26 @@
 import { useEffect, useRef, useState } from 'react'
-import { Award, Backpack, BookOpen, CircleHelp, Compass, Flame, Hammer, Landmark, Pause, Settings2, X } from 'lucide-react'
+import { Award, Backpack, BookOpen, CircleHelp, Compass, Flame, Hammer, Landmark, Lock, Pause, Settings2, Signpost, X } from 'lucide-react'
 import { InventoryScreen } from './InventoryScreen'
 import { ModeChoice } from './ModeChoice'
 import { PartInfo } from './Parts'
-import { copy, missions } from '../game/el'
+import { buildings, copy, missions } from '../game/el'
+import { BUILDING_ORDER, buildingStatus, previousBuilding, siteProgress } from '../game/buildings'
 import { fovRange, sensitivityRange, useGame, type Panel, type Settings } from '../game/store'
 import { objectives } from '../game/theatre'
 import { complete, earnedPoints, useSite } from '../game/site'
 
 const labels: Record<Panel, string> = {
   settings: copy.settings, help: copy.help, journal: copy.journal, pause: copy.pause, new: copy.newGame,
-  reset: copy.reset, complete: copy.badge, inventory: copy.backpack, workshop: copy.workshop, kiln: copy.kiln, part: copy.parts,
+  reset: copy.reset, complete: copy.badge, inventory: copy.backpack, workshop: copy.workshop, kiln: copy.kiln, part: copy.parts, building: copy.readSign,
 }
 
 const icons = {
   settings: Settings2, help: CircleHelp, journal: BookOpen, pause: Pause, reset: Settings2, new: Compass, complete: Award,
-  inventory: Backpack, workshop: Hammer, kiln: Flame, part: BookOpen,
+  inventory: Backpack, workshop: Hammer, kiln: Flame, part: BookOpen, building: Signpost,
 }
 
 export function Dialogs() {
-  const { panel, part, congrats, setPanel, settings, settingsChange, progress, screen, restartMission, goHome, reset, start, setCreative } = useGame()
+  const { panel, part, building, congrats, setPanel, settings, settingsChange, progress, screen, restartMission, goHome, reset, start, setCreative } = useGame()
   const [newCreative, setNewCreative] = useState(false)
   const ref = useRef<HTMLDialogElement>(null)
   const counts = useSite((state) => state.counts)
@@ -44,7 +45,7 @@ export function Dialogs() {
           <span className="modal-symbol"><Icon size={23} /></span>
           <button className="icon-button" aria-label={copy.close} onClick={dismiss}><X size={19} /></button>
         </div>
-        <h2 id="dialog-title">{panel === 'part' && part ? (congrats ? copy.congrats : missions[part].title) : labels[panel]}</h2>
+        <h2 id="dialog-title">{panel === 'part' && part ? (congrats ? copy.congrats : missions[part].title) : panel === 'building' && building ? buildings[building].title : labels[panel]}</h2>
         {panel === 'settings' && (
           <div className="settings-list">
             <label>{copy.quality}
@@ -78,10 +79,14 @@ export function Dialogs() {
           <div className="journal-list">
             {!notes.length && !progress.facts.length && <p>{copy.journalEmpty}</p>}
             {notes.map(({ id }) => <article key={id}><h3>{missions[id].title}</h3><p>{missions[id].note}</p></article>)}
+            {BUILDING_ORDER.some((id) => id !== 'theatre' && siteProgress(progress, id).discovered) && <h3 className="journal-heading">{copy.buildingsJournal}</h3>}
+            {BUILDING_ORDER.filter((id) => id !== 'theatre' && siteProgress(progress, id).discovered).map((id) =>
+              <article key={id}><h3>{buildings[id].title}</h3><p>{buildings[id].intro}</p></article>)}
             {progress.facts.map((id) => <article key={id}><h3>{copy.facts[id].title}</h3><p>{copy.facts[id].text}</p></article>)}
           </div>
         )}
         {panel === 'part' && part && <PartInfo part={part} />}
+        {panel === 'building' && building && <BuildingSign id={building} />}
         {(panel === 'inventory' || panel === 'workshop' || panel === 'kiln') && <InventoryScreen kind={panel} />}
         {panel === 'pause' && (
           <div className="modal-actions">
@@ -108,12 +113,27 @@ export function Dialogs() {
             <p className="completion-message">{copy.finishTitle}</p>
             <p className="badge-score"><Award size={17} /> {earnedPoints(progress.discovered, counts, progress.completed)} {copy.points.toLocaleLowerCase('el')}</p>
             <article className="agora">
-              <Compass size={23} /><div><span className="eyebrow">{copy.nextChapter}</span><h3>{copy.agora}</h3><p>{copy.agoraPreview}</p></div>
+              <Compass size={23} /><div><span className="eyebrow">{copy.nextChapter}</span><h3>{buildings.sanctuary.title}</h3><p>{copy.nextBuilding}</p></div>
             </article>
             <div className="modal-actions"><button className="button primary" onClick={screen === 'game' ? dismiss : goHome}>{copy.returnWorld}</button></div>
           </>
         )}
       </div>}
     </dialog>
+  )
+}
+
+/** What a new area's signpost says: the story of the building, and whether it is open yet. */
+function BuildingSign({ id }: { id: (typeof BUILDING_ORDER)[number] }) {
+  const progress = useGame((state) => state.progress)
+  const status = buildingStatus(progress, id)
+  return (
+    <>
+      <p>{buildings[id].intro}</p>
+      <p className={`building-status ${status}`}>
+        {status === 'locked' && <><Lock size={15} />{copy.buildingLocked(buildings[previousBuilding(id)].title.toLocaleLowerCase('el'))}</>}
+        {status === 'coming' && copy.buildingComing}
+      </p>
+    </>
   )
 }

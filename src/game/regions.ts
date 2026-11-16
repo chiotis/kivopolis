@@ -18,18 +18,20 @@ export interface Area {
   rz: number
   /** Ground height of the level area (the theatre keeps its own shaped bowl). */
   height: number
-  /** Where the road enters the area: its signpost and boundary stones stand here. */
+  /** Where the road enters the area: its boundary stones stand either side of it here. */
   entrance: Point2
+  /** The area's signpost, just off the road by the entrance. */
+  sign: Point2
 }
 
 export const AREAS: readonly Area[] = [
-  { id: 'theatre', x: 0, z: 0, rx: 14, rz: 14, height: 0, entrance: [6.4, 5.8] },
+  { id: 'theatre', x: 0, z: 0, rx: 14, rz: 14, height: 0, entrance: [6.4, 5.8], sign: [6.4, 5.8] },
   // A level terrace just below the theatre, across the stream, as theatres stood in Dionysus' sanctuary.
-  { id: 'sanctuary', x: -31, z: 20, rx: 8.5, rz: 7.5, height: 0.6, entrance: [-23.4, 15.6] },
+  { id: 'sanctuary', x: -31, z: 20, rx: 8.5, rz: 7.5, height: 0.6, entrance: [-23.4, 15.6], sign: [-21.2, 16] },
   // The open square on the western plain, beyond the wooded ridge.
-  { id: 'agora', x: -60, z: 4, rx: 10.5, rz: 10.5, height: 0.5, entrance: [-51.2, 8.6] },
+  { id: 'agora', x: -60, z: 4, rx: 10.5, rz: 10.5, height: 0.5, entrance: [-51.2, 8.6], sign: [-49, 8.3] },
   // A long, level valley floor between two low hills; the track runs along x.
-  { id: 'stadium', x: 24, z: 40, rx: 25, rz: 6.5, height: 0.4, entrance: [-1.6, 39.6] },
+  { id: 'stadium', x: 24, z: 40, rx: 25, rz: 6.5, height: 0.4, entrance: [-1.6, 39.6], sign: [0.6, 37.4] },
 ]
 export const area = (id: BuildingId) => AREAS.find((item) => item.id === id)!
 

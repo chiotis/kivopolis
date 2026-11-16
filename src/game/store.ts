@@ -8,11 +8,13 @@ import { getWorld, resetWorld } from '../voxel/world'
 import { HOTBAR, inventory, resetInventory, useInventory } from './inventory'
 import { clearDrops, spawnDrop } from '../world/dropState'
 import { onSaveStatus, readRecord, saveAvailable, writeRecord } from './save'
+import { buildingStatus, readBuildings, signNear, type BuildingProgress } from './buildings'
+import type { BuildingId } from './regions'
 
 export const interactionRadius = 2.55
 /** Explore is the first-person game; overview is the orbiting architect's camera; tour is the finale. */
 export type Mode = 'explore' | 'overview' | 'tour'
-export type Panel = 'settings' | 'help' | 'journal' | 'pause' | 'reset' | 'new' | 'complete' | 'inventory' | 'workshop' | 'kiln' | 'part'
+export type Panel = 'settings' | 'help' | 'journal' | 'pause' | 'reset' | 'new' | 'complete' | 'inventory' | 'workshop' | 'kiln' | 'part' | 'building'
 export interface Settings {
   quality: 'auto' | 'high' | 'low'; sound: boolean; reducedMotion: boolean; dayCycle: boolean
   /** First-person field of view in degrees (vertical). */
@@ -38,6 +40,8 @@ export interface Progress {
   creative: boolean
   /** Short history notes already shown, so each pops up once. */
   facts: Fact[]
+  /** Progress of the buildings after the theatre (whose own fields are above). */
+  buildings: BuildingProgress
 }
 /** History notes that pop up the first time something happens in the world. */
 export type Fact = 'night' | 'lamp' | 'sheep' | 'goat' | 'chicken' | 'hydria'
@@ -51,6 +55,8 @@ interface State {
   panel: Panel | null
   /** The theatre part whose knowledge text the 'part' panel shows. */
   part: Mission | null
+  /** The building whose signpost the 'building' panel shows. */
+  building: BuildingId | null
   /** The step just finished, congratulated at the top of the next step's window. */
   congrats: Mission | null
   mode: Mode
@@ -92,6 +98,7 @@ interface State {
 export function interactionAvailable(state: Pick<State, 'progress' | 'panel' | 'mode'>) {
   const { progress } = state
   if (state.mode !== 'explore' || state.panel) return false
+  if (signNear(progress.player[0], progress.player[2])) return true
   if (progress.discovered && !entrancesReady(useSite.getState().counts)) return false
   const point = progress.discovered ? tourMarker : siteMarker
   return Math.hypot(progress.player[0] - point[0], progress.player[2] - point[2]) <= interactionRadius
@@ -99,7 +106,7 @@ export function interactionAvailable(state: Pick<State, 'progress' | 'panel' | '
 
 const initialProgress = (): Progress => ({
   started: false, discovered: false, player: [...spawn], completed: false, celebrated: [],
-  time: 0.3, creative: false, facts: [],
+  time: 0.3, creative: false, facts: [], buildings: {},
 })
 const defaults: Settings = { quality: 'auto', sound: false, reducedMotion: false, dayCycle: true, fov: 70, sensitivity: 1, invertY: false }
 const missionIds = new Set<string>(objectives.map(({ id }) => id))
@@ -139,6 +146,7 @@ function load(): Loaded {
           time: typeof progress.time === 'number' && progress.time >= 0 && progress.time < 1 ? progress.time : 0.3,
           creative: progress.creative === true,
           facts: Array.isArray(progress.facts) ? progress.facts.filter((id): id is Fact => factIds.includes(id as Fact)) : [],
+          buildings: readBuildings(progress.buildings),
         },
       },
     }
@@ -180,6 +188,7 @@ export const useGame = create<State>((set, get) => ({
   screen: 'menu',
   panel: null,
   part: null,
+  building: null,
   congrats: null,
   mode: 'explore',
   milestone: null,
@@ -216,6 +225,17 @@ export const useGame = create<State>((set, get) => ({
   interact: () => {
     const { progress } = get()
     if (!interactionAvailable(get())) return
+    // A new area's signpost: tells what will stand here, and marks an open building as found.
+    const sign = signNear(progress.player[0], progress.player[2])
+    if (sign && sign !== 'theatre') {
+      const status = buildingStatus(progress, sign)
+      const known = progress.buildings[sign]
+      const buildings = status !== 'locked' && !known?.discovered
+        ? { ...progress.buildings, [sign]: { completed: false, celebrated: [], ...known, discovered: true } }
+        : progress.buildings
+      set({ panel: 'building', building: sign, progress: buildings === progress.buildings ? progress : { ...progress, buildings } })
+      return
+    }
     if (!progress.discovered) {
       // Anything already built before the plan was activated counts, without a burst of celebrations.
       set({ progress: { ...progress, discovered: true, celebrated: finishedInOrder() } })
