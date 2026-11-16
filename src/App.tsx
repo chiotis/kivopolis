@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
 // Imported by main.tsx only after the save has been read, because the stores load from it.
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowDownRight, ArrowRight, BookOpen, CircleHelp, Compass, Hammer, Landmark, MapPin, Settings2 } from 'lucide-react'
+import { ArrowDownRight, ArrowRight, BookOpen, CircleHelp, Compass, Hammer, Landmark, LogOut, MapPin, Settings2, Users } from 'lucide-react'
 import '@fontsource/manrope/latin-400.css'
 import '@fontsource/manrope/latin-600.css'
 import '@fontsource/manrope/latin-700.css'
@@ -19,6 +19,9 @@ import './style.css'
 import { copy } from './game/el'
 import { useGame, useShared } from './game/store'
 import { World } from './world/World'
+import { inRoom } from './game/save'
+import { ROOM_SERVER, hasRoomError, leaveRoom } from './net/client'
+import { useRoom } from './net/roomState'
 import { useControls } from './ui/controls'
 import { Dialogs } from './ui/Dialogs'
 import { StageOverlay } from './ui/Hud'
@@ -32,7 +35,10 @@ function App() {
   const [blueprint, setBlueprint] = useState(true)
   const [creative, setCreative] = useState(false)
   const game = screen === 'game'
+  const roomCode = useRoom((state) => state.code)
   useControls()
+  // A room that could not be joined: open the room window, which says why.
+  useEffect(() => { if (hasRoomError()) setPanel('room') }, [setPanel])
   return (
     <div className={`app-shell ${game ? 'in-game' : 'in-menu'}`}>
       {!game && <header className="masthead">
@@ -51,13 +57,17 @@ function App() {
           <h1>{copy.title[0]}<em>{copy.title[1]}</em></h1>
           <p className="tagline">{copy.tagline}</p>
           <p className="intro-description">{copy.intro}</p>
-          {!progress.started && <ModeChoice creative={creative} onChange={setCreative} />}
+          {!progress.started && !inRoom() && <ModeChoice creative={creative} onChange={setCreative} />}
+          {inRoom() && <p className="room-banner"><Users size={16} />{copy.inRoom} <strong className="pixel">{roomCode}</strong></p>}
           <div className="menu-actions">
             <button className="button primary start" onClick={() => { if (!progress.started) useGame.getState().setCreative(creative); start() }}>{progress.started ? copy.continue : copy.start}<ArrowRight size={20} /></button>
-            {progress.started
+            {inRoom()
+              ? <button className="button guide" onClick={leaveRoom}><LogOut size={17} />{copy.leaveRoom}</button>
+              : progress.started
               ? <button className="button guide" onClick={() => setPanel('new')}>{copy.newGame}</button>
               : <button className="button guide" onClick={() => setPanel('help')}><CircleHelp size={17} />{copy.help}</button>}
           </div>
+          {ROOM_SERVER && !inRoom() && <button className="button guide room-button" onClick={() => setPanel('room')}><Users size={17} />{copy.rooms}</button>}
           <div className="intro-foot"><span className="foot-mark">Α</span><p>{copy.disclaimer}</p></div>
         </section>}
         <section className="stage" aria-label={copy.valley}>

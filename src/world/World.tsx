@@ -15,6 +15,7 @@ import { HeldItem } from './HeldItem'
 import { Sky } from './Sky'
 import { Animals } from './Animals'
 import { SiteGuide } from './SiteGuide'
+import { Others } from './Others'
 import { Capture } from './Capture'
 
 function Fallback() {
@@ -58,6 +59,7 @@ export function World({ blueprint, marker }: { blueprint: boolean; marker: RefOb
         <BlockInteraction />
         <Drops />
         <Animals shadows={shadows} />
+        <Others />
         <SiteGuide blueprint={blueprint} />
         <CameraRig view={view} player={player} marker={marker} />
         <SceneInput view={view} />

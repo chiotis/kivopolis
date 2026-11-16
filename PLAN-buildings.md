@@ -107,6 +107,12 @@ Today `objectives`, the signpost, the tour and saved progress are all written fo
 - **Animals and the day clock** move out of React components into plain step functions (`wildlife.ts` is already mostly there), so the server can run them.
 
 ## Phase 12: Multiplayer: up to 5 players in a shared room
+
+**Status (2026-11-17): first slice done.** Rooms, shared building and progress, other players, inventories kept by the room, and the deployment notes (`server/README.md`).
+- `server/room.ts` (the room: checks, orders and applies changes, runs water and the clock, saves) and `server/index.ts` (WebSocket server, origin check, rate limit, heartbeat, saving every 5 s). Rooms are saved as one JSON file each instead of SQLite: no native module to build on the server, and enough for a few rooms of five.
+- `src/net/`: `protocol.ts` (messages, nickname and code rules), `client.ts` (joining at boot: the room's snapshot replaces the browser's save in memory, and nothing is written to the browser's save while in a room), `sync.ts` (sends changes, shared progress, position and inventory; applies everyone else's), `roomState.ts`.
+- In the game: «Παιχνίδι με φίλους» on the start menu (only when `VITE_ROOM_SERVER` is set), create or join with a nickname, the room code and players in the HUD, other players drawn in their tunic colour with a name tag, leave from the menu or pause. Only the room's creator can restart a step or switch creative play.
+- Not done yet: shared animals, dropped items and kilns (still per player), preset phrases and the pointer marker, removing a player, automatic reconnection (the HUD offers a reload), and a two-browser end-to-end test (checked by hand in two tabs).
 Players build together in the same world. One player creates a room and gets a short code; up to 4 more join with the code and a nickname. Single-player stays exactly as it is and needs no server.
 
 ### How it is hosted

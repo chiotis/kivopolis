@@ -41,12 +41,34 @@ export function chunkRecords() {
 export function writeRecord(key: string, value: unknown, delay = 300) {
   if (value === undefined) cache.delete(key)
   else cache.set(key, value)
+  // In a room the room server keeps the game; this browser's own save is left untouched.
+  if (room) return
   pending.set(key, value)
   clearTimeout(timer)
   timer = setTimeout(() => void flush(), delay)
 }
 
-export function saveAvailable() { return available }
+export function saveAvailable() { return available || room }
+
+let room = false
+/** True while playing in a shared room (Phase 12). */
+export const inRoom = () => room
+
+/**
+ * Plays from a room instead of this browser's save: the room's world, shared game and this
+ * player's inventory replace the local records in memory, and nothing is written to the browser's
+ * save until the page is loaded again outside the room. Device settings stay this browser's own.
+ */
+export function enterRoomRecords(records: Map<string, unknown>) {
+  room = true
+  pending.clear()
+  clearTimeout(timer)
+  const settings = (cache.get('game') as { settings?: unknown } | undefined)?.settings
+  for (const key of [...cache.keys()]) if (key.startsWith('chunk:') || key === 'world' || key === 'inventory' || key === 'game') cache.delete(key)
+  for (const [key, value] of records) cache.set(key, value)
+  const game = cache.get('game') as Record<string, unknown> | undefined
+  if (game) cache.set('game', { ...game, settings: settings ?? {} })
+}
 
 export function onSaveStatus(listener: (ok: boolean) => void) {
   statusListeners.add(listener)

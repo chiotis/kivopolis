@@ -7,6 +7,7 @@ import { drops, spawnDrop } from '../world/dropState'
 import { herd, strikeAnimal, tendAnimal } from '../world/herd'
 import type { Stack } from './items'
 import type { Mission, Point } from './theatre'
+import type { WorldAction } from '../net/protocol'
 
 type Vec = [number, number, number]
 
@@ -37,16 +38,28 @@ export type Action =
   /** Click a slot of the backpack, the crafting grid or the open kiln. */
   | { type: 'slot'; ref: SlotRef; button: 'left' | 'right'; shift: boolean }
 
+/**
+ * While playing in a room, changes to the world are also sent to the room server, with the block
+ * that was there before so a refused change can be put back (Phase 12).
+ */
+export const network: { send: ((action: WorldAction, before: number) => void) | null } = { send: null }
+
 /** Applies one action. Returns false when it changed nothing. */
 export function apply(action: Action): boolean {
   const world = getWorld()
   switch (action.type) {
-    case 'set':
-      return world.set(action.x, action.y, action.z, action.block)
+    case 'set': {
+      const { x, y, z, block } = action
+      const before = world.get(x, y, z)
+      if (!world.set(x, y, z, block)) return false
+      network.send?.({ type: 'set', x, y, z, block }, before)
+      return true
+    }
     case 'break': {
       const { x, y, z } = action
       const id = world.get(x, y, z)
       if (!world.set(x, y, z, Block.air)) return false
+      network.send?.({ type: 'break', x, y, z }, id)
       const cx = wx(x) + S / 2, cy = wy(y) + S / 2, cz = wz(z) + S / 2
       if (action.drop) spawnDrop(action.drop, cx, cy, cz)
       if (id === Block.kiln) for (const stack of inventory.removeKiln(String(index(x, y, z)))) spawnDrop(stack, cx, cy, cz)
@@ -68,6 +81,7 @@ export function apply(action: Action): boolean {
           if (rest) spawnDrop({ item, count: rest }, x, world.surface(x, z) + 0.5, z)
         }
       }
+      network.send?.({ type: 'restart', mission: action.mission }, Block.air)
       return refund.size > 0
     }
     case 'strike':

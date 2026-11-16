@@ -18,7 +18,7 @@ export { factIds, useShared, type Fact, type Shared } from './shared'
 export const interactionRadius = 2.55
 /** Explore is the first-person game; overview is the orbiting architect's camera; tour is the finale. */
 export type Mode = 'explore' | 'overview' | 'tour'
-export type Panel = 'settings' | 'help' | 'journal' | 'pause' | 'reset' | 'new' | 'complete' | 'inventory' | 'workshop' | 'kiln' | 'part' | 'building'
+export type Panel = 'settings' | 'help' | 'journal' | 'pause' | 'reset' | 'new' | 'complete' | 'inventory' | 'workshop' | 'kiln' | 'part' | 'building' | 'room'
 /** Device settings: they belong to this browser, never to a shared room. */
 export interface Settings {
   quality: 'auto' | 'high' | 'low'; sound: boolean; reducedMotion: boolean; dayCycle: boolean
