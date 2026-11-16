@@ -16,6 +16,11 @@ every block change, the shared progress, and each player's inventory and last po
 No accounts, e-mail or other personal data. Rooms nobody has used for 60 days are deleted when the
 server starts.
 
+Note: old rooms are only looked for at start-up, so on a server that runs for months a room can
+stay past its 60 days until the next restart, reboot or update. Room files are small (a few KB to a
+few hundred KB), and a room is only in memory while someone is in it. To do: run the same clean-up
+once a day while the server runs, so the 60 days always hold.
+
 ## Settings (environment variables)
 
 | Variable | Meaning | Example |
