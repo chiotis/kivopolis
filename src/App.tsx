@@ -46,6 +46,10 @@ function App() {
           <span className="brand-mark"><Logo size={30} /></span>
           <span className="brand-text"><strong>{copy.brand}</strong><span>{copy.valley}</span></span>
         </div>
+        <div className="partner-credit">
+          <img src={`${import.meta.env.BASE_URL}diazoma.webp`} width={2000} height={1414} alt={copy.creditLogo} />
+          <span>{copy.credit}</span>
+        </div>
         <nav className="top-nav">
           <button className="nav-button" onClick={() => setPanel('help')} aria-label={copy.help}><CircleHelp size={18} /><span>{copy.help}</span></button>
           <button className="icon-button" onClick={() => setPanel('settings')} aria-label={copy.settings} title={copy.settings}><Settings2 size={19} /></button>
