@@ -73,6 +73,11 @@ export const ORE_HILL = { x: 24, z: -42, rx: 12, rz: 9, height: 6.5 }
 export const oreHill = (x: number, z: number) =>
   Math.exp(-(((x - ORE_HILL.x) / ORE_HILL.rx) ** 2 + ((z - ORE_HILL.z) / ORE_HILL.rz) ** 2) * 1.6)
 
+/** The tallest hill of the island, north-west of the theatre between the stream and the wooded ridge. */
+export const TALL_HILL = { x: -38, z: -26, rx: 8, rz: 10, height: 10 }
+export const tallHill = (x: number, z: number) =>
+  Math.exp(-(((x - TALL_HILL.x) / TALL_HILL.rx) ** 2 + ((z - TALL_HILL.z) / TALL_HILL.rz) ** 2) * 1.3)
+
 /** Two low hills along the stadium valley, whose inner slopes hold the spectators. */
 export const STADIUM_HILLS = { offset: 12, height: 3.2, spread: 4.5, from: 2, to: 48 }
 
