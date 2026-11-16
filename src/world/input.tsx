@@ -3,6 +3,10 @@ import { useThree } from '@react-three/fiber'
 import { MathUtils } from 'three'
 import { useGame } from '../game/store'
 import type { View } from './camera'
+
+/** How far the overview camera can pull back and pan: far enough to see the whole island. */
+const OVERVIEW_ZOOM = 150
+const OVERVIEW_PAN = 80
 import { blockInput } from './player'
 
 const LOOK_SPEED = 0.0024
@@ -89,7 +93,7 @@ export function SceneInput({ view }: { view: RefObject<View> }) {
       if (pointers.size === 2 && state.mode === 'overview') {
         const [a, b] = [...pointers.values()]
         const distance = Math.hypot(a.x - b.x, a.y - b.y)
-        view.current.zoom = MathUtils.clamp(view.current.zoom * (pinch / Math.max(distance, 1)), 10.5, 43)
+        view.current.zoom = MathUtils.clamp(view.current.zoom * (pinch / Math.max(distance, 1)), 10.5, OVERVIEW_ZOOM)
         pinch = distance
         return
       }
@@ -103,8 +107,8 @@ export function SceneInput({ view }: { view: RefObject<View> }) {
         if (state.mode === 'overview') {
           if (primary.pan) {
             const speed = orbit.zoom * 0.0024
-            orbit.x = MathUtils.clamp(orbit.x + (-dx * Math.cos(orbit.yaw) - dy * Math.sin(orbit.yaw)) * speed, -13, 13)
-            orbit.z = MathUtils.clamp(orbit.z + (dx * Math.sin(orbit.yaw) - dy * Math.cos(orbit.yaw)) * speed, -13, 13)
+            orbit.x = MathUtils.clamp(orbit.x + (-dx * Math.cos(orbit.yaw) - dy * Math.sin(orbit.yaw)) * speed, -OVERVIEW_PAN, OVERVIEW_PAN)
+            orbit.z = MathUtils.clamp(orbit.z + (dx * Math.sin(orbit.yaw) - dy * Math.cos(orbit.yaw)) * speed, -OVERVIEW_PAN, OVERVIEW_PAN)
           } else {
             orbit.yaw -= dx * 0.007
             orbit.pitch = MathUtils.clamp(orbit.pitch + dy * 0.006, 0.43, 1.48)
@@ -138,7 +142,7 @@ export function SceneInput({ view }: { view: RefObject<View> }) {
       }
       if (state.mode !== 'overview' || state.screen !== 'game' || state.panel) return
       event.preventDefault()
-      view.current.zoom = MathUtils.clamp(view.current.zoom * Math.exp(event.deltaY * 0.001), 10.5, 43)
+      view.current.zoom = MathUtils.clamp(view.current.zoom * Math.exp(event.deltaY * 0.001), 10.5, OVERVIEW_ZOOM)
     }
 
     function context(event: MouseEvent) {

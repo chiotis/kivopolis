@@ -1,7 +1,7 @@
 import { Block, isKnownBlock, isOpaque, isSolid, isWater, lightTable } from './blocks'
 import { nextWater } from './flow'
 import { generate, SEED } from './generate'
-import { chunkKey, chunkRecords, readRecord, writeRecord, type ChunkRecord, type WorldRecord } from '../game/save'
+import { chunkKey, chunkRecords, readRecord, worldHeader, writeRecord, type ChunkRecord } from '../game/save'
 
 import { CHUNK, CX, CZ, SX, SY, SZ, bx, bz, chunkOfCell, index, inside, wy } from './grid'
 
@@ -239,7 +239,7 @@ function writeEdits(world: VoxelWorld) {
     if (group) { group[0].push(cell); group[1].push(id) }
   }
   unsaved.clear()
-  if (!readRecord('world')) writeRecord('world', { version: 2, seed: SEED } satisfies WorldRecord)
+  if (!readRecord('world')) writeRecord('world', worldHeader(SEED))
   for (const [chunk, [cells, ids]] of grouped) {
     writeRecord(chunkKey(chunk), cells.length ? { cells: Uint32Array.from(cells), ids: Uint8Array.from(ids) } satisfies ChunkRecord : undefined, 0)
   }

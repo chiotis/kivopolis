@@ -9,8 +9,8 @@ import { animateWater, waterMaterial } from './water'
 import { CHUNK, CX, CZ, S, WATER_TICK, getWorld, wx, wz } from '../voxel/world'
 import { CHUNK_RADIUS, viewDistance } from './view'
 
-/** Chunks re-meshed per frame; edits touch at most four, a reset touches all. */
-const BUDGET = 6
+/** Milliseconds of meshing per frame. Chunks nearest the camera go first, so a new world fills in from where the player stands. */
+const BUDGET_MS = 8
 
 function buildGeometry(cx: number, cz: number, ao: boolean) {
   const mesh = meshChunk(getWorld(), cx, cz, { ao })
@@ -71,12 +71,14 @@ export function VoxelTerrain({ shadows, distance, ao }: { shadows: boolean; dist
     const seas: Mesh[] = []
     for (let cz = 0; cz < CZ; cz++) {
       for (let cx = 0; cx < CX; cx++) {
-        const mesh = new Mesh(buildGeometry(cx, cz, smooth.current), material)
+        // Every chunk starts empty and is meshed over the next frames, nearest first.
+        dirty.current.add(cz * CX + cx)
+        const mesh = new Mesh(new BufferGeometry(), material)
         mesh.receiveShadow = true
         mesh.name = `chunk-${cx}-${cz}`
         list.push(mesh)
         root.add(mesh)
-        const water = new Mesh(buildWater(cx, cz), waterMaterial())
+        const water = new Mesh(new BufferGeometry(), waterMaterial())
         water.renderOrder = 1
         water.name = `water-${cx}-${cz}`
         seas.push(water)
@@ -132,9 +134,15 @@ export function VoxelTerrain({ shadows, distance, ao }: { shadows: boolean; dist
       if (waters.current[chunk]) waters.current[chunk].visible = visible
     }
     if (!dirty.current.size) return
-    let budget = BUDGET
-    for (const chunk of dirty.current) {
-      if (budget-- <= 0) break
+    const farness = (chunk: number) => {
+      const dx = wx((chunk % CX) * CHUNK) + half - camera.position.x, dz = wz(Math.floor(chunk / CX) * CHUNK) + half - camera.position.z
+      return dx * dx + dz * dz
+    }
+    const queue = [...dirty.current].sort((a, b) => farness(a) - farness(b))
+    const start = performance.now()
+    for (const chunk of queue) {
+      // Always at least one chunk per frame, then as many as fit in the budget.
+      if (chunk !== queue[0] && performance.now() - start > BUDGET_MS) break
       dirty.current.delete(chunk)
       const mesh = meshes.current[chunk]
       if (!mesh) continue

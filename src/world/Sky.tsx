@@ -96,8 +96,10 @@ export function Sky({ shadows, distance }: { shadows: boolean; distance: number 
     fog.color.copy(palette.fogNight).lerp(palette.fogDay, day).lerp(palette.fogDusk, warm * 0.7)
     // A short view distance pulls the fog in so hidden chunks fade out instead of popping.
     const range = viewDistance(distance)
-    fog.far = Math.min(114 - (1 - day) * 34, range)
-    fog.near = Math.min(31 - (1 - day) * 8, fog.far * 0.45)
+    // The overview and the menu look across the whole island, so their haze starts further out.
+    const wide = state.mode === 'overview' || !playing ? 2.6 : 1
+    fog.far = Math.min((114 - (1 - day) * 34) * wide, range)
+    fog.near = Math.min((31 - (1 - day) * 8) * wide, fog.far * 0.45)
     // Under water the world closes in to a murky blue-green.
     const c0 = camera.position
     if (playing && state.mode === 'explore' && submerged((x, y, z) => getWorld().get(x, y, z), bx(c0.x), c0.y / S + OY, bz(c0.z))) {

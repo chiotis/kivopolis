@@ -63,7 +63,7 @@ describe('theatre blueprint', () => {
   })
 
   it('keeps the ocean edge closed and the site approach open', () => {
-    expect(canWalk(38, 0, obstacles)).toBe(false)
+    expect(canWalk(90, 0, obstacles)).toBe(false)
     expect(canWalk(6.5, 8, obstacles)).toBe(true)
   })
 })

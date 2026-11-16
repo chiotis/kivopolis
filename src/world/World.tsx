@@ -49,7 +49,7 @@ export function World({ blueprint, marker }: { blueprint: boolean; marker: RefOb
   return (
     <WorldBoundary>
       <Canvas aria-label={copy.visual} fallback={<Fallback />} dpr={dpr} shadows={shadows}
-        camera={{ position: [12, 11.9, 23.5], fov: 43, near: 0.05, far: 270 }}
+        camera={{ position: [12, 11.9, 23.5], fov: 43, near: 0.05, far: 420 }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}>
         {quality === 'auto' && <PerformanceMonitor onChange={({ factor: value }) => setFactor(value)} />}
         <Sky shadows={shadows} distance={distance} />

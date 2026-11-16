@@ -1,7 +1,10 @@
 /** Edge length of one block in world units (the avatar is about 1.6 units tall). */
 export const S = 0.5
-export const SX = 144
-export const SZ = 144
+export const SX = 384
+export const SZ = 384
+/** Grid size of save version 2 and earlier, before the island grew (Phase 11). */
+export const OLD_SX = 144
+export const OLD_SZ = 144
 export const SY = 48
 /** Block index of world x = 0 / z = 0. */
 export const OX = SX / 2

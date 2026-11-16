@@ -1,4 +1,5 @@
-import { ground, islandEdge } from '../game/terrain'
+import { ground, islandEdge, streamBed } from '../game/terrain'
+import { AREAS, ROADS, ROAD_WIDTH, RIDGE, STREAM, STREAM_WIDTH, areaWeight, bridges, nearest, onRoad, roadDistance, type Point2 } from '../game/regions'
 import { KOILON_EDGE, parodosZ, siteMarker, spawn, tourMarker } from '../game/theatre'
 import { cells } from '../game/blueprints/theatre'
 import { Block } from './blocks'
@@ -26,9 +27,10 @@ function hash(x: number, z: number, salt = 0) {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296
 }
 
-/** Matches the worn paths the old smooth terrain painted. */
+/** The worn paths of the theatre valley, and the ancient road that leads on to the other areas. */
 export function onPath(x: number, z: number) {
-  return (Math.abs(x - (6.2 + Math.sin(z * 0.29) * 1.45)) < 1.0 && z > 3.5)
+  return (Math.abs(x - (6.2 + Math.sin(z * 0.29) * 1.45)) < 1.0 && z > 3.5 && z < 23)
+    || (Math.hypot(x, z) > 12 && onRoad(x, z))
     || (Math.abs(z - parodosZ(x)) < 0.73 && Math.abs(x) > 3.5 && Math.abs(x) < 12.8)
     || Math.hypot(x, z) < 3.7
 }
@@ -91,12 +93,16 @@ function terrain(grid: Grid) {
       const marbleVein = pz < -11 && Math.abs(px) < 20 && hash(x >> 2, z >> 2, 21) > 0.62
       const clayBed = beach && hash(x >> 1, z >> 1, 17) > 0.5
       const quarry = !beach && inQuarry(px, pz)
+      // The stream: a gravel bed with one block of still water on it, away from the theatre valley.
+      const stream = radius > 20 && !beach ? streamBed(px, pz) : null
+      const brook = stream !== null && stream.distance < STREAM_WIDTH.water
       for (let y = 0; y <= top; y++) {
         let id: number = top - y >= 3 ? Block.limestone : Block.soil
         if (y === 0) id = Block.bedrock
         else if (quarry && top - y < QUARRY.depth) id = Block.marble
         else if (y === top) {
           if (beach) id = clayBed && hash(x, z, 19) > 0.8 ? Block.clay : Block.sand
+          else if (brook) id = Block.gravel
           else if (onPath(px, pz)) id = Block.path
           else if (marbleVein && (ridge || rocky)) id = Block.marble
           else if (ridge || rocky) id = hash(x, z, 9) > 0.7 ? Block.gravel : ore(x, y, z, 0.03) ?? Block.limestone
@@ -106,6 +112,7 @@ function terrain(grid: Grid) {
         else if (id === Block.limestone) id = (marbleVein && top - y < 7 ? Block.marble : null) ?? ore(x, y, z, 0.022) ?? Block.limestone
         grid.fill(x, y, z, id)
       }
+      if (brook && top + 1 < SY) grid.fill(x, top + 1, z, Block.water)
     }
   }
 }
@@ -120,8 +127,31 @@ function setIfAir(grid: Grid, x: number, y: number, z: number, id: number) {
   if (grid.get(x, y, z) === Block.air) grid.fill(x, y, z, id)
 }
 
+/**
+ * Groves on the new land: thick along the wooded ridge, scattered elsewhere, and never on a
+ * building area, the road or the stream.
+ */
+export function wildGroves(): [number, number, number, 'olive' | 'cypress'][] {
+  const result: [number, number, number, 'olive' | 'cypress'][] = []
+  const step = 5.5
+  for (let gx = -90; gx <= 90; gx += step) {
+    for (let gz = -90; gz <= 90; gz += step) {
+      const cx = Math.round(gx / step), cz = Math.round(gz / step)
+      const x = gx + (hash(cx, cz, 31) - 0.5) * step * 0.8, z = gz + (hash(cx, cz, 37) - 0.5) * step * 0.8
+      const radius = Math.hypot(x, z)
+      if (radius < 25 || radius > islandEdge(Math.atan2(x, -z)) - 7 || ground(x, z) < 0.4) continue
+      if (AREAS.some((item) => areaWeight(item, x, z) > 0.02) || roadDistance(x, z) < 2.6) continue
+      if (nearest(STREAM, x, z).distance < STREAM_WIDTH.cut + 1.5) continue
+      const wooded = nearest(RIDGE.line, x, z).distance < 7
+      if (hash(cx, cz, 41) > (wooded ? 0.85 : 0.24)) continue
+      result.push([x, z, 0.85 + hash(cx, cz, 43) * 0.45, hash(cx, cz, 47) > (wooded ? 0.35 : 0.6) ? 'cypress' : 'olive'])
+    }
+  }
+  return result
+}
+
 function trees(grid: Grid) {
-  for (const [x, z, size, kind] of groves) {
+  for (const [x, z, size, kind] of [...groves, ...wildGroves()]) {
     const ix = bx(x), iz = bz(z)
     const base = topOf(grid, ix, iz) + 1
     if (kind === 'olive') {
@@ -203,6 +233,77 @@ function boulders(grid: Grid) {
   }
 }
 
+/** Direction of the road at a point on it, as a unit vector. */
+function roadDirection(x: number, z: number): Point2 {
+  let best: Point2 = [1, 0], distance = Infinity
+  for (const line of ROADS) {
+    for (let i = 0; i + 1 < line.length; i++) {
+      const [ax, az] = line[i], [bx, bz] = line[i + 1]
+      const d = nearest([line[i], line[i + 1]], x, z).distance
+      if (d < distance) { distance = d; const l = Math.hypot(bx - ax, bz - az); best = [(bx - ax) / l, (bz - az) / l] }
+    }
+  }
+  return best
+}
+
+/** A stone bridge where the road crosses the stream: an ashlar deck level with the road on both banks, with low parapets. */
+function bridge(grid: Grid, [x, z]: Point2) {
+  const [dx, dz] = roadDirection(x, z)
+  const span = 4.5
+  // The top block of the ground just beyond each end of the bridge.
+  const bank = (side: number) => topOf(grid, bx(x + dx * (span + 0.3) * side), bz(z + dz * (span + 0.3) * side))
+  // Level with the higher bank, and always clear of the water so the stream runs under it.
+  const water = OY + level(streamBed(x, z).bed)
+  const deck = Math.max(bank(-1), bank(1), water + 1)
+  // The walkway first, then the parapets on cells the walkway does not use (the road runs at an
+  // angle, so the two sample sets share cells).
+  const walkway = new Map<string, [number, number, number]>()
+  const parapet = new Map<string, [number, number, number]>()
+  for (let t = -span; t <= span; t += S / 4) {
+    // Each end ramps up from its bank one block at a time, so the road never has a tall step.
+    const y = Math.min(deck, bank(t < 0 ? -1 : 1) + Math.floor((span - Math.abs(t)) / S))
+    for (let w = -ROAD_WIDTH - 0.3; w <= ROAD_WIDTH + 0.3; w += S / 4) {
+      const ix = bx(x + dx * t - dz * w), iz = bz(z + dz * t + dx * w)
+      const key = `${ix},${iz}`
+      if (Math.abs(w) <= ROAD_WIDTH) walkway.set(key, [ix, Math.max(y, walkway.get(key)?.[1] ?? -1), iz])
+      else if (Math.abs(t) <= span - 1.2) parapet.set(key, [ix, y, iz])
+    }
+  }
+  for (const [ix, y, iz] of walkway.values()) {
+    for (let k = y + 1; k <= y + 4; k++) grid.fill(ix, k, iz, Block.air)
+    grid.fill(ix, y, iz, Block.ashlar)
+  }
+  for (const [key, [ix, y, iz]] of parapet) {
+    if (walkway.has(key)) continue
+    grid.fill(ix, y, iz, Block.ashlar)
+    grid.fill(ix, y + 1, iz, Block.limestone)
+  }
+}
+
+/** A boundary stone (horos): a short limestone pillar with a marble cap. */
+function horos(grid: Grid, x: number, z: number, height = 2) {
+  const ix = bx(x), iz = bz(z)
+  const floor = topOf(grid, ix, iz) + 1
+  for (let y = 0; y < height; y++) grid.fill(ix, floor + y, iz, Block.limestone)
+  grid.fill(ix, floor + height, iz, Block.marble)
+}
+
+/** Boundary stones either side of the road where it enters each new area, and a herm where roads meet. */
+function markers(grid: Grid) {
+  for (const item of AREAS) {
+    if (item.id === 'theatre') continue
+    const [x, z] = item.entrance
+    const [dx, dz] = roadDirection(x, z)
+    for (const side of [-1, 1]) horos(grid, x - dz * side * 1.5, z + dx * side * 1.5)
+  }
+  // A herm: a pillar of ashlar crowned with a carved marble head, at the fork below the theatre.
+  const [hx, hz] = [-3.6, 37.4]
+  const ix = bx(hx), iz = bz(hz)
+  const floor = topOf(grid, ix, iz) + 1
+  for (let y = 0; y < 3; y++) grid.fill(ix, floor + y, iz, Block.ashlar)
+  grid.fill(ix, floor + 3, iz, Block.marble)
+}
+
 /**
  * Prepares the theatre's building site: every blueprint cell starts empty (the orchestra ring
  * becomes a shallow trench) and the lowest courses get solid ground beneath them.
@@ -226,6 +327,8 @@ export function generate(grid: Grid) {
   trees(grid)
   ruins(grid)
   boulders(grid)
+  for (const point of bridges()) bridge(grid, point)
+  markers(grid)
   site(grid)
   sea(grid)
 }

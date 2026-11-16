@@ -1,7 +1,53 @@
+import { AREAS, RIDGE, STADIUM_HILLS, STREAM, STREAM_BED, STREAM_WIDTH, areaWeight, nearest, smoothstep } from './regions'
 import { KOILON_EDGE, inAisle, rowBase, rowRise, siteMarker, terraceOf, tourMarker } from './theatre'
 
+/** The shore of the larger island (Phase 11). */
 export function islandEdge(angle: number) {
-  return 29 + 3.4 * Math.sin(angle * 3 + 0.7) + 1.8 * Math.sin(angle * 5 + 1.1)
+  return 82 + 3 * Math.sin(angle * 3 + 0.7) + 2 * Math.sin(angle * 5 + 1.1)
+}
+/** The shore of the first, small island. The theatre valley inside it keeps its exact shape. */
+const firstEdge = (angle: number) => 29 + 3.4 * Math.sin(angle * 3 + 0.7) + 1.8 * Math.sin(angle * 5 + 1.1)
+/** Within this radius the ground is exactly the first island's; it blends into the new land by KEEP_BLEND. */
+const KEEP = 20, KEEP_BLEND = 30
+
+/** The new land beyond the theatre valley: rolling ground, the dividers, the building areas and the stream. */
+function land(x: number, z: number, hills: number) {
+  let height = hills + 0.9 + 0.55 * Math.sin(x * 0.08 + 1) * Math.cos(z * 0.07)
+  // Highlands to the north, where the stream rises.
+  height += 3.6 * smoothstep(-28, -58, z)
+  // The wooded ridge, lowered to a pass where the road crosses.
+  const ridge = nearest(RIDGE.line, x, z)
+  const ends = smoothstep(0, 10, ridge.along) * smoothstep(ridge.length, ridge.length - 10, ridge.along)
+  const pass = 1 - 0.9 * Math.exp(-((Math.hypot(x - RIDGE.pass[0], z - RIDGE.pass[1]) / RIDGE.passRadius) ** 2))
+  height += RIDGE.height * Math.exp(-((ridge.distance / RIDGE.spread) ** 2)) * ends * pass
+  // The stadium valley's two hills.
+  const stadium = AREAS.find((item) => item.id === 'stadium')!
+  const along = smoothstep(STADIUM_HILLS.from, STADIUM_HILLS.from + 6, x) * smoothstep(STADIUM_HILLS.to, STADIUM_HILLS.to - 6, x)
+  for (const side of [-1, 1]) {
+    const across = z - (stadium.z + side * STADIUM_HILLS.offset)
+    height += STADIUM_HILLS.height * along * Math.exp(-((across / STADIUM_HILLS.spread) ** 2))
+  }
+  // Level ground for each building.
+  for (const item of AREAS) {
+    if (item.id === 'theatre') continue
+    const weight = areaWeight(item, x, z)
+    if (weight > 0) height = height * (1 - weight) + item.height * weight
+  }
+  return height
+}
+
+/** The stream cuts its own bed, falling steadily from the spring to the sea. */
+function carveStream(x: number, z: number, height: number) {
+  const stream = nearest(STREAM, x, z)
+  if (stream.distance >= STREAM_WIDTH.cut * 2) return height
+  const bed = STREAM_BED.spring + (STREAM_BED.mouth - STREAM_BED.spring) * stream.along / stream.length
+  return Math.min(height, bed + Math.max(0, stream.distance - STREAM_WIDTH.water) * 0.9)
+}
+
+/** Height of the stream bed nearest a point, and how far the point is from the stream's middle. */
+export function streamBed(x: number, z: number) {
+  const stream = nearest(STREAM, x, z)
+  return { distance: stream.distance, bed: STREAM_BED.spring + (STREAM_BED.mouth - STREAM_BED.spring) * stream.along / stream.length }
 }
 
 export function ground(x: number, z: number): number {
@@ -13,8 +59,16 @@ export function ground(x: number, z: number): number {
   // The slope the koilon is cut into, high enough behind the top row to hold all five terraces.
   const ridge = Math.max(hills, 2.45 * Math.exp(-(x ** 2 / 420 + (z + 11) ** 2 / 110)))
   const wild = ridge + 0.38 * Math.sin(x * 0.39) * Math.cos(z * 0.32)
-  const shore = Math.min(1, Math.max(0, (islandEdge(angle) - radius) / 5))
-  const outside = wild * shore - (1 - shore) * 1.4
+  const first = Math.min(1, Math.max(0, (firstEdge(angle) - radius) / 5))
+  let outside = wild
+  if (first < 1 || radius > KEEP) {
+    // Where the first island used to slope into the sea, it now slopes into the new land instead.
+    const shore = Math.min(1, Math.max(0, (islandEdge(angle) - radius) / 5))
+    const beyond = land(x, z, wild) * shore - (1 - shore) * 1.4
+    const blend = smoothstep(KEEP, KEEP_BLEND, radius)
+    outside = (wild * first + beyond * (1 - first)) * (1 - blend) + beyond * blend
+  }
+  if (radius > KEEP) outside = carveStream(x, z, outside)
   if (radius < 4.18) return 0.03
   const tier = rowBase + terraceOf(radius) * rowRise - 0.02 - (inAisle(angle) ? 0.31 : 0)
   const approach = Math.max(0, Math.min(1, (Math.abs(angle) - 1.18) / 0.28))
