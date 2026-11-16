@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import {
-  ArrowDown, ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUp, Award, BookOpen, Check, ChevronDown, ChevronUp, CircleHelp, Compass,
+  ArrowDown, ArrowDownLeft, RefreshCw, Users, ArrowLeft, ArrowRight, ArrowUp, Award, BookOpen, Check, ChevronDown, ChevronUp, CircleHelp, Compass,
   Backpack, Camera, ChevronsUp, DraftingCompass, Eye, EyeOff, Footprints, Lightbulb, Maximize, Minimize, Landmark, Mouse, Move, Pause, Pickaxe, Plus, Route, Settings2, Sparkles, X,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { buildings, copy, itemName, missions } from '../game/el'
+import { inRoom } from '../game/save'
+import { TUNICS, useRoom } from '../net/roomState'
 import { buildingHere, buildingStatus, previousBuilding, signNear } from '../game/buildings'
 import { interactionRadius, useGame, useShared } from '../game/store'
 import { objectives, siteMarker, tourMarker } from '../game/theatre'
@@ -125,6 +127,7 @@ export function StageOverlay({ blueprint, setBlueprint, marker }: {
         </div>
         <span className="hud-panel hud-mode pixel">{mode === 'overview' ? copy.overview : mode === 'tour' ? copy.tour : copy.explore}{progress.creative && <small> · {copy.modeCreative}</small>}</span>
         <div className="compass" aria-hidden="true"><span>{copy.compass}</span><Compass size={18} strokeWidth={1.4} /></div>
+        {inRoom() && <RoomPanel />}
       </div>
       <PartsBar />
       <div className="hud-right">
@@ -370,5 +373,25 @@ export function Milestone() {
         </div>
       </motion.div>}
     </AnimatePresence>
+  )
+}
+
+/** The room's code to share, and who is playing: each name in the colour of their tunic. */
+function RoomPanel() {
+  const { code, me, players, status } = useRoom()
+  if (!code || !me) return null
+  const everyone = [me, ...players]
+  return (
+    <section className="hud-panel hud-room" aria-label={copy.inRoom}>
+      <div className="room-head"><Users size={14} /><span className="pixel">{copy.inRoom}</span><strong className="pixel" title={copy.roomCodeShare}>{code}</strong></div>
+      <ul>
+        {everyone.map((player) => (
+          <li key={player.id}><span className="room-dot" style={{ background: TUNICS[player.color % TUNICS.length] }} />
+            {player.name}{player.id === me.id && <small> · {copy.roomYou}</small>}{player.host && <small> · {copy.roomHost}</small>}</li>
+        ))}
+      </ul>
+      {status === 'lost' && <div className="room-lost" role="alert">{copy.roomLost}
+        <button className="hud-mini wide" onClick={() => location.reload()}><RefreshCw size={13} />{copy.reconnect}</button></div>}
+    </section>
   )
 }

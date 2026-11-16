@@ -7,8 +7,10 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "vitest run tests/theatre.test.ts tests/voxel.test.ts tests/items.test.ts tests/world-life.test.ts tests/water.test.ts tests/settings.test.ts tests/island.test.ts tests/buildings.test.ts tests/shared.test.ts",
-    "test:e2e": "playwright test"
+    "test": "vitest run tests/theatre.test.ts tests/voxel.test.ts tests/items.test.ts tests/world-life.test.ts tests/water.test.ts tests/settings.test.ts tests/island.test.ts tests/buildings.test.ts tests/shared.test.ts tests/rooms.test.ts",
+    "test:e2e": "playwright test",
+    "build:server": "esbuild server/index.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=server/dist/index.mjs",
+    "server": "npm run build:server && node server/dist/index.mjs"
   },
   "dependencies": {
     "@fontsource/manrope": "^5.2.8",
@@ -21,14 +23,17 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.181.0",
+    "ws": "^8.23.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
     "@tailwindcss/vite": "^4.1.0",
+    "@types/node": "^22.20.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.181.0",
+    "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^5.1.0",
     "tailwindcss": "^4.1.0",
     "typescript": "~5.9.3",

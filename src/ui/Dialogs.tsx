@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { Award, Backpack, BookOpen, CircleHelp, Compass, Flame, Hammer, Landmark, Lock, Pause, Settings2, Signpost, X } from 'lucide-react'
+import { Award, Backpack, BookOpen, CircleHelp, Compass, Flame, Hammer, Landmark, Lock, Pause, Settings2, Signpost, Users, X } from 'lucide-react'
 import { InventoryScreen } from './InventoryScreen'
 import { ModeChoice } from './ModeChoice'
 import { PartInfo } from './Parts'
 import { buildings, copy, missions } from '../game/el'
+import { inRoom } from '../game/save'
+import { leaveRoom, requestRoom, takeRoomError } from '../net/client'
+import { useRoom } from '../net/roomState'
+import { NAME_LENGTH, cleanCode, cleanName } from '../net/protocol'
 import { BUILDING_ORDER, buildingStatus, previousBuilding, siteProgress } from '../game/buildings'
 import { fovRange, sensitivityRange, useGame, useShared, type Panel, type Settings } from '../game/store'
 import { objectives } from '../game/theatre'
@@ -11,17 +15,18 @@ import { complete, earnedPoints, useSite } from '../game/site'
 
 const labels: Record<Panel, string> = {
   settings: copy.settings, help: copy.help, journal: copy.journal, pause: copy.pause, new: copy.newGame,
-  reset: copy.reset, complete: copy.badge, inventory: copy.backpack, workshop: copy.workshop, kiln: copy.kiln, part: copy.parts, building: copy.readSign,
+  reset: copy.reset, complete: copy.badge, inventory: copy.backpack, workshop: copy.workshop, kiln: copy.kiln, part: copy.parts, building: copy.readSign, room: copy.rooms,
 }
 
 const icons = {
   settings: Settings2, help: CircleHelp, journal: BookOpen, pause: Pause, reset: Settings2, new: Compass, complete: Award,
-  inventory: Backpack, workshop: Hammer, kiln: Flame, part: BookOpen, building: Signpost,
+  inventory: Backpack, workshop: Hammer, kiln: Flame, part: BookOpen, building: Signpost, room: Users,
 }
 
 export function Dialogs() {
   const { panel, part, building, congrats, setPanel, settings, settingsChange, screen, restartMission, goHome, reset, start, setCreative } = useGame()
   const progress = useShared()
+  const host = useRoom((state) => state.me?.host ?? false)
   const [newCreative, setNewCreative] = useState(false)
   const ref = useRef<HTMLDialogElement>(null)
   const counts = useSite((state) => state.counts)
@@ -66,8 +71,8 @@ export function Dialogs() {
                 onChange={(event) => settingsChange({ sensitivity: Number(event.target.value) })} />
               <output>{settings.sensitivity.toLocaleString('el', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}×</output></span></label>
             <label>{copy.invertY}<input type="checkbox" checked={settings.invertY} onChange={(event) => settingsChange({ invertY: event.target.checked })} /></label>
-            {progress.started && <label>{copy.creativeSetting}<input type="checkbox" checked={progress.creative} onChange={(event) => setCreative(event.target.checked)} /></label>}
-            {progress.started && <button className="button danger" onClick={() => setPanel('reset')}>{copy.reset}</button>}
+            {progress.started && (!inRoom() || host) && <label>{copy.creativeSetting}<input type="checkbox" checked={progress.creative} onChange={(event) => setCreative(event.target.checked)} /></label>}
+            {progress.started && !inRoom() && <button className="button danger" onClick={() => setPanel('reset')}>{copy.reset}</button>}
           </div>
         )}
         {panel === 'help' && (
@@ -88,11 +93,13 @@ export function Dialogs() {
         )}
         {panel === 'part' && part && <PartInfo part={part} />}
         {panel === 'building' && building && <BuildingSign id={building} />}
+        {panel === 'room' && <RoomForm />}
         {(panel === 'inventory' || panel === 'workshop' || panel === 'kiln') && <InventoryScreen kind={panel} />}
         {panel === 'pause' && (
           <div className="modal-actions">
             <button className="button primary" onClick={dismiss}>{copy.resume}</button>
-            <button className="button" onClick={restartMission}>{copy.restart}</button>
+            {(!inRoom() || host) && <button className="button" onClick={restartMission}>{copy.restart}</button>}
+            {inRoom() && <button className="button" onClick={leaveRoom}>{copy.leaveRoom}</button>}
             <button className="button" onClick={() => setPanel('settings')}>{copy.settings}</button>
             <button className="button" onClick={goHome}>{copy.home}</button>
           </div>
@@ -136,5 +143,34 @@ function BuildingSign({ id }: { id: (typeof BUILDING_ORDER)[number] }) {
         {status === 'coming' && copy.buildingComing}
       </p>
     </>
+  )
+}
+
+/** Create a room, or join one with its code, under a nickname. The last failed attempt says why. */
+function RoomForm() {
+  const [error] = useState(() => takeRoomError())
+  const [create, setCreate] = useState(true)
+  const [name, setName] = useState('')
+  const [code, setCode] = useState('')
+  const tidyName = cleanName(name), tidyCode = cleanCode(code)
+  const ready = Boolean(tidyName && (create || tidyCode))
+  const go = () => {
+    if (!tidyName) return
+    requestRoom(create ? { create: true, name: tidyName } : { create: false, code: tidyCode!, name: tidyName })
+  }
+  return (
+    <form className="room-form" onSubmit={(event) => { event.preventDefault(); if (ready) go() }}>
+      <p>{copy.roomHint}</p>
+      {error && <p className="building-status locked" role="alert">{copy.roomErrors[error] ?? copy.roomErrors['bad-message']}</p>}
+      <div className="room-tabs" role="radiogroup">
+        <button type="button" role="radio" aria-checked={create} className={`button${create ? ' primary' : ''}`} onClick={() => setCreate(true)}>{copy.createRoom}</button>
+        <button type="button" role="radio" aria-checked={!create} className={`button${!create ? ' primary' : ''}`} onClick={() => setCreate(false)}>{copy.joinRoom}</button>
+      </div>
+      <label>{copy.nickname}<input value={name} maxLength={NAME_LENGTH} autoComplete="off" onChange={(event) => setName(event.target.value)} /></label>
+      {!create && <label>{copy.roomCode}<input value={code} maxLength={6} autoComplete="off" className="room-code"
+        onChange={(event) => setCode(event.target.value.toUpperCase())} /></label>}
+      <p className="room-privacy">{copy.roomPrivacy}</p>
+      <div className="modal-actions"><button type="submit" className="button primary" disabled={!ready}>{create ? copy.roomCreateGo : copy.roomJoinGo}</button></div>
+    </form>
   )
 }
