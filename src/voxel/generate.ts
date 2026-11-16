@@ -1,4 +1,4 @@
-import { ground, islandEdge, streamBed } from '../game/terrain'
+import { SEA_CAVES, cliffWeight, ground, islandEdge, sandyShore, streamBed } from '../game/terrain'
 import { AREAS, ROADS, ROAD_WIDTH, RIDGE, STREAM, STREAM_WIDTH, areaWeight, bridges, farFrom, nearest, onRoad, oreHill, roadDistance, type Point2 } from '../game/regions'
 import { KOILON_EDGE, parodosZ, siteMarker, spawn, tourMarker } from '../game/theatre'
 import { cells } from '../game/blueprints/theatre'
@@ -86,7 +86,15 @@ function terrain(grid: Grid) {
       // Past the shore the sea floor drops to swimming depth, then levels out.
       const shelf = radius > edge ? Math.max(SEA_FLOOR_Y, SEA_Y - 2 - Math.floor((radius - edge) * 3)) : SY
       const top = Math.max(1, Math.min(SY - 2, shelf, OY + level(height) - 1))
-      const beach = height < -0.2 || radius > edge - 2.2
+      const angle = Math.atan2(px, -pz)
+      // The stream: a gravel bed with one block of still water on it, away from the theatre valley.
+      // Its cut can dip below the beach line on low ground; that is still the stream, not a beach.
+      const stream = radius > 20 && radius < edge - 1 && !farFrom(STREAM, px, pz, STREAM_WIDTH.cut) ? streamBed(px, pz) : null
+      const brook = stream !== null && stream.distance < STREAM_WIDTH.water
+      const inCut = stream !== null && stream.distance < STREAM_WIDTH.cut
+      // Sand on the gentle shores and in the coves; the cliffs drop straight into the sea.
+      const beach = (height < -0.2 && !inCut) || (radius > edge - 2.2 && sandyShore(angle))
+      const cliff = !beach && radius > edge - 4 && cliffWeight(angle) > 0.5
       const ridge = pz < -12 && pz > -19.5 && Math.abs(px) < 19 && hash(x, z, 3) > 0.35
       // The ore hill is mostly bare rock, with about three times the usual copper and tin.
       const mine = oreHill(px, pz) > 0.3
@@ -95,9 +103,6 @@ function terrain(grid: Grid) {
       const marbleVein = pz < -11 && Math.abs(px) < 20 && hash(x >> 2, z >> 2, 21) > 0.62
       const clayBed = beach && hash(x >> 1, z >> 1, 17) > 0.5
       const quarry = !beach && inQuarry(px, pz)
-      // The stream: a gravel bed with one block of still water on it, away from the theatre valley.
-      const stream = radius > 20 && !beach && !farFrom(STREAM, px, pz, STREAM_WIDTH.water) ? streamBed(px, pz) : null
-      const brook = stream !== null && stream.distance < STREAM_WIDTH.water
       for (let y = 0; y <= top; y++) {
         let id: number = top - y >= 3 ? Block.limestone : Block.soil
         if (y === 0) id = Block.bedrock
@@ -107,6 +112,7 @@ function terrain(grid: Grid) {
           else if (brook) id = Block.gravel
           else if (onPath(px, pz)) id = Block.path
           else if (marbleVein && (ridge || rocky)) id = Block.marble
+          else if (cliff) id = hash(x, z, 13) > 0.75 ? Block.gravel : Block.limestone
           else if (ridge || rocky) id = hash(x, z, 9) > 0.7 ? Block.gravel : ore(x, y, z, mine ? 0.09 : 0.03) ?? Block.limestone
           else id = Block.grass
         } else if (beach && top - y < 2) id = Block.sand
@@ -307,6 +313,32 @@ function markers(grid: Grid) {
 }
 
 /**
+ * Sea caves: a tunnel cut into a cliff at sea level, rising into a dry chamber at its end. Every
+ * cell keeps at least two blocks of rock above it, so a cave never opens into a hole in the hill.
+ */
+function seaCaves(grid: Grid) {
+  for (const angle of SEA_CAVES) {
+    const edge = islandEdge(angle)
+    const ox = Math.sin(angle), oz = -Math.cos(angle)
+    const roofs = new Map<string, number>()
+    for (let t = -2; t <= 11; t += 0.25) {
+      const r = edge + 1 - t, sway = Math.sin(t * 0.45) * 1.1
+      const cx = ox * r + oz * sway, cz = oz * r - ox * sway
+      const chamber = t > 8
+      const floor = SEA_Y - 1 + (t > 6 ? Math.min(3, Math.floor((t - 6) * 0.8)) : 0)
+      const half = chamber ? 1.8 : 1.1, height = chamber ? 4 : 3
+      for (let w = -half; w <= half; w += 0.25) {
+        const ix = bx(cx + oz * w), iz = bz(cz - ox * w)
+        const key = `${ix},${iz}`
+        if (!roofs.has(key)) roofs.set(key, topOf(grid, ix, iz))
+        const top = roofs.get(key)!
+        for (let y = floor; y < floor + height; y++) if (y > 0 && y <= top - 2) grid.fill(ix, y, iz, Block.air)
+      }
+    }
+  }
+}
+
+/**
  * Prepares the theatre's building site: every blueprint cell starts empty (the orchestra ring
  * becomes a shallow trench) and the lowest courses get solid ground beneath them.
  */
@@ -329,6 +361,7 @@ export function generate(grid: Grid) {
   trees(grid)
   ruins(grid)
   boulders(grid)
+  seaCaves(grid)
   for (const point of bridges()) bridge(grid, point)
   markers(grid)
   site(grid)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { AREAS, ORE_HILL, ROADS, STREAM, areaAt, bridges, nearest, onRoad } from '../src/game/regions'
-import { ground, islandEdge } from '../src/game/terrain'
+import { AREAS, ORE_HILL, ROADS, STREAM, STREAM_WIDTH, TALL_HILL, areaAt, bridges, nearest, onRoad } from '../src/game/regions'
+import { CLIFFS, SEA_CAVES, ground, islandEdge } from '../src/game/terrain'
 import { Block, isWater } from '../src/voxel/blocks'
 import { S, VoxelWorld, bx, bz, wy } from '../src/voxel/world'
 
@@ -37,8 +37,8 @@ describe('the larger island', () => {
   it('reaches out to a shore around 82 units from the theatre, with a bay cut into the east', () => {
     for (let a = 0; a < Math.PI * 2; a += 0.2) {
       const edge = islandEdge(a)
-      expect(edge).toBeGreaterThan(55)
-      expect(edge).toBeLessThan(88)
+      expect(edge).toBeGreaterThan(48)
+      expect(edge).toBeLessThan(90)
       expect(ground(Math.sin(a) * (edge + 3), -Math.cos(a) * (edge + 3))).toBeLessThan(-0.2)
     }
     // The bay: the east coast is much closer than the west.
@@ -141,5 +141,59 @@ describe('the larger island', () => {
     }
     expect(wet / samples).toBeGreaterThan(0.9)
     expect(wy(0)).toBeLessThan(0)
+  })
+
+  it('keeps the stream one level below the ground on both banks, from the hills to the sea', () => {
+    let checked = 0
+    for (let i = 0; i + 1 < STREAM.length; i++) {
+      const [ax, az] = STREAM[i], [bx2, bz2] = STREAM[i + 1]
+      const length = Math.hypot(bx2 - ax, bz2 - az), dx = (bx2 - ax) / length, dz = (bz2 - az) / length
+      for (let t = 0.25; t < length - 0.25; t += 0.75) {
+        const x = ax + dx * t, z = az + dz * t
+        const r = Math.hypot(x, z)
+        if (r < 22 || r > islandEdge(Math.atan2(x, -z)) - 6) continue
+        if (bridges().some(([px, pz]) => Math.hypot(px - x, pz - z) < 5)) continue
+        let water = -1
+        for (let y = 45; y > 0; y--) if (isWater(world.get(bx(x), y, bz(z)))) { water = y; break }
+        expect(water, `no water at ${x.toFixed(1)}, ${z.toFixed(1)}`).toBeGreaterThan(0)
+        for (const side of [-1, 1]) {
+          const sx = x - dz * side * (STREAM_WIDTH.water + 0.9), sz = z + dx * side * (STREAM_WIDTH.water + 0.9)
+          expect(top(sx, sz), `bank at ${sx.toFixed(1)}, ${sz.toFixed(1)}`).toBeGreaterThanOrEqual(water + 1)
+        }
+        checked++
+      }
+    }
+    expect(checked).toBeGreaterThan(100)
+  })
+
+  it('has an irregular coast with sandy beaches, rocky cliffs and sea caves', () => {
+    let sand = 0, rock = 0
+    for (let a = -Math.PI; a < Math.PI; a += 0.02) {
+      const r = islandEdge(a) - 1.5, x = Math.sin(a) * r, z = -Math.cos(a) * r
+      const id = world.get(bx(x), top(x, z), bz(z))
+      if (id === Block.sand || id === Block.clay) sand++
+      if (id === Block.limestone || id === Block.gravel) rock++
+    }
+    expect(sand).toBeGreaterThan(80)
+    expect(rock).toBeGreaterThan(20)
+    expect(CLIFFS.length).toBeGreaterThan(1)
+    // Each sea cave has open space (air or sea water) a few units inside the cliff, under a rock roof.
+    for (const angle of SEA_CAVES) {
+      let roofed = 0
+      for (let depth = 3; depth <= 10; depth += 0.5) {
+        const r = islandEdge(angle) + 1 - depth, x = Math.sin(angle) * r, z = -Math.cos(angle) * r
+        const surface = top(x, z)
+        for (let y = 12; y < surface - 1; y++) {
+          const id = world.get(bx(x), y, bz(z))
+          if ((id === Block.air || isWater(id)) && world.solidAt(bx(x), surface, bz(z))) roofed++
+        }
+      }
+      expect(roofed, `cave at ${angle}`).toBeGreaterThan(5)
+    }
+  })
+
+  it('raises the tallest hill north-west of the theatre, above the ore hill', () => {
+    expect(ground(TALL_HILL.x, TALL_HILL.z)).toBeGreaterThan(ground(ORE_HILL.x, ORE_HILL.z) + 1)
+    expect(ground(TALL_HILL.x, TALL_HILL.z)).toBeGreaterThan(10)
   })
 })
