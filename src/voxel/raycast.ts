@@ -12,8 +12,14 @@ export interface VoxelHit {
   distance: number
 }
 
-/** Amanatides–Woo grid traversal. Origin and direction are in world units. */
-export function raycast(world: Sampler, origin: [number, number, number], direction: [number, number, number], reach: number): VoxelHit | null {
+/**
+ * Amanatides–Woo grid traversal. Origin and direction are in world units. By default the ray
+ * passes through air and water; `stops` can make it halt on other blocks, such as water.
+ */
+export function raycast(
+  world: Sampler, origin: [number, number, number], direction: [number, number, number], reach: number,
+  stops: (id: number) => boolean = (id) => !isEmpty(id),
+): VoxelHit | null {
   const length = Math.hypot(...direction)
   if (!length) return null
   const d = direction.map((v) => v / length) as [number, number, number]
@@ -30,7 +36,7 @@ export function raycast(world: Sampler, origin: [number, number, number], direct
   const normal: [number, number, number] = [0, 0, 0]
   let t = 0
   while (t <= limit) {
-    if (!isEmpty(world.get(cell[0], cell[1], cell[2]))) {
+    if (stops(world.get(cell[0], cell[1], cell[2]))) {
       return { x: cell[0], y: cell[1], z: cell[2], normal: [...normal], distance: t * S }
     }
     const axis = tMax[0] < tMax[1] ? (tMax[0] < tMax[2] ? 0 : 2) : (tMax[1] < tMax[2] ? 1 : 2)

@@ -198,6 +198,22 @@ itemTiles[47] = (x, y) => {
   if (Math.abs(t) <= 2.6 && x >= 6 && x <= 13 && y >= 2 && Math.abs(along) < 8) return (x + y) % 3 === 0 ? '#e4dfd2' : '#fbf8f0'
   return null
 }
+// The hydria: a terracotta water jar with a black-figure band, empty or brimming with water.
+const hydria = (full: boolean): Paint => (x, y) => {
+  if (y <= 2 && x >= 6 && x <= 10) return full && y >= 1 ? '#6fb8c2' : y === 0 ? '#7a3f24' : '#2c1d16'
+  if (y >= 3 && y <= 4 && x >= 7 && x <= 9) return '#a65a35'
+  // Side handles.
+  if ((x === 3 || x === 13) && y >= 6 && y <= 9) return '#8f4a2c'
+  const half = y < 5 ? 0 : y <= 10 ? 2.4 + (y - 5) * 0.55 : 5.2 - (y - 10) * 0.9
+  if (y >= 5 && y <= 14 && Math.abs(x - 8) <= half) {
+    if (y === 8 || y === 9) return (x + y) % 3 === 0 ? '#c06c48' : '#231915'
+    return x < 7 ? '#a65a35' : '#c97a52'
+  }
+  if (y === 15 && x >= 6 && x <= 10) return '#7a3f24'
+  return null
+}
+itemTiles[48] = hydria(false)
+itemTiles[49] = hydria(true)
 Object.assign(painters, itemTiles)
 
 export function createAtlas() {

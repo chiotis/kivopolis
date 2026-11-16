@@ -164,6 +164,13 @@ export const inventory = {
     return { ...slot, count: Math.min(count, slot.count) }
   },
 
+  /** Puts a different item in a slot, such as a hydria that was just filled or emptied. */
+  replace(index: number, stack: Stack | null) {
+    const next = [...useInventory.getState().slots]
+    next[index] = stack
+    useInventory.setState({ slots: next })
+  },
+
   /** Wears the tool in a slot; it breaks when its durability runs out. */
   wear(index: number) {
     const { slots } = useInventory.getState()

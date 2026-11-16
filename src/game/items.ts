@@ -1,4 +1,4 @@
-import { blocks, type BlockDef, type ToolType } from '../voxel/blocks'
+import { blocks, isFlowing, type BlockDef, type ToolType } from '../voxel/blocks'
 
 /** Atlas tiles for items that are not blocks (drawn in voxel/atlas.ts). */
 export const ItemTile = {
@@ -6,7 +6,7 @@ export const ItemTile = {
   woodPickaxe: 37, stonePickaxe: 38, bronzePickaxe: 39,
   woodAxe: 40, stoneAxe: 41, bronzeAxe: 42,
   woodShovel: 43, stoneShovel: 44, bronzeShovel: 45,
-  milk: 46, feather: 47,
+  milk: 46, feather: 47, hydria: 48, hydriaFull: 49,
 } as const
 
 export interface Tool { type: ToolType; tier: 1 | 2 | 3; speed: number; durability: number }
@@ -28,12 +28,14 @@ const tiers = [
 ] as const
 const toolTypes: ToolType[] = ['pickaxe', 'axe', 'shovel']
 
-const placeable = blocks.filter((def) => def.key !== 'air' && def.key !== 'bedrock')
+const placeable = blocks.filter((def) => def.key !== 'air' && def.key !== 'bedrock' && !isFlowing(def.id))
 
 export const items: ItemDef[] = [
   ...placeable.map((def): ItemDef => ({ key: def.key, block: def.id, icon: def.tiles.side, maxStack: 64 })),
   ...(['stick', 'clayLump', 'copperIngot', 'tinIngot', 'bronzeIngot', 'milk', 'feather'] as const)
     .map((key): ItemDef => ({ key, icon: ItemTile[key], maxStack: 64 })),
+  // The hydria carries one load of water: empty, or full.
+  ...(['hydria', 'hydriaFull'] as const).map((key): ItemDef => ({ key, icon: ItemTile[key], maxStack: 1 })),
   ...tiers.flatMap(({ name, tier, speed, durability }) => toolTypes.map((type): ItemDef => {
     const key = `${name}${type[0].toUpperCase()}${type.slice(1)}` as keyof typeof ItemTile
     return { key, icon: ItemTile[key], maxStack: 1, tool: { type, tier, speed, durability } }

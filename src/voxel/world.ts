@@ -1,12 +1,19 @@
 import { Block, isKnownBlock, isOpaque, isSolid, isWater, lightTable } from './blocks'
+import { nextWater } from './flow'
 import { generate, SEED } from './generate'
 import { chunkKey, chunkRecords, readRecord, writeRecord, type ChunkRecord, type WorldRecord } from '../game/save'
 
-import { CHUNK, CX, CZ, SEA_Y, SX, SY, SZ, bx, bz, chunkOfCell, index, inside, wy } from './grid'
+import { CHUNK, CX, CZ, SX, SY, SZ, bx, bz, chunkOfCell, index, inside, wy } from './grid'
 
 export * from './grid'
 
 type Listener = (chunks: number[]) => void
+
+/** Seconds between water ticks. */
+export const WATER_TICK = 0.25
+/** Cells updated per tick at most; the rest wait for the next tick, so a flooded cave cannot stall a frame. */
+const TICK_LIMIT = 4096
+const NEIGHBOURS = [[0, 0, 0], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]] as const
 
 export class VoxelWorld {
   readonly data = new Uint8Array(SX * SY * SZ)
@@ -17,6 +24,10 @@ export class VoxelWorld {
   private lamps = new Set<number>()
   private lit: number[] = []
   private listeners = new Set<Listener>()
+  /** Cells whose water may change on the next tick. */
+  private pending = new Set<number>()
+  /** Water ticks run since the world was generated or loaded. */
+  ticks = 0
 
   constructor() { generate(this) }
 
@@ -35,14 +46,12 @@ export class VoxelWorld {
     if (!inside(x, y, z) || !isKnownBlock(id)) return false
     const i = index(x, y, z)
     const old = this.data[i]
-    // A hole opened next to the sea fills with water, and so does any open space it leads to.
-    const flooding = id === Block.air && this.wet(x, y, z)
-    if (flooding) id = Block.water
     if (old === id) return false
     this.data[i] = id
     this.edits.set(i, id)
     const chunks = new Set(affectedChunks(x, z))
-    if (flooding) for (const chunk of this.flood(x, y, z)) chunks.add(chunk)
+    // Water around the change may run in (or drain away) on the next tick.
+    this.wake(x, y, z)
     // Relight when a lamp comes or goes, or when a block opens or closes a lit space.
     if (lightTable[old] || lightTable[id] || this.litAround(x, y, z)) {
       if (lightTable[id]) this.lamps.add(i)
@@ -53,30 +62,43 @@ export class VoxelWorld {
     return true
   }
 
-  /** True for an open cell at or below sea level with water beside or above it. */
-  private wet(x: number, y: number, z: number) {
-    if (y > SEA_Y) return false
-    return isWater(this.get(x + 1, y, z)) || isWater(this.get(x - 1, y, z)) || isWater(this.get(x, y + 1, z))
-      || isWater(this.get(x, y, z + 1)) || isWater(this.get(x, y, z - 1))
+  /** Queues a cell and its six neighbours for the next water tick when water is involved. */
+  private wake(x: number, y: number, z: number) {
+    if (!NEIGHBOURS.some(([dx, dy, dz]) => isWater(this.get(x + dx, y + dy, z + dz)))) return
+    for (const [dx, dy, dz] of NEIGHBOURS) if (inside(x + dx, y + dy, z + dz)) this.pending.add(index(x + dx, y + dy, z + dz))
   }
 
-  /** Water spreads sideways and down from (x, y, z) into air below sea level; capped so a cave cannot stall a frame. */
-  private flood(x: number, y: number, z: number) {
-    const chunks = new Set<number>()
-    const queue: [number, number, number][] = [[x, y, z]]
-    for (let head = 0; head < queue.length && head < 4096; head++) {
-      const [cx, cy, cz] = queue[head]
-      for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, -1, 0]]) {
-        const nx = cx + dx, ny = cy + dy, nz = cz + dz
-        if (ny > SEA_Y || !inside(nx, ny, nz) || this.get(nx, ny, nz) !== Block.air) continue
-        const n = index(nx, ny, nz)
-        this.data[n] = Block.water
-        this.edits.set(n, Block.water)
-        for (const chunk of affectedChunks(nx, nz)) chunks.add(chunk)
-        queue.push([nx, ny, nz])
-      }
+  /** True while water is still running somewhere. */
+  get flowing() { return this.pending.size > 0 }
+
+  /**
+   * One step of flowing water. Every queued cell is judged against the world as it was at the start
+   * of the tick, in ascending cell order, so the result never depends on timing or on who runs it.
+   */
+  tickWater() {
+    if (!this.pending.size) return false
+    const queue = [...this.pending].sort((a, b) => a - b)
+    const now = queue.slice(0, TICK_LIMIT)
+    this.pending = new Set(queue.slice(TICK_LIMIT))
+    const plane = SX * SZ
+    const get = (x: number, y: number, z: number) => this.get(x, y, z)
+    const changes: [number, number][] = []
+    for (const i of now) {
+      const x = i % SX, z = Math.floor(i / SX) % SZ, y = Math.floor(i / plane)
+      const next = nextWater(get, x, y, z)
+      if (next !== this.data[i]) changes.push([i, next])
     }
-    return chunks
+    const chunks = new Set<number>()
+    for (const [i, id] of changes) {
+      this.data[i] = id
+      this.edits.set(i, id)
+      const x = i % SX, z = Math.floor(i / SX) % SZ, y = Math.floor(i / plane)
+      for (const chunk of affectedChunks(x, z)) chunks.add(chunk)
+      for (const [dx, dy, dz] of NEIGHBOURS) if (inside(x + dx, y + dy, z + dz)) this.pending.add(index(x + dx, y + dy, z + dz))
+    }
+    this.ticks++
+    if (chunks.size) this.emit([...chunks])
+    return true
   }
 
   lightAt(x: number, y: number, z: number) {
@@ -158,6 +180,13 @@ export class VoxelWorld {
         this.data[i] = id
         this.edits.set(i, id)
       }
+    }
+    // Water that was still running when the game was saved carries on.
+    this.pending.clear()
+    this.ticks = 0
+    for (const i of this.edits.keys()) {
+      const x = i % SX, z = Math.floor(i / SX) % SZ, y = Math.floor(i / (SX * SZ))
+      this.wake(x, y, z)
     }
     this.findLamps()
     this.relight()

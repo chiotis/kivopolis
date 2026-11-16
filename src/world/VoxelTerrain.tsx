@@ -6,7 +6,7 @@ import { sky } from '../game/daylight'
 import { meshChunk, meshWater } from '../voxel/mesher'
 import { useGame } from '../game/store'
 import { animateWater, waterMaterial } from './water'
-import { CHUNK, CX, CZ, S, getWorld, wx, wz } from '../voxel/world'
+import { CHUNK, CX, CZ, S, WATER_TICK, getWorld, wx, wz } from '../voxel/world'
 import { CHUNK_RADIUS, viewDistance } from './view'
 
 /** Chunks re-meshed per frame; edits touch at most four, a reset touches all. */
@@ -61,6 +61,8 @@ export function VoxelTerrain({ shadows, distance, ao }: { shadows: boolean; dist
   const waters = useRef<Mesh[]>([])
   const dirty = useRef(new Set<number>())
   const smooth = useRef(ao)
+  /** Game time not yet spent on water ticks. */
+  const waterClock = useRef(0)
 
   useEffect(() => {
     const root = group.current!
@@ -111,6 +113,15 @@ export function VoxelTerrain({ shadows, distance, ao }: { shadows: boolean; dist
   useFrame(({ camera }, elapsed) => {
     lamp.value = 0.3 + (1 - sky.daylight) * 2.1
     animateWater(Math.min(elapsed, 0.1), useGame.getState().settings.reducedMotion)
+    // Water runs in fixed ticks, at most two per frame so a slow frame does not pile them up.
+    const world = getWorld()
+    if (world.flowing) {
+      waterClock.current = Math.min(waterClock.current + Math.min(elapsed, 0.1), WATER_TICK * 2)
+      while (waterClock.current >= WATER_TICK) {
+        waterClock.current -= WATER_TICK
+        world.tickWater()
+      }
+    } else waterClock.current = 0
     const range = viewDistance(distance) + CHUNK_RADIUS
     const half = (CHUNK * S) / 2
     for (let chunk = 0; chunk < meshes.current.length; chunk++) {

@@ -1,4 +1,5 @@
 import { blocks, isOpaque, isWater } from './blocks'
+import { surfaceHeight } from './flow'
 import { CHUNK, SX, SY, SZ, wx, wy, wz } from './grid'
 
 export const ATLAS_TILES = 8
@@ -48,7 +49,9 @@ export interface WaterMesh {
 
 /**
  * The see-through water of one chunk: faces between water and open space, with the surface
- * lowered half a block so the sea sits level with the flat sea outside. UVs are in blocks, so
+ * lowered half a block so the sea sits level with the flat sea outside. Flowing water is lower,
+ * and each top corner takes the average height of the water cells that share it, so a flow
+ * slopes smoothly down from its source. UVs are in blocks, so
  * a tiling water texture flows across chunk borders without a seam.
  */
 export function meshWater(world: Sampler, cx: number, cz: number): WaterMesh {
@@ -57,12 +60,22 @@ export function meshWater(world: Sampler, cx: number, cz: number): WaterMesh {
   const uvs: number[] = []
   const indices: number[] = []
   const x0 = cx * CHUNK, z0 = cz * CHUNK
+  const get = (x: number, y: number, z: number) => world.get(x, y, z)
+  /** Height of the corner at block coordinates (x, z) on layer y, from the water cells around it. */
+  const corner = (x: number, y: number, z: number) => {
+    let sum = 0, count = 0
+    for (const dx of [-1, 0]) for (const dz of [-1, 0]) {
+      if (!isWater(world.get(x + dx, y, z + dz))) continue
+      sum += surfaceHeight(get, x + dx, y, z + dz)
+      count++
+    }
+    return count ? sum / count : 0.5
+  }
   for (let y = 0; y < SY; y++) {
     for (let z = z0; z < z0 + CHUNK; z++) {
       for (let x = x0; x < x0 + CHUNK; x++) {
         if (!isWater(world.get(x, y, z))) continue
         const surface = !isWater(world.get(x, y + 1, z))
-        const top = surface ? 0.5 : 1
         for (const face of FACES) {
           const [nx, ny, nz] = face.normal
           if (ny === 0 && outside(x + nx, z + nz)) continue
@@ -70,13 +83,13 @@ export function meshWater(world: Sampler, cx: number, cz: number): WaterMesh {
           if (isWater(neighbour) || isOpaque(neighbour)) continue
           if (ny === -1 && y === 0) continue
           const start = positions.length / 3
-          for (const corner of face.corners) {
-            const cy = corner[1] ? top : 0
-            positions.push(wx(x + corner[0]), wy(y + cy), wz(z + corner[2]))
+          for (const point of face.corners) {
+            const cy = point[1] ? (surface ? corner(x + point[0], y, z + point[2]) : 1) : 0
+            positions.push(wx(x + point[0]), wy(y + cy), wz(z + point[2]))
             normals.push(nx, ny, nz)
             // Tops use the ground plane; sides run along their face.
-            if (ny) uvs.push(x + corner[0], z + corner[2])
-            else uvs.push(nx ? z + corner[2] : x + corner[0], y + cy)
+            if (ny) uvs.push(x + point[0], z + point[2])
+            else uvs.push(nx ? z + point[2] : x + point[0], y + cy)
           }
           indices.push(start, start + 1, start + 2, start, start + 2, start + 3)
         }

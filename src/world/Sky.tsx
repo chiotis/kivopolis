@@ -8,8 +8,8 @@ import { advance, daylight, dusk, FIXED_TIME, sky, sunDirection } from '../game/
 import { useGame } from '../game/store'
 import { viewDistance } from './view'
 import { playerState } from './player'
-import { isWater } from '../voxel/blocks'
-import { bx, by, bz, getWorld } from '../voxel/world'
+import { submerged } from '../voxel/flow'
+import { OY, S, bx, bz, getWorld } from '../voxel/world'
 
 const underwaterColor = new Color('#2c6873')
 
@@ -100,7 +100,7 @@ export function Sky({ shadows, distance }: { shadows: boolean; distance: number 
     fog.near = Math.min(31 - (1 - day) * 8, fog.far * 0.45)
     // Under water the world closes in to a murky blue-green.
     const c0 = camera.position
-    if (playing && state.mode === 'explore' && isWater(getWorld().get(bx(c0.x), by(c0.y), bz(c0.z)))) {
+    if (playing && state.mode === 'explore' && submerged((x, y, z) => getWorld().get(x, y, z), bx(c0.x), c0.y / S + OY, bz(c0.z))) {
       fog.color.copy(underwaterColor).multiplyScalar(0.35 + day * 0.65)
       background.copy(fog.color)
       fog.near = 0.2

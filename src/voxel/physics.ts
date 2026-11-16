@@ -1,5 +1,6 @@
-import { isSolid, isWater } from './blocks'
-import { S, SY, bx, by, bz, wx, wy, wz } from './grid'
+import { isSolid } from './blocks'
+import { submerged } from './flow'
+import { OY, S, SY, bx, by, bz, wx, wy, wz } from './grid'
 import type { Sampler } from './mesher'
 
 export const PLAYER = {
@@ -122,7 +123,7 @@ export const SWIM = { speed: 0.55, rise: 2.6, sink: 0.9, dive: 2.4 }
 
 /** Water at waist height: the body floats and swims. */
 export const wading = (world: Sampler, body: Body) =>
-  isWater(world.get(bx(body.position.x), by(body.position.y + 0.35), bz(body.position.z)))
+  submerged((x, y, z) => world.get(x, y, z), bx(body.position.x), (body.position.y + 0.35) / S + OY, bz(body.position.z))
 
 export function stepBody(world: Sampler, body: Body, input: MoveInput, dt: number, limits: Limits) {
   if (body.flying) return fly(world, body, input, dt, limits)

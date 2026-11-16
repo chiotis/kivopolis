@@ -25,6 +25,13 @@ Phase 10 comes first because the agora's fountain house needs water that flows. 
 ---
 
 ## Phase 10: Flowing water and the hydria
+
+**Status (2026-11-16): done.** What changed from the plan above:
+- Flowing water is stored as seven extra block ids (`flow1`–`flow7`, ids 23–29) instead of a separate level byte. Saves, edits and later network messages stay plain block changes, and no save format change was needed.
+- Water spreads sideways only from a cell resting on solid ground, so falling water does not fan out over a pool or the sea.
+- The empty hydria looks through flowing water to the nearest source; aiming at flowing water alone shows a hint. Filling takes the source, pouring places one.
+- Not done: the ripple texture does not yet drift along the direction of flow; all water shares one drifting texture.
+- Rules: `src/voxel/flow.ts`. Ticks: `VoxelWorld.tickWater()`, driven at 4 per second from `VoxelTerrain`.
 This is the work left over from Phase 8. Today water fills only cells at or below sea level (`SEA_Y`, 14), all at once, capped at 4096 cells (`VoxelWorld.flood` in `src/voxel/world.ts`). Above sea level, holes stay dry.
 
 - **Sources and flowing water.** Water placed anywhere becomes a *source*. Flowing water runs down first, then spreads sideways up to 7 blocks, getting one level lower with each block. Each cell keeps a level from 0 to 7 next to its block id (one byte per cell, saved with the chunk). Flowing water with nothing feeding it dries up.

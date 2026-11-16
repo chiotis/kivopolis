@@ -7,7 +7,7 @@ import { useGame } from '../game/store'
 import { siteMarker, tourMarker } from '../game/theatre'
 import { inventory, useInventory } from '../game/inventory'
 import { itemByKey, mining, rollDrop } from '../game/items'
-import { Block, blocks, isEmpty } from '../voxel/blocks'
+import { Block, blocks, isEmpty, isWater } from '../voxel/blocks'
 import { PLAYER } from '../voxel/physics'
 import { raycast, type VoxelHit } from '../voxel/raycast'
 import { S, getWorld, index, inside, wx, wy, wz } from '../voxel/world'
@@ -138,14 +138,22 @@ export function BlockInteraction() {
     }
     if (!pressing) m.struck = false
     m.hit = hit
+    // An empty hydria looks for still water: the crosshair passes through flowing water and stops on
+    // the first source behind it (the sea, a pool, the head of a stream).
+    const holding = useInventory.getState().slots[state.hotbar]?.item
+    const thirsty = active && holding === 'hydria' && !target
+    const scoop = thirsty ? raycast(world, playerState.eye, playerState.look, REACH, (id) => !isEmpty(id) || id === Block.water) : null
+    const water = scoop && world.get(scoop.x, scoop.y, scoop.z) === Block.water ? scoop : null
     if (outline.current && crack.current) {
       outline.current.visible = Boolean(hit) && !state.photo
       crack.current.visible = false
-      if (hit) {
-        const cx = wx(hit.x) + S / 2, cy = wy(hit.y) + S / 2, cz = wz(hit.z) + S / 2
+      if (water) outline.current.visible = !state.photo
+      const shown = water ?? hit
+      if (shown) {
+        const cx = wx(shown.x) + S / 2, cy = wy(shown.y) + S / 2, cz = wz(shown.z) + S / 2
         outline.current.position.set(cx, cy, cz)
         crack.current.position.set(cx, cy, cz)
-        outline.current.material = isProtected(hit.x, hit.y, hit.z) ? assets.locked : assets.line
+        outline.current.material = isProtected(shown.x, shown.y, shown.z) ? assets.locked : assets.line
       }
     }
 
@@ -200,6 +208,43 @@ export function BlockInteraction() {
     const wantsPlace = blockInput.placeOnce || (blockInput.placing && m.placeTimer <= 0)
     blockInput.placeClick = blockInput.placeOnce
     blockInput.placeOnce = false
+    // The hydria: an empty one scoops a source of water, a full one pours it out as a new source.
+    if (wantsPlace && blockInput.placeClick && thirsty && !water) {
+      // Only flowing water in reach: say where a hydria can be filled.
+      const wet = raycast(world, playerState.eye, playerState.look, REACH, (id) => !isEmpty(id) || isWater(id))
+      if (wet && isWater(world.get(wet.x, wet.y, wet.z))) {
+        blockInput.placeClick = false
+        blockInput.placing = false
+        notify(copy.stillWater)
+        return
+      }
+    }
+    if (active && wantsPlace && blockInput.placeClick && water) {
+      blockInput.placeClick = false
+      blockInput.placing = false
+      if (isProtected(water.x, water.y, water.z)) { notify(copy.protectedSite); return }
+      world.set(water.x, water.y, water.z, Block.air)
+      inventory.replace(state.hotbar, { item: 'hydriaFull', count: 1 })
+      blockInput.swing = performance.now()
+      state.learn('hydria')
+      if (state.settings.sound) blockSound('water', 'break')
+      return
+    }
+    const aimed = hit ? world.get(hit.x, hit.y, hit.z) : Block.air
+    const opens = !playerState.body.crouching && (aimed === Block.workshop || aimed === Block.kiln)
+    if (active && wantsPlace && hit && holding === 'hydriaFull' && !opens) {
+      blockInput.placeClick = false
+      blockInput.placing = false
+      const [nx, ny, nz] = hit.normal
+      const x = hit.x + nx, y = hit.y + ny, z = hit.z + nz
+      if (!(nx || ny || nz) || !inside(x, y, z) || !isEmpty(world.get(x, y, z))) return
+      if (isProtected(x, y, z)) { notify(copy.protectedSite); return }
+      world.set(x, y, z, Block.water)
+      inventory.replace(state.hotbar, { item: 'hydria', count: 1 })
+      blockInput.swing = performance.now()
+      if (state.settings.sound) blockSound('water', 'place')
+      return
+    }
     if (active && wantsPlace && hit) {
       m.placeTimer = PLACE_REPEAT
       const [nx, ny, nz] = hit.normal

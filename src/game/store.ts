@@ -40,8 +40,8 @@ export interface Progress {
   facts: Fact[]
 }
 /** History notes that pop up the first time something happens in the world. */
-export type Fact = 'night' | 'lamp' | 'sheep' | 'goat' | 'chicken'
-export const factIds: readonly Fact[] = ['night', 'lamp', 'sheep', 'goat', 'chicken']
+export type Fact = 'night' | 'lamp' | 'sheep' | 'goat' | 'chicken' | 'hydria'
+export const factIds: readonly Fact[] = ['night', 'lamp', 'sheep', 'goat', 'chicken', 'hydria']
 interface SavedGame { version: 2; progress: Progress; settings: Settings }
 interface State {
   progress: Progress
