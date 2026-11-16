@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AREAS, ROADS, STREAM, areaAt, bridges, nearest, onRoad } from '../src/game/regions'
+import { AREAS, ORE_HILL, ROADS, STREAM, areaAt, bridges, nearest, onRoad } from '../src/game/regions'
 import { ground, islandEdge } from '../src/game/terrain'
 import { Block, isWater } from '../src/voxel/blocks'
 import { S, VoxelWorld, bx, bz, wy } from '../src/voxel/world'
@@ -34,13 +34,36 @@ describe('the larger island', () => {
     }
   })
 
-  it('reaches out to a shore around 82 units from the theatre', () => {
-    for (let a = 0; a < Math.PI * 2; a += 0.4) {
+  it('reaches out to a shore around 82 units from the theatre, with a bay cut into the east', () => {
+    for (let a = 0; a < Math.PI * 2; a += 0.2) {
       const edge = islandEdge(a)
-      expect(edge).toBeGreaterThan(76)
+      expect(edge).toBeGreaterThan(55)
       expect(edge).toBeLessThan(88)
       expect(ground(Math.sin(a) * (edge + 3), -Math.cos(a) * (edge + 3))).toBeLessThan(-0.2)
     }
+    // The bay: the east coast is much closer than the west.
+    expect(islandEdge(Math.PI / 2)).toBeLessThan(62)
+    expect(islandEdge(-Math.PI / 2)).toBeGreaterThan(78)
+    // The stadium valley stays on dry land, east end included.
+    expect(ground(49, 40)).toBeGreaterThan(0)
+  })
+
+  it('puts a rocky hill full of ore north-east of the theatre', () => {
+    const count = (cx: number, cz: number) => {
+      let ores = 0
+      for (let x = cx - 8; x <= cx + 8; x += 0.5) {
+        for (let z = cz - 6; z <= cz + 6; z += 0.5) {
+          for (let y = 1; y < 46; y++) {
+            const id = world.get(bx(x), y, bz(z))
+            if (id === Block.copperOre || id === Block.tinOre) ores++
+          }
+        }
+      }
+      return ores
+    }
+    expect(ground(ORE_HILL.x, ORE_HILL.z)).toBeGreaterThan(8)
+    // Far more copper and tin than in the same patch of the western plain.
+    expect(count(ORE_HILL.x, ORE_HILL.z)).toBeGreaterThan(count(-60, -20) * 2)
   })
 
   it('gives every new building a level, dry area of its own', () => {

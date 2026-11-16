@@ -1,9 +1,13 @@
-import { AREAS, RIDGE, STADIUM_HILLS, STREAM, STREAM_BED, STREAM_WIDTH, areaWeight, nearest, smoothstep } from './regions'
+import { AREAS, ORE_HILL, RIDGE, STADIUM_HILLS, STREAM, STREAM_BED, STREAM_WIDTH, areaWeight, farFrom, nearest, oreHill, smoothstep } from './regions'
 import { KOILON_EDGE, inAisle, rowBase, rowRise, siteMarker, terraceOf, tourMarker } from './theatre'
 
-/** The shore of the larger island (Phase 11). */
+/**
+ * The shore of the larger island (Phase 11). The sea cuts a wide bay into the east coast, from
+ * the north-east round to the stadium, so the island is not one big disc of empty land.
+ */
 export function islandEdge(angle: number) {
-  return 82 + 3 * Math.sin(angle * 3 + 0.7) + 2 * Math.sin(angle * 5 + 1.1)
+  const bay = 24 * smoothstep(0.5, 1.1, angle) * smoothstep(2.4, 1.7, angle)
+  return 82 + 3 * Math.sin(angle * 3 + 0.7) + 2 * Math.sin(angle * 5 + 1.1) - bay
 }
 /** The shore of the first, small island. The theatre valley inside it keeps its exact shape. */
 const firstEdge = (angle: number) => 29 + 3.4 * Math.sin(angle * 3 + 0.7) + 1.8 * Math.sin(angle * 5 + 1.1)
@@ -15,6 +19,8 @@ function land(x: number, z: number, hills: number) {
   let height = hills + 0.9 + 0.55 * Math.sin(x * 0.08 + 1) * Math.cos(z * 0.07)
   // Highlands to the north, where the stream rises.
   height += 3.6 * smoothstep(-28, -58, z)
+  // The rocky ore hill north-east of the theatre.
+  height += ORE_HILL.height * oreHill(x, z)
   // The wooded ridge, lowered to a pass where the road crosses.
   const ridge = nearest(RIDGE.line, x, z)
   const ends = smoothstep(0, 10, ridge.along) * smoothstep(ridge.length, ridge.length - 10, ridge.along)
@@ -38,6 +44,7 @@ function land(x: number, z: number, hills: number) {
 
 /** The stream cuts its own bed, falling steadily from the spring to the sea. */
 function carveStream(x: number, z: number, height: number) {
+  if (farFrom(STREAM, x, z, STREAM_WIDTH.cut * 2)) return height
   const stream = nearest(STREAM, x, z)
   if (stream.distance >= STREAM_WIDTH.cut * 2) return height
   const bed = STREAM_BED.spring + (STREAM_BED.mouth - STREAM_BED.spring) * stream.along / stream.length
