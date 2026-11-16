@@ -12,7 +12,7 @@ import { cleanCode, cleanName, newCode, type ClientMessage, type RoomError, type
  *
  *   PORT              port to listen on (default 8787)
  *   DATA_DIR          where rooms are saved, one JSON file each (default ./rooms)
- *   ALLOWED_ORIGINS   comma-separated sites allowed to connect, e.g. https://kivopolis.netlify.app
+ *   ALLOWED_ORIGINS   comma-separated sites allowed to connect, e.g. https://game.kivopolis.com,https://kivopolis.netlify.app
  *                     (localhost is always allowed, for development)
  */
 const PORT = Number(process.env.PORT ?? 8787)
@@ -180,8 +180,4 @@ export async function start(port = PORT) {
       await new Promise<void>((resolve) => sockets.close(() => http.close(() => resolve())))
     },
   }
-}
-
-if (process.argv[1] && /server\/(index\.ts|dist\/index\.m?js)$/.test(process.argv[1].replace(/\\/g, '/'))) {
-  void start().catch((error) => { console.error(error); process.exit(1) })
 }
