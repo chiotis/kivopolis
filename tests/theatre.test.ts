@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { cells, cellTotals, legacySlots, missionCells } from '../src/game/blueprints/theatre'
-import { activeMission, earnedPoints, measure, missionCounts, partStates, useSite } from '../src/game/site'
+import { activeMission, earnedPoints, materials, measure, missionCounts, partStates, useSite } from '../src/game/site'
 import { migrateLegacy, useGame } from '../src/game/store'
 import { canWalk, obstacles } from '../src/game/terrain'
 import { objectives } from '../src/game/theatre'
@@ -130,6 +130,15 @@ describe('missions counted from world blocks', () => {
     expect(Object.values(partStates(false, false, useSite.getState().counts)).filter((state) => state === 'active')).toHaveLength(1)
     expect(partStates(false, false, useSite.getState().counts).discover).toBe('active')
     expect(Object.values(partStates(true, true, useSite.getState().counts)).every((state) => state !== 'active')).toBe(true)
+  })
+
+  it('lists each material of a mission as placed out of total', () => {
+    const world = getWorld()
+    for (const cell of missionCells('skene')) if (cell.y === OY) world.set(cell.x, cell.y, cell.z, cell.block)
+    const { missing, wrong } = useSite.getState()
+    const rows = Object.fromEntries(materials('skene', missing, wrong).map(({ block, placed, total }) => [block, [placed, total]]))
+    // The foundation counts towards ashlar; the posts and the roof are still untouched.
+    expect(rows).toEqual({ [Block.ashlar]: [40, 74], [Block.terracotta]: [0, 40], [Block.oliveLog]: [0, 8] })
   })
 
   it('gives the blocks back when a mission is restarted', () => {

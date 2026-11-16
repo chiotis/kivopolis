@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { copy, itemName, missions } from '../game/el'
 import { interactionRadius, useGame } from '../game/store'
 import { objectives, siteMarker, tourMarker } from '../game/theatre'
-import { activeMission, builtTotal, earnedPoints, entrancesReady, missionCounts, needs, partStates, totalCells, useSite } from '../game/site'
+import { activeMission, builtTotal, earnedPoints, entrancesReady, missionCounts, materials, partStates, totalCells, useSite } from '../game/site'
 import { blocks } from '../voxel/blocks'
 import { cells } from '../game/blueprints/theatre'
 import { keys } from '../world/camera'
@@ -19,16 +19,15 @@ import { PartsBar } from './Parts'
 import type { Stack } from '../game/items'
 
 /** Blocks the current mission still needs, next to how many the player carries. */
-function Needs({ list }: { list: [number, number][] }) {
-  const slots = useInventory((state) => state.slots)
+/** Each material of the current mission: blocks already in place out of all its blueprint cells. */
+function Materials({ list }: { list: ReturnType<typeof materials> }) {
   if (!list.length) return null
   return (
     <ul className="mission-needs" aria-label={copy.needs}>
-      {list.map(([block, count]) => {
+      {list.map(({ block, placed, total }) => {
         const key = blocks[block].key
-        const have = slots.reduce((sum, slot) => sum + (slot?.item === key ? slot.count : 0), 0)
-        return <li key={key} title={itemName(key)} className={have >= count ? 'enough' : ''}>
-          <ItemIcon item={key} /><span>{itemName(key)}</span><strong>{Math.min(have, count)} / {count}</strong>
+        return <li key={key} title={itemName(key)} className={placed >= total ? 'done' : ''}>
+          <ItemIcon item={key} /><span>{itemName(key)}</span><strong>{placed} / {total}</strong>
         </li>
       })}
     </ul>
@@ -62,7 +61,7 @@ export function MissionPanel() {
           <span style={{ width: `${(done / total) * 100}%` }} />
         </span>
       </div>}
-      {progress.discovered && total > 0 && <Needs list={needs(mission, missing, wrong)} />}
+      {progress.discovered && total > 0 && <Materials list={materials(mission, missing, wrong)} />}
       {progress.discovered && misplaced > 0 && <p className="quest-warning">{copy.wrongBlocks}</p>}
       <ol className="quest-steps" aria-label={copy.total}>
         {objectives.map(({ id }) => {

@@ -82,12 +82,19 @@ export function earnedPoints(discovered: boolean, counts: Counts, completed: boo
 export const totalCells = cells.length
 export const builtTotal = (counts: Counts) => Object.values(counts).reduce((sum, value) => sum + value, 0)
 
-/** Blocks still needed for a mission, grouped by the block the blueprint shows. */
-export function needs(mission: Mission, missing: readonly number[], wrong: readonly number[]) {
-  const result = new Map<number, number>()
-  for (const i of [...missing, ...wrong]) {
-    const cell = cells[i]
-    if (cell.mission === mission) result.set(cell.block, (result.get(cell.block) ?? 0) + 1)
-  }
-  return [...result].sort((a, b) => b[1] - a[1])
+/**
+ * Every block a mission uses, grouped by the block the blueprint shows: how many of its cells
+ * are already built and how many there are in all. Most used first.
+ */
+export function materials(mission: Mission, missing: readonly number[], wrong: readonly number[]) {
+  const open = new Set([...missing, ...wrong])
+  const result = new Map<number, { block: number; placed: number; total: number }>()
+  cells.forEach((cell, i) => {
+    if (cell.mission !== mission) return
+    const entry = result.get(cell.block) ?? { block: cell.block, placed: 0, total: 0 }
+    entry.total++
+    if (!open.has(i)) entry.placed++
+    result.set(cell.block, entry)
+  })
+  return [...result.values()].sort((a, b) => b.total - a.total)
 }
