@@ -234,6 +234,63 @@ painters[Tile.bronze] = (x, y, rng) => {
   const mottle = Math.round((Math.sin(x * 0.9 + y * 0.4) + Math.cos(y * 1.1 - x * 0.5)) * 5)
   return hex('#a07a45', mottle * 2 + Math.round((r - 0.5) * 8))
 }
+// ---- The agora (Phase 14) -----------------------------------------------------------------
+const clayShade = (base: string, rng: () => number, shift = 0) => hex(base, shift + Math.round((rng() - 0.5) * 12))
+painters[Tile.lionSpout] = (x, y, rng) => {
+  // A lion's head carved in a marble slab: mane round the face, eyes, and the open mouth the water
+  // runs from.
+  const r = Math.hypot(x - 7.5, y - 7)
+  if (y >= 9 && y <= 11 && x >= 6 && x <= 9) return y === 9 ? '#6b5f4c' : '#3a332b'
+  if (y === 5 && (x === 5 || x === 10)) return '#4d4436'
+  if (r < 4.2) return marbleShade(rng, r < 2 ? 6 : -4)
+  if (r < 6.6) return hex('#c8b48f', ((x * 3 + y * 5) % 4 === 0 ? -22 : 0) + Math.round((rng() - 0.5) * 8))
+  return marbleShade(rng, Math.min(x, y, 15 - x, 15 - y) === 0 ? -14 : 0)
+}
+painters[Tile.pipeSide] = (x, y, rng) => {
+  // A run of fired clay sections laid in packed earth: a collar at the joint in the middle, and the
+  // round pipe shaded darker towards its edges.
+  if (y <= 2 || y >= 13) return clayShade('#9a7652', rng)
+  if (x === 7 || x === 8) return clayShade('#8f4a2c', rng, y === 3 || y === 12 ? -10 : 0)
+  return clayShade('#b8643f', rng, y <= 4 || y >= 11 ? -18 : y >= 6 && y <= 8 ? 10 : 0)
+}
+painters[Tile.pipeEnd] = (x, y, rng) => {
+  const r = Math.hypot(x - 7.5, y - 7.5)
+  if (r < 2.6) return '#2f2a26'
+  if (r < 5.6) return clayShade('#b8643f', rng, r > 4.6 ? -18 : 0)
+  return clayShade('#e2d3b5', rng)
+}
+/** A jar seen from the side: `half(y)` is its half-width at each row, null where it has no body. */
+const jar = (half: (y: number) => number | null, band: (y: number) => boolean, base: string): Paint => (x, y, rng) => {
+  const width = half(y)
+  if (width === null || Math.abs(x - 7.5) > width) return null
+  if (band(y)) return (x + y) % 3 === 0 ? '#c97a52' : '#2c1d16'
+  return clayShade(base, rng, x < 6 ? -16 : x > 10 ? 6 : 0)
+}
+// The pithos: a big storage jar for grain, oil or wine, almost as tall as a person, with a rope pattern.
+painters[Tile.pithosSide] = jar((y) => y <= 1 ? 4 : y <= 3 ? 5.2 : y <= 11 ? 6.8 - Math.abs(y - 6) * 0.25 : 6 - (y - 11) * 0.9, (y) => y === 5, '#b8643f')
+painters[Tile.pithosTop] = (x, y, rng) => {
+  const r = Math.hypot(x - 7.5, y - 7.5)
+  return r < 3 ? '#2a1d17' : r < 4.4 ? clayShade('#8f4a2c', rng) : r < 7 ? clayShade('#b8643f', rng) : null
+}
+// The amphora: two handles, a narrow neck and a pointed foot, for carrying wine and oil by ship.
+painters[Tile.amphoraSide] = (x, y, rng) => {
+  if ((x === 4 || x === 11) && y >= 2 && y <= 5) return '#9c5133'
+  if (y <= 1) return Math.abs(x - 7.5) <= 2 ? (y === 0 ? '#8f4a2c' : '#c27a50') : null
+  return jar((row) => row <= 4 ? 1.6 : row <= 11 ? 1.6 + Math.min(row - 4, 3) * 1.2 - Math.max(0, row - 9) * 1.1 : row <= 15 ? 2.2 - (row - 11) * 0.5 : null,
+    (row) => row === 7, '#c27a50')(x, y, rng)
+}
+painters[Tile.amphoraTop] = (x, y, rng) => {
+  const r = Math.hypot(x - 7.5, y - 7.5)
+  return r < 1.6 ? '#2a1d17' : r < 2.6 ? clayShade('#8f4a2c', rng) : r < 5.2 ? clayShade('#c27a50', rng) : null
+}
+// A market stall: a plank counter under a striped awning of woollen cloth.
+painters[Tile.stallSide] = (x, y, rng) => {
+  if (y <= 4) return y === 4 ? '#7a5838' : (Math.floor(x / 3) % 2 === 0 ? hex('#b84a3a', Math.round((rng() - 0.5) * 10)) : hex('#ece6d6', Math.round((rng() - 0.5) * 8)))
+  // Under the awning: the shade between two posts, then the counter's front edge.
+  if (y <= 7) return x === 1 || x === 14 ? '#6b4c35' : y === 7 ? '#7a5838' : hex('#3b2f25', Math.round((rng() - 0.5) * 6))
+  return painters[Tile.planks](x, y, rng)
+}
+painters[Tile.stallTop] = (x, y, rng) => (Math.floor(x / 3) % 2 === 0 ? hex('#b84a3a', Math.round((rng() - 0.5) * 10)) : hex('#ece6d6', Math.round((rng() - 0.5) * 8)))
 // Milk in a small clay jug, and a white feather.
 itemTiles[46] = (x, y) => {
   if (y >= 3 && y <= 4 && x >= 6 && x <= 10) return '#f6f3ea'

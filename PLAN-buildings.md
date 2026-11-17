@@ -207,6 +207,13 @@ Theatres stood in the sanctuary of Dionysus, so this is the natural next step.
 ## Phase 14: The agora (Ἀγορά)
 The city's public square, where people met, traded and discussed public affairs.
 
+**Size and layout (decided 2026-11-17)**
+- **A medium stoa** along the north side of the square, facing south as real stoas did for the winter sun: 7 Doric columns of 2 × 2 blocks like the temple's, about 26 × 14 blocks, with 3 shops at the back. Roughly 1,500 blocks for the stoa.
+- **Water from a spring on the hill above the agora**, brought down by a terracotta pipe that players lay, to a lion's-head spout in the fountain house. The spout runs only while the pipe joins it to the spring.
+- Built in three slices, like Phase 13: **14a** the new blocks, **14b** the square, the boundary stones and the stoa with its shops, **14c** the spring, the pipe, the fountain house and the market stalls.
+
+**Status (2026-11-17): 14a done (blocks).** Five new blocks after the temple's (ids 36–40): the lion's-head spout (a lion's head carved in a marble slab), the clay pipe (drawn as a run laid in packed earth), the pithos and the amphora (cut-out jars, like the lamp, that cannot be walked through), and the market stall (a plank counter under a striped woollen awning). Workshop recipes: 3 marble in an L → spout; 2 terracotta side by side → 2 pipes; 7 terracotta in a U → pithos; 4 terracotta in a diamond → amphora; 3 wool over 2 planks → stall. Two history notes come the first time one is placed: water for the city (clay pipes, lion-head spouts, the Enneakrounos) and the market (amphorae, pithoi, the agoranomoi). The spout does not run water yet; that comes with the pipe network in 14c.
+
 **Tasks, in order**
 1. **The boundary stones (ὅροι τῆς ἀγορᾶς)**: marking out the open square, as in the Athenian agora.
 2. **The stoa's floor and back wall**: a long hall that is open at the front, built of limestone and ashlar.
