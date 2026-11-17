@@ -43,6 +43,9 @@ export const recipes: Recipe[] = [
   { pattern: ['T T', 'T T', 'TTT'], keys: { T: 'terracotta' }, result: { item: 'pithos', count: 1 } },
   { pattern: [' T ', 'T T', ' T '], keys: { T: 'terracotta' }, result: { item: 'amphora', count: 1 } },
   { pattern: ['WWW', 'P P'], keys: { W: 'wool', P: 'planks' }, result: { item: 'stall', count: 1 } },
+  // The stadium (Phase 15): starting sills cut from limestone, and wedges of ashlar for the vault.
+  { pattern: ['LLL'], keys: { L: 'limestone' }, result: { item: 'balbis', count: 2 } },
+  { pattern: ['A A', ' A '], keys: { A: 'ashlar' }, result: { item: 'voussoir', count: 3 } },
   ...tool('planks', 'wood'),
   ...tool('limestone', 'stone'),
   ...tool('bronzeIngot', 'bronze'),

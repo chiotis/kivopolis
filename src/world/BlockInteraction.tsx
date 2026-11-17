@@ -273,6 +273,8 @@ export function BlockInteraction() {
         if (id === Block.bronze || id === Block.statueBase) state.learn('bronze')
         if (id === Block.pipe || id === Block.lionSpout) state.learn('water')
         if (id === Block.amphora || id === Block.pithos || id === Block.stall) state.learn('market')
+        if (id === Block.balbis) state.learn('stade')
+        if (id === Block.voussoir) state.learn('vault')
         if (state.settings.sound) blockSound(blocks[id].sound, 'place')
         if (!state.settings.reducedMotion) popped.current = { x, y, z, at: performance.now() }
       }
