@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { islandEdge } from '../src/game/terrain'
 import { Block, isEmpty, isWater } from '../src/voxel/blocks'
-import { strength, submerged } from '../src/voxel/flow'
+import { flowDirection, strength, submerged } from '../src/voxel/flow'
 import { matchRecipe } from '../src/game/recipes'
 import { meshChunk, meshWater, type Sampler } from '../src/voxel/mesher'
 import { newBody, stepBody, type Limits } from '../src/voxel/physics'
@@ -181,6 +181,39 @@ describe('flowing water', () => {
     }
     expect(high).toBeLessThanOrEqual(wy(FLOOR + 1) + S / 2 + 0.001)
     expect(low).toBeLessThan(wy(FLOOR + 1) + S * 0.2)
+  })
+})
+
+describe('the direction water runs', () => {
+  it('runs away from the source on its surface, keeps the source still, and runs down the sides', () => {
+    const world = new VoxelWorld()
+    terrace(world)
+    world.set(OX, FLOOR + 1, OZ, Block.water)
+    settle(world)
+    const get = (x: number, y: number, z: number) => world.get(x, y, z)
+    const y = FLOOR + 1
+    expect(flowDirection(get, OX, y, OZ)).toEqual([0, 0])
+    const [ex, ez] = flowDirection(get, OX + 3, y, OZ)
+    expect(ex).toBeCloseTo(1)
+    expect(ez).toBeCloseTo(0)
+    const [nx, nz] = flowDirection(get, OX, y, OZ - 3)
+    expect(nx).toBeCloseTo(0)
+    expect(nz).toBeCloseTo(-1)
+    const mesh = meshWater(world, Math.floor(OX / 16), Math.floor(OZ / 16))
+    expect(mesh.flows.length).toBe((mesh.positions.length / 3) * 2)
+    // Some vertex on the surface drifts, and the sides of the flow run downwards.
+    let drifting = false, pouring = false
+    for (let v = 0; v < mesh.positions.length / 3; v++) {
+      const [fx, fz] = [mesh.flows[v * 2], mesh.flows[v * 2 + 1]]
+      if (mesh.normals[v * 3 + 1] === 1 && Math.hypot(fx, fz) > 0.5) drifting = true
+      if (mesh.normals[v * 3 + 1] === 0 && fx === 0 && fz === -1) pouring = true
+    }
+    expect(drifting && pouring).toBe(true)
+  })
+
+  it('leaves the sea still', () => {
+    const sea = grid([[1, 5, 1, Block.water], [2, 5, 1, Block.water]])
+    expect([...meshWater(sea, 0, 0).flows].every((value) => value === 0)).toBe(true)
   })
 })
 

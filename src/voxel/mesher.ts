@@ -1,5 +1,5 @@
-import { blocks, isOpaque, isWater } from './blocks'
-import { surfaceHeight } from './flow'
+import { blocks, isFlowing, isOpaque, isWater } from './blocks'
+import { flowDirection, surfaceHeight } from './flow'
 import { CHUNK, SX, SY, SZ, wx, wy, wz } from './grid'
 
 export const ATLAS_TILES = 8
@@ -43,6 +43,8 @@ export interface WaterMesh {
   positions: Float32Array
   normals: Float32Array
   uvs: Float32Array
+  /** Which way the ripples drift at each vertex, in texture units (zero on still water). */
+  flows: Float32Array
   indices: Uint32Array
   faces: number
 }
@@ -52,15 +54,28 @@ export interface WaterMesh {
  * lowered half a block so the sea sits level with the flat sea outside. Flowing water is lower,
  * and each top corner takes the average height of the water cells that share it, so a flow
  * slopes smoothly down from its source. UVs are in blocks, so
- * a tiling water texture flows across chunk borders without a seam.
+ * a tiling water texture flows across chunk borders without a seam. Each vertex also carries
+ * the direction the ripples drift: on a flow's surface the average of the cells sharing the
+ * corner, down the sides of flowing water, and none on sources and the sea.
  */
 export function meshWater(world: Sampler, cx: number, cz: number): WaterMesh {
   const positions: number[] = []
   const normals: number[] = []
   const uvs: number[] = []
+  const flows: number[] = []
   const indices: number[] = []
   const x0 = cx * CHUNK, z0 = cz * CHUNK
   const get = (x: number, y: number, z: number) => world.get(x, y, z)
+  /** Ripple direction at the corner (x, z) of a surface on layer y, from the water cells around it. */
+  const drift = (x: number, y: number, z: number): [number, number] => {
+    let fx = 0, fz = 0, count = 0
+    for (const dx of [-1, 0]) for (const dz of [-1, 0]) {
+      if (!isWater(world.get(x + dx, y, z + dz))) continue
+      const [ux, uz] = flowDirection(get, x + dx, y, z + dz)
+      fx += ux; fz += uz; count++
+    }
+    return count ? [fx / count, fz / count] : [0, 0]
+  }
   /** Height of the corner at block coordinates (x, z) on layer y, from the water cells around it. */
   const corner = (x: number, y: number, z: number) => {
     let sum = 0, count = 0
@@ -76,6 +91,8 @@ export function meshWater(world: Sampler, cx: number, cz: number): WaterMesh {
       for (let x = x0; x < x0 + CHUNK; x++) {
         if (!isWater(world.get(x, y, z))) continue
         const surface = !isWater(world.get(x, y + 1, z))
+        // Flowing water runs down its sides; sources and the sea keep still sides.
+        const pours = isFlowing(world.get(x, y, z)) || (surface ? false : isFlowing(world.get(x, y + 1, z)))
         for (const face of FACES) {
           const [nx, ny, nz] = face.normal
           if (ny === 0 && outside(x + nx, z + nz)) continue
@@ -90,6 +107,9 @@ export function meshWater(world: Sampler, cx: number, cz: number): WaterMesh {
             // Tops use the ground plane; sides run along their face.
             if (ny) uvs.push(x + point[0], z + point[2])
             else uvs.push(nx ? z + point[2] : x + point[0], y + cy)
+            if (ny === 1) flows.push(...drift(x + point[0], y, z + point[2]))
+            else if (ny === 0 && pours) flows.push(0, -1)
+            else flows.push(0, 0)
           }
           indices.push(start, start + 1, start + 2, start, start + 2, start + 3)
         }
@@ -98,7 +118,7 @@ export function meshWater(world: Sampler, cx: number, cz: number): WaterMesh {
   }
   return {
     positions: new Float32Array(positions), normals: new Float32Array(normals), uvs: new Float32Array(uvs),
-    indices: new Uint32Array(indices), faces: indices.length / 6,
+    flows: new Float32Array(flows), indices: new Uint32Array(indices), faces: indices.length / 6,
   }
 }
 

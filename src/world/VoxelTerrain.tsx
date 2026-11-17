@@ -5,7 +5,7 @@ import { sharedAtlas } from '../voxel/atlas'
 import { sky } from '../game/daylight'
 import { meshChunk, meshWater } from '../voxel/mesher'
 import { useGame } from '../game/store'
-import { animateWater, waterMaterial } from './water'
+import { animateWater, flowingWaterMaterial } from './water'
 import { CHUNK, CX, CZ, S, WATER_TICK, getWorld, wx, wz } from '../voxel/world'
 import { CHUNK_RADIUS, viewDistance } from './view'
 
@@ -31,6 +31,7 @@ function buildWater(cx: number, cz: number) {
   geometry.setAttribute('position', new BufferAttribute(mesh.positions, 3))
   geometry.setAttribute('normal', new BufferAttribute(mesh.normals, 3))
   geometry.setAttribute('uv', new BufferAttribute(mesh.uvs, 2))
+  geometry.setAttribute('flow', new BufferAttribute(mesh.flows, 2))
   geometry.setIndex(new BufferAttribute(mesh.indices, 1))
   geometry.computeBoundingSphere()
   return geometry
@@ -78,7 +79,7 @@ export function VoxelTerrain({ shadows, distance, ao }: { shadows: boolean; dist
         mesh.name = `chunk-${cx}-${cz}`
         list.push(mesh)
         root.add(mesh)
-        const water = new Mesh(new BufferGeometry(), waterMaterial())
+        const water = new Mesh(new BufferGeometry(), flowingWaterMaterial())
         water.renderOrder = 1
         water.name = `water-${cx}-${cz}`
         seas.push(water)

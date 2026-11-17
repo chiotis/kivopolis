@@ -131,6 +131,35 @@ test('activates the plan and lays an orchestra block by hand in first person', a
   expect(errorsSeen).toEqual([])
 })
 
+/** Points the walk view at (x, z) and holds W until the player stands within `near` of it. */
+async function walkTo(page: Page, x: number, z: number, near = 0.7) {
+  const at = () => page.evaluate(() => {
+    const { x, z } = (window as any).__polis.player.body.position
+    return [x, z] as [number, number]
+  })
+  const face = ([px, pz]: [number, number]) => page.evaluate(([dx, dz]) => {
+    // Walking forward moves along (-sin yaw, -cos yaw).
+    (window as any).__polisView.walkYaw = Math.atan2(-dx, -dz)
+  }, [x - px, z - pz])
+  let best = Infinity, since = Date.now()
+  await page.keyboard.down('w')
+  try {
+    for (;;) {
+      const here = await at()
+      const distance = Math.hypot(x - here[0], z - here[1])
+      if (distance < near) return
+      if (distance < best - 0.2) { best = distance; since = Date.now() }
+      if (Date.now() - since > 8000) throw new Error(`stuck at ${here.map((v) => v.toFixed(1))} on the way to ${x}, ${z}`)
+      await face(here)
+      // Hop over one-block steps and bridge ramps that the auto step-up does not take.
+      if (Date.now() - since > 1500) await page.keyboard.press(' ')
+      await page.waitForTimeout(80)
+    }
+  } finally {
+    await page.keyboard.up('w')
+  }
+}
+
 test('rebuilds an old prefab save as blocks and finishes with the tour', async ({ page }, info) => {
   test.skip(info.project.name !== 'chromium')
   const errorsSeen: string[] = []
@@ -301,4 +330,17 @@ test('starts in creative mode: every material at hand, blocks placed without run
   // A click breaks a block at once and drops nothing.
   await page.mouse.click(center.x, center.y)
   await expect.poll(async () => Object.values(await edits(page))).toContain(Block.air)
+})
+
+test('walks the ancient road from the theatre to the sanctuary signpost', async ({ page }, info) => {
+  test.skip(info.project.name === 'touch', 'Walking the road is checked once, with the keyboard.')
+  await startGame(page)
+  await expect(page.locator('canvas')).toBeVisible()
+  await expect.poll(() => page.evaluate(() => Boolean((window as any).__polisView && (window as any).__polis))).toBe(true)
+  // From the landing below the theatre, around the orchestra to the west side road, then the
+  // road itself (ROADS[0] in regions.ts): over the first bridge and into the sanctuary.
+  for (const [x, z] of [[1, 9.5], [-8, 6], [-12.6, 3.4], [-16.5, 8], [-23.4, 15.6]] as const) await walkTo(page, x, z)
+  await walkTo(page, -21.2, 16, 1.3)
+  await page.getByRole('button', { name: new RegExp(copy.readSign) }).click()
+  await expect(page.getByRole('dialog')).toContainText(buildings.sanctuary.title)
 })
