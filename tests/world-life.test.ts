@@ -7,7 +7,7 @@ import { Block } from '../src/voxel/blocks'
 import { meshChunk, type Sampler } from '../src/voxel/mesher'
 import { newBody, stepBody, type Limits } from '../src/voxel/physics'
 import { VoxelWorld, bx, by, bz, getWorld, wy } from '../src/voxel/world'
-import { canStep, groundBelow, pickAnimal, spawnAnimals, startle, updateAnimal } from '../src/world/wildlife'
+import { STUCK_HOME, canStep, groundBelow, insideBuilding, pickAnimal, spawnAnimals, startle, updateAnimal } from '../src/world/wildlife'
 import { jumpTapped, playerState } from '../src/world/player'
 import { islandEdge } from '../src/game/terrain'
 
@@ -133,6 +133,7 @@ describe('animals', () => {
       expect(Math.hypot(animal.x, animal.z)).toBeLessThan(islandEdge(Math.atan2(animal.x, -animal.z)))
       expect(animal.y).toBeCloseTo(groundBelow(world, animal.x, animal.z, animal.y), 1)
       expect(canStep(world, animal, animal.x, animal.z)).toBe(true)
+      expect(insideBuilding(animal.x, animal.z)).toBeGreaterThanOrEqual(1)
       void start[i]
     })
     expect(herd.some((animal, i) => Math.hypot(animal.x - start[i][0], animal.z - start[i][1]) > 1)).toBe(true)
@@ -147,6 +148,34 @@ describe('animals', () => {
     expect(animal.flee).toBeGreaterThan(0)
     for (let i = 0; i < 20; i++) updateAnimal(animal, 0.05, { world, night: true })
     expect(animal.x).toBeGreaterThan(before[0])
+  })
+
+  it('never climb onto built blocks or walk into a building area', () => {
+    const built = new VoxelWorld()
+    const goat = spawnAnimals(built).find((animal) => animal.kind === 'goat')!
+    const floor = by(goat.y - 0.01)
+    // A one-block ashlar step right in front of the goat: high enough to climb, but built.
+    built.set(bx(goat.x + 0.5), floor + 1, bz(goat.z), Block.ashlar)
+    expect(canStep(built, goat, goat.x + 0.5, goat.z)).toBe(false)
+    // Inside the theatre's area it may only walk outwards.
+    const inside = { ...goat, x: 9, z: 9 }
+    const out = 1.02, deeper = 0.98
+    expect(canStep(built, inside, 9 * deeper, 9 * deeper)).toBe(false)
+    expect(insideBuilding(9 * out, 9 * out)).toBeGreaterThan(insideBuilding(9, 9))
+  })
+
+  it('jump down from a building they are stuck on, or are found back in their meadow', () => {
+    const tower = new VoxelWorld()
+    const goat = spawnAnimals(tower).find((animal) => animal.kind === 'goat')!
+    const [ix, iz, floor] = [bx(goat.x), bz(goat.z), by(goat.y - 0.01)]
+    // A 2 × 2 ashlar tower five blocks tall, with the goat standing on top: no usual step leads off it.
+    for (let y = floor + 1; y <= floor + 5; y++) for (const [dx, dz] of [[0, 0], [1, 0], [0, 1], [1, 1]]) tower.set(ix + dx, y, iz + dz, Block.ashlar)
+    Object.assign(goat, { y: wy(floor + 6), walking: false, timer: 99, stuck: 0 })
+    let seed = 5
+    const rng = () => ((seed = (1664525 * seed + 1013904223) >>> 0) / 4294967296)
+    for (let frame = 0; frame < (STUCK_HOME + 2) / 0.05; frame++) updateAnimal(goat, 0.05, { world: tower, night: false, rng })
+    expect(goat.y).toBeLessThan(wy(floor + 2))
+    expect(tower.get(bx(goat.x), by(goat.y - 0.01), bz(goat.z))).not.toBe(Block.ashlar)
   })
 
   it('can be picked with a ray, nearest first', () => {
