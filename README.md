@@ -9,7 +9,7 @@ The island has four building areas, joined by an ancient road with bridges over 
 | Building | Area | Status |
 | --- | --- | --- |
 | **The theatre** | Theatre Valley, at the centre | Playable: nine steps |
-| **The sanctuary of Dionysus** | A terrace south-west of the theatre, across the stream | Signpost and area; steps coming in Phase 13 |
+| **The sanctuary of Dionysus** | A terrace south-west of the theatre, across the stream | Playable: eight steps, a Doric temple of 4 × 6 columns with its altar and boundary wall |
 | **The agora** | The western plain, beyond the wooded ridge | Signpost and area; steps coming in Phase 14 |
 | **The stadium** | A valley between low hills to the south-east | Signpost and area; steps coming in Phase 15 |
 

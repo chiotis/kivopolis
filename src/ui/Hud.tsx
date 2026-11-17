@@ -125,7 +125,7 @@ function PlanPanel({ plan, brief, setBrief }: { plan: Plan; brief: boolean; setB
         </button>
       </div>
       <h2 className="pixel">{info?.title ?? buildings[plan.id].title}</h2>
-      {brief && <p className="quest-text">{!discovered ? copy.readTheSign : ready ? info?.description : copy.stepComing}</p>}
+      {brief && <p className="quest-text">{!discovered ? copy.readTheSign : !step ? copy.buildingDone : ready ? info?.description : copy.stepComing}</p>}
       {discovered && ready && <div className="quest-progress">
         <div><span>{copy.placed}</span><strong className="pixel" data-testid="mission-count">{done} / {total}</strong></div>
         <span className="xp-bar" role="progressbar" aria-label={copy.placed} aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>

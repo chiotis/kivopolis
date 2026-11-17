@@ -345,11 +345,17 @@ usePlans.subscribe(({ sites }, previous) => {
     if (!known?.discovered || !site) continue
     const step = before ? activeStep(plan, before.counts) : null
     if (step && state.screen === 'game' && state.settings.sound && (site.counts[step] ?? 0) > (before?.counts[step] ?? 0)) placementSound()
-    const fresh = finishedSteps(plan, site.counts).filter((id) => !known.celebrated.includes(id))
-    if (!fresh.length) continue
+    const finished = finishedSteps(plan, site.counts)
+    const fresh = finished.filter((id) => !known.celebrated.includes(id))
+    // Every step standing finishes the building, which opens the next one's signpost. It stays
+    // finished even if a block is broken later, as the theatre does after its tour.
+    const done = finished.length === plan.steps.length && !known.completed
+    if (!fresh.length && !done) continue
     const buildings = useShared.getState().buildings
-    share({ buildings: { ...buildings, [plan.id]: { ...known, celebrated: [...known.celebrated, ...fresh] } } })
-    if (state.screen === 'game' && !state.panel) useGame.setState({ milestone: fresh.at(-1)! })
+    share({ buildings: { ...buildings, [plan.id]: { ...known, celebrated: [...known.celebrated, ...fresh], completed: known.completed || done } } })
+    if (state.screen !== 'game') continue
+    if (done) useGame.setState({ panel: 'building', building: plan.id, milestone: null })
+    else if (!state.panel) useGame.setState({ milestone: fresh.at(-1)! })
   }
 })
 
