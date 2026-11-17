@@ -165,6 +165,12 @@ Players build together in the same world. One player creates a room and gets a s
 ## Phase 13: The sanctuary of Dionysus (Ἱερὸ τοῦ Διονύσου)
 Theatres stood in the sanctuary of Dionysus, so this is the natural next step.
 
+**Size and layout (decided 2026-11-17)**
+- **Columns 2 × 2 blocks** (1 m thick), about 11 blocks tall with the capital, roughly the Doric 1 : 5.5. Axial spacing 4 blocks (a 2-block gap between columns).
+- **The temple faces east**, with the altar in front of it to the east and the gateway in the boundary wall on the road, which arrives from the east.
+- Footprint: the columns span 14 × 22 blocks; the stylobate 16 × 24; with the three steps of the krepis about **20 × 28 blocks (10 × 14 units)**, the long side running east–west. With the altar, the space around the temple and the boundary wall, the sacred ground needs about **44 × 28 blocks (22 × 14 units)**.
+- **The terrace grows to the west.** Today it is 17 × 15 units (`regions.ts`: centre (-31, 20), rx 8.5, rz 7.5). The stream runs just east of it, so the east edge stays where it is and the terrace widens westwards to about 24 × 16 units (centre near (-34.5, 20), rx 12, rz 8). The road's exit to the agora, now at (-39.5, 20), moves to the new west edge. The island tests (level and dry area, a walkable road, entrances on the road) must still pass.
+
 **Tasks, in order**
 1. **The boundary wall (περίβολος)**: a low limestone wall around the sacred ground, with a gateway on the road.
 2. **The altar (βωμός)**: an ashlar altar in front of the temple, where sacrifices took place in the open air.
@@ -221,7 +227,7 @@ Unchanged from the old Phase 9, and done only after everything above: a *Surviva
 
 ## Decisions (2026-11-16)
 1. **Opening order:** one building at a time. The next signpost opens when the previous building is finished.
-2. **Temple size:** small, 4 × 6 columns.
+2. **Temple size:** small, 4 × 6 columns, each column 2 × 2 blocks; facing east; the terrace widens to the west (2026-11-17).
 3. **Stadium length:** a shorter track is fine.
 4. **Map:** one shared, large island, landscaped so that hills, a stream and groves separate the building areas. The road links them through passes and over a bridge.
 5. **Multiplayer:** up to 5 players per room, through a small Node room server on our own CloudPanel server. The game itself stays on Netlify.
