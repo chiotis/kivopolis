@@ -1,8 +1,9 @@
-import { SEA_CAVES, cliffWeight, ground, islandEdge, sandyShore, streamBed } from '../game/terrain'
+import { SEA_CAVES, cliffWeight, ground, islandEdge, level, sandyShore, streamBed } from '../game/terrain'
 import { AREAS, ROADS, ROAD_WIDTH, RIDGE, STREAM, STREAM_WIDTH, areaWeight, bridges, farFrom, nearest, onRoad, oreHill, roadDistance, type Point2 } from '../game/regions'
 import { KOILON_EDGE, parodosZ, siteMarker, spawn, tourMarker } from '../game/theatre'
 import { cells } from '../game/blueprints/theatre'
 import { plans } from '../game/plans'
+import { SPRING, springCells } from '../game/blueprints/agora'
 import { Block } from './blocks'
 import { OY, S, SEA_FLOOR_Y, SEA_Y, SX, SY, SZ, bx, bz, wx, wz } from './grid'
 
@@ -40,7 +41,7 @@ export function onPath(x: number, z: number) {
  * Converts the design heightfield into block levels. The +0.25 bias keeps the theatre's
  * 0.5-unit tiers on exact block tops and its aisles one block lower.
  */
-export const level = (height: number) => Math.floor(height * 2 + 0.25)
+export { level }
 
 export const groves: [number, number, number, 'olive' | 'cypress'][] = [
   [-12.8, -3.7, 1.10, 'olive'], [-11.4, -7.6, 1.2, 'olive'], [-12.5, -9.9, 1.35, 'cypress'],
@@ -365,9 +366,28 @@ function buildingGrounds(grid: Grid) {
     for (const [x, y, z] of core ?? []) grid.fill(x, y, z, Block.soil)
   }
   for (const plan of plans) {
-    for (const cell of plan.cells) grid.fill(cell.x, cell.y, cell.z, Block.air)
+    for (const cell of plan.cells) {
+      const top = cell.open ? topOf(grid, cell.x, cell.z) : cell.y
+      for (let y = top; y >= cell.y; y--) grid.fill(cell.x, y, cell.z, Block.air)
+    }
     for (const cell of plan.cells) if (cell.footing) footing(grid, cell.x, cell.z, cell.y - 1, Block.soil)
   }
+}
+
+/**
+ * The spring above the agora (Phase 14): four cells of water in a limestone rim on a limestone
+ * bed, cut into the ridge's slope and open to the sky.
+ */
+function spring(grid: Grid) {
+  for (let x = SPRING.x0 - 1; x <= SPRING.x1 + 1; x++) {
+    for (let z = SPRING.z0 - 1; z <= SPRING.z1 + 1; z++) {
+      for (let y = topOf(grid, x, z); y > SPRING.y; y--) grid.fill(x, y, z, Block.air)
+      footing(grid, x, z, SPRING.y - 1, Block.limestone)
+      grid.fill(x, SPRING.y - 1, z, Block.limestone)
+      grid.fill(x, SPRING.y, z, Block.limestone)
+    }
+  }
+  for (const [x, y, z] of springCells) grid.fill(x, y, z, Block.water)
 }
 
 /** Every open cell at or below sea level is sea. */
@@ -386,6 +406,7 @@ export function generate(grid: Grid) {
   boulders(grid)
   seaCaves(grid)
   for (const point of bridges()) bridge(grid, point)
+  spring(grid)
   buildingGrounds(grid)
   markers(grid)
   site(grid)

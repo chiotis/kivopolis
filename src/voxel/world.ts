@@ -1,11 +1,17 @@
-import { Block, isKnownBlock, isOpaque, isSolid, isWater, lightTable } from './blocks'
+import { Block, isFlowing, isKnownBlock, isOpaque, isSolid, isWater, lightTable } from './blocks'
 import { nextWater } from './flow'
+import { fedPipes, spoutOutput, spoutRuns } from './plumbing'
+import { springCells } from '../game/blueprints/agora'
 import { generate, SEED } from './generate'
 import { chunkKey, chunkRecords, readRecord, worldHeader, writeRecord, type ChunkRecord } from '../game/save'
 
 import { CHUNK, CX, CZ, SX, SY, SZ, bx, bz, chunkOfCell, index, inside, wy } from './grid'
 
 export * from './grid'
+
+/** The spring's cells, by grid index: they never run dry. */
+const springs = new Set(springCells.map(([x, y, z]) => index(x, y, z)))
+const cellOf = (i: number): [number, number, number] => [i % SX, Math.floor(i / (SX * SZ)), Math.floor(i / SX) % SZ]
 
 type Listener = (chunks: number[]) => void
 
@@ -28,6 +34,8 @@ export class VoxelWorld {
   private pending = new Set<number>()
   /** Water ticks run since the world was generated or loaded. */
   ticks = 0
+  /** Cells that never run dry: the spring's, and the cell in front of each running spout. */
+  private sources = new Set<number>()
 
   constructor() { generate(this) }
 
@@ -59,7 +67,36 @@ export class VoxelWorld {
       for (const chunk of this.relight()) chunks.add(chunk)
     }
     this.emit([...chunks])
+    if (old === Block.pipe || id === Block.pipe || old === Block.lionSpout || id === Block.lionSpout || springs.has(i)) this.plumb()
     return true
+  }
+
+  /**
+   * Starts or stops the fountains (Phase 14): a spout joined to the spring by pipe pours a source
+   * of water into its open side; one that is cut off stops, and the water it gave drains away.
+   * Only water a player's world holds as an edit is taken, never the generated sea or stream.
+   */
+  private plumb() {
+    const get = (x: number, y: number, z: number) => this.get(x, y, z)
+    const fed = fedPipes(get)
+    const running = new Set<number>()
+    const stopped = new Set<number>()
+    const spouts = [...this.edits].filter(([i, id]) => id === Block.lionSpout && this.data[i] === id).map(([i]) => i).sort((a, b) => a - b)
+    for (const i of spouts) {
+      const out = spoutOutput(get, ...cellOf(i))
+      if (!out) continue
+      if (spoutRuns(get, fed, ...cellOf(i))) running.add(index(...out))
+      else stopped.add(index(...out))
+    }
+    // Water left by a spout that stopped or was taken away, then water for every running one.
+    for (const o of [...this.sources, ...stopped].sort((a, b) => a - b)) {
+      if (!running.has(o) && this.data[o] === Block.water && this.edits.has(o)) {
+        this.sources.delete(o)
+        this.set(...cellOf(o), Block.air)
+      }
+    }
+    this.sources = running
+    for (const o of [...running].sort((a, b) => a - b)) if (this.data[o] !== Block.water) this.set(...cellOf(o), Block.water)
   }
 
   /** Queues a cell and its six neighbours for the next water tick when water is involved. */
@@ -81,11 +118,15 @@ export class VoxelWorld {
     const now = queue.slice(0, TICK_LIMIT)
     this.pending = new Set(queue.slice(TICK_LIMIT))
     const plane = SX * SZ
-    const get = (x: number, y: number, z: number) => this.get(x, y, z)
+    // The spring wells up but stays in its rim: to the water around it, it is stone. Only a pipe
+    // (or a spout set against it) takes water from it.
+    const get = (x: number, y: number, z: number) => inside(x, y, z) && springs.has(index(x, y, z)) ? Block.limestone : this.get(x, y, z)
     const changes: [number, number][] = []
     for (const i of now) {
       const x = i % SX, z = Math.floor(i / SX) % SZ, y = Math.floor(i / plane)
-      const next = nextWater(get, x, y, z)
+      // The spring and a running spout's mouth fill again as soon as water is taken from them.
+      const empty = this.data[i] === Block.air || isFlowing(this.data[i])
+      const next = springs.has(i) ? (empty ? Block.water : this.data[i]) : this.sources.has(i) && empty ? Block.water : nextWater(get, x, y, z)
       if (next !== this.data[i]) changes.push([i, next])
     }
     const chunks = new Set<number>()
@@ -190,6 +231,8 @@ export class VoxelWorld {
     }
     this.findLamps()
     this.relight()
+    this.sources.clear()
+    this.plumb()
     this.emit(Array.from({ length: CX * CZ }, (_, chunk) => chunk))
   }
 

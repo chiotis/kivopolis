@@ -216,6 +216,18 @@ The city's public square, where people met, traded and discussed public affairs.
 
 **Status (2026-11-17): 14b done (square and stoa).** The agora is a plan like the sanctuary (`src/game/blueprints/agora.ts`), with seven steps: the boundary stones, the stoa's floor and walls, the colonnade, the shops, and the entablature and roof, then two still to come in 14c (the fountain house, the market stalls), so the agora does not count as finished yet. The stoa is 28 × 14 blocks on the north side of the square, facing south: an ashlar-edged limestone floor one course high, back and end walls 9 blocks high, 7 Doric columns of 2 × 2 blocks (8 drums and a capital) along the open front, a frieze with a triglyph over every column, and a terracotta roof in two slopes with marble pediments. At the back, three shops behind a wall with a doorway 2 blocks wide and 4 high into each. Six boundary stones (two limestone courses and a marble cap) mark the corners and sides of the open square in front. 2,162 blocks in all. The generator now levels each plan's ground from the plan itself (`Plan.ground`), and the agora's area reaches 1.5 units further north (centre z 3, rz 12) so the whole stoa stands inside it.
 
+**Status (2026-11-17): 14c done: Phase 14 complete.** Three more steps finish the agora, 2,507 blocks in all:
+- **The fountain house** (κρήνη), in the square's south-east corner and open to the west: a floor, walls on three sides, two Doric columns at the front, a basin behind a parapet one block high, the lion's head in the middle of the back wall, a marble ceiling and a small tiled roof.
+- **The pipe** (σωλῆνες): a spring of four water cells in a limestone rim sits on the ridge's west slope (block 94, 191; generated with the island). From a gap in its rim a trench runs south along the slope, west to the fountain house and up its back wall: 33 pipe sections, each touching the next face to face. The trench is flush with the ground, steps down where the ground does, and keeps off the road. Its ground heights are kept as data in the blueprint (a test checks them against the terrain), because asking the terrain while the modules load made generating the island half as fast again.
+- **The market stalls**: three counters across the square, three stall blocks each, with two pithoi and an amphora behind each.
+
+**How the water works** (`src/voxel/plumbing.ts`, run by `VoxelWorld`, so the game and the room server always agree):
+- A lion's-head spout runs while pipe sections join it to the spring. It pours a water source into its first open side, which falls into the basin and spreads there with the Phase 10 water rules. Any spout works, not only the planned one.
+- The rule is checked whenever a pipe, a spout or the spring changes, and when a save is loaded. Cutting the pipe, or taking the spout away, stops the water, and the basin drains.
+- The spring and a running spout's mouth fill up again when a hydria takes their water, so the fountain never runs dry.
+- The spring's water stays in its rim: it does not spill into the empty trench.
+- A stopped spout takes away any water a player placed at its mouth.
+
 **Tasks, in order**
 1. **The boundary stones (ὅροι τῆς ἀγορᾶς)**: marking out the open square, as in the Athenian agora.
 2. **The stoa's floor and back wall**: a long hall that is open at the front, built of limestone and ashlar.
