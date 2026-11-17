@@ -1,5 +1,7 @@
 # KivoPolis
 
+![KivoPolis: a voxel temple, columns and theatre on a floating island above a terraced green valley](docs/cover.webp)
+
 **KivoPolis** (from *κύβος*, cube, and *πόλις*, city) is a Greek-language, single-player browser game set in an ancient Greek valley. In its first chapter, **Theatre Valley**, you walk to the site marker, activate the blueprint, and build a fictional ancient Greek theatre block by block in nine missions: the orchestra, the analemmata, four curved rows of seats split by a gravel diazoma, the stairways, the skene and the parodoi.
 
 Saved games are still stored under the `ancient-polis` keys, so renaming the game keeps everyone's progress.
