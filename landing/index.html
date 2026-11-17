@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KivoPolis · Χτίσε μια αρχαία ελληνική πόλη, κύβο κύβο</title>
+<meta name="description" content="Δωρεάν ελληνικό παιχνίδι στον browser: εξερεύνησε ένα νησί της αρχαίας Ελλάδας, μάζεψε υλικά και χτίσε θέατρο, ιερό, αγορά και στάδιο κύβο κύβο, μόνος ή με έως πέντε φίλους.">
+<meta property="og:title" content="KivoPolis">
+<meta property="og:description" content="Χτίσε μια αρχαία ελληνική πόλη, κύβο κύβο. Δωρεάν παιχνίδι στον browser, στα ελληνικά.">
+<meta property="og:image" content="hero.webp">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700&family=Literata:opsz,wght@7..72,500;7..72,600;7..72,700&display=swap">
+<style>
+:root{--bg:#F3EDE2;--ink:#1F2430;--muted:#4A4F5B;--soft:#5A5E68;--line:#E2D8C6;--card:#FBF8F2;--sand:#E9DFCC;--clay:#A8461F;--clay-d:#7E3214;--sea:#1F5A8A;--olive:#5E7A2E;--gold:#F2C14E}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Commissioner,system-ui,sans-serif;font-size:17px;line-height:1.6}
+a{color:var(--clay)}a:hover{color:var(--clay-d)}
+h1,h2,h3{font-family:Literata,Georgia,serif;margin:0}
+p{margin:0}
+.wrap{max-width:1200px;margin:0 auto;padding-left:24px;padding-right:24px}
+.eyebrow{font-size:14px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--sea)}
+.h2{font-size:clamp(32px,3.6vw,46px);line-height:1.12;letter-spacing:-.015em}
+.head{display:flex;flex-direction:column;gap:12px;max-width:720px}
+.head p:not(.eyebrow){color:var(--muted)}
+.btn{display:inline-flex;align-items:center;gap:10px;min-height:44px;border-radius:12px;font-weight:600;text-decoration:none}
+.btn-primary{background:var(--clay);color:#fff;padding:15px 28px;font-size:17px}
+.btn-primary:hover{background:var(--clay-d);color:#fff}
+.btn-ghost{border:1.5px solid var(--ink);color:var(--ink);padding:14px 26px;font-size:17px}
+.btn-ghost:hover{background:var(--ink);color:var(--bg)}
+header{position:sticky;top:0;z-index:10;background:rgba(243,237,226,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+nav{display:flex;flex-wrap:wrap;align-items:center;gap:12px 28px;padding-top:14px;padding-bottom:14px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-family:Literata,Georgia,serif;font-weight:700;font-size:22px;letter-spacing:-.01em}
+.brand:hover{color:var(--ink)}
+.links{display:flex;flex-wrap:wrap;gap:4px 22px;flex:1 1 auto;font-size:15px;font-weight:500}
+.links a{color:#3A3F4B;text-decoration:none;padding:8px 0}
+.links a:hover{color:var(--clay)}
+.lang{display:flex;border:1px solid #CBBFA9;border-radius:999px;padding:3px;gap:2px}
+.lang button{border:none;border-radius:999px;padding:8px 14px;min-height:36px;min-width:44px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:#3A3F4B}
+.lang button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:700}
+.nav-play{padding:11px 20px;font-size:15px;border-radius:10px}
+.hero{display:flex;flex-wrap:wrap;gap:48px;align-items:center;padding-top:72px;padding-bottom:56px}
+.hero-text{flex:1 1 440px;min-width:0;display:flex;flex-direction:column;gap:22px}
+.hero h1{font-weight:700;font-size:clamp(40px,5.6vw,68px);line-height:1.05;letter-spacing:-.02em}
+.lead{font-size:19px;color:var(--muted);max-width:560px}
+.ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
+.hero-eyebrow{letter-spacing:0;text-transform:none}
+.hero-credit{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-top:18px;border-top:1px solid #D8CCB6;max-width:560px}
+.hero-credit img{display:block;width:180px;height:auto;margin:-24px -16px -16px;filter:brightness(0)}
+.hero-credit span{flex:1 1 220px;font-size:16px;font-weight:600;color:var(--ink);padding-left:24px;white-space:pre-line}
+@media (max-width:480px){.hero-credit span{padding-left:0}}
+figure{flex:1 1 460px;min-width:0;margin:0}
+figure img{display:block;width:100%;height:auto;aspect-ratio:862/688;object-fit:cover;border-radius:18px;border:3px solid var(--ink);box-shadow:10px 10px 0 var(--ink)}
+figcaption{margin-top:18px;font-size:14px;color:var(--soft)}
+.stats{background:var(--ink);color:var(--bg)}
+.stats .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;padding-top:36px;padding-bottom:36px}
+.stat{display:flex;flex-direction:column;gap:4px}
+.stat b{font-family:Literata,Georgia,serif;font-size:44px;line-height:1;color:var(--gold)}
+.stat span{font-size:15px;color:#D9D2C3}
+.section{padding-top:96px;padding-bottom:80px;display:flex;flex-direction:column;gap:40px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:12px}
+.card h3{font-size:22px;line-height:1.25}
+.card p{color:var(--muted);font-size:16px}
+.badge{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;color:#fff;font-family:Literata,Georgia,serif;font-weight:700;font-size:22px}
+.world{background:var(--sand)}
+.world .wrap{display:flex;flex-wrap:wrap;gap:48px;padding-top:88px;padding-bottom:88px}
+.world .text{flex:1 1 360px;min-width:0;display:flex;flex-direction:column;gap:16px;color:#3A3F4B}
+.world .text h2{color:var(--ink)}
+.places{flex:1 1 520px;min-width:0;list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.places li{background:#F7F2E8;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:18px}
+.sw{flex:none;width:34px;height:34px;border-radius:6px;border:2px solid var(--ink)}
+.places .name{font-weight:600}
+.places .desc{font-size:15px;color:var(--muted)}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:28px}
+.steps li{display:flex;flex-direction:column;gap:10px;border-top:3px solid var(--ink);padding-top:18px}
+.steps .num{font-family:Literata,Georgia,serif;font-size:34px;font-weight:700;color:var(--clay);line-height:1}
+.steps h3{font-family:Commissioner,system-ui,sans-serif;font-size:19px;font-weight:700}
+.steps p{color:var(--muted);font-size:16px}
+.ctrls{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.ctrl{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 24px}
+.ctrl b{display:block;margin-bottom:8px}
+.ctrl p{font-size:15px;color:var(--muted)}
+.schools{background:var(--sea);color:#fff}
+.schools .wrap{display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start;padding-top:88px;padding-bottom:88px}
+.schools .text{flex:1 1 380px;min-width:0;display:flex;flex-direction:column;gap:16px}
+.schools .eyebrow{color:#CFE2F1}
+.schools .text p{color:#E4EEF6}
+.checks{flex:1 1 440px;min-width:0;list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.checks li{display:flex;gap:14px;align-items:flex-start;background:rgba(255,255,255,.08);border-radius:12px;padding:16px 18px;font-size:16px}
+.checks svg{flex:none;margin-top:2px}
+.road{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.road article{border-radius:16px;padding:26px;display:flex;flex-direction:column;gap:10px;border:2px dashed #B7A98F}
+.road article.done{background:var(--card);border:2px solid var(--ink)}
+.road h3{font-size:22px;line-height:1.25}
+.road p{font-size:15px;color:var(--muted)}
+.pill{align-self:flex-start;font-size:13px;font-weight:600;padding:4px 12px;border-radius:999px;background:var(--sand);color:#3A3F4B}
+.done .pill{background:var(--olive);color:#fff}
+.final{background:var(--ink);color:var(--bg)}
+.final .wrap{max-width:900px;padding-top:96px;padding-bottom:96px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px}
+.final h2{font-size:clamp(36px,4.4vw,56px);line-height:1.08;letter-spacing:-.02em}
+.final p{color:#D9D2C3;font-size:18px;max-width:600px}
+.btn-gold{background:var(--gold);color:var(--ink);padding:16px 32px;font-size:18px;font-weight:700;margin-top:8px}
+.btn-gold:hover{background:#F6D27A;color:var(--ink)}
+footer{background:#171B24;color:#B9B3A6;font-size:14px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:20px 48px;justify-content:space-between;padding-top:40px;padding-bottom:40px}
+footer .col{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:8px}
+footer .fbrand{display:flex;align-items:center;gap:10px;font-family:Literata,Georgia,serif;font-weight:700;font-size:18px;color:var(--bg)}
+footer .credit{justify-content:flex-end;font-size:13px;color:#D9D2C3}
+footer .partner{display:block;width:200px;height:auto;margin:-24px -18px -16px}
+@media (min-width:768px){footer .credit{text-align:right;align-items:flex-end}}
+:focus-visible{outline:3px solid var(--sea);outline-offset:2px}
+@media (max-width:640px){.links{order:5;flex-basis:100%}.hero{padding-top:40px}}
+</style>
+</head>
+<body>
+<header>
+  <nav class="wrap" data-i18n-aria="navLabel" aria-label="Κύρια πλοήγηση">
+    <a class="brand" href="#top"><img src="logo.svg" alt="" width="36" height="36">KivoPolis</a>
+    <div class="links">
+      <a href="#features" data-i18n="navFeatures">Το παιχνίδι</a>
+      <a href="#world" data-i18n="navWorld">Ο κόσμος</a>
+      <a href="#monuments" data-i18n="navMonuments">Τα μνημεία</a>
+      <a href="#schools" data-i18n="navSchools">Για σχολεία</a>
+    </div>
+    <div class="lang" role="group" data-i18n-aria="langLabel" aria-label="Γλώσσα">
+      <button type="button" data-lang="el" aria-pressed="true" lang="el">ΕΛ</button>
+      <button type="button" data-lang="en" aria-pressed="false" lang="en">EN</button>
+    </div>
+    <a class="btn btn-primary nav-play" href="https://game.kivopolis.com" data-i18n="play">Παίξε τώρα</a>
+  </nav>
+</header>
+
+<main>
+<section id="top" class="wrap hero">
+  <div class="hero-text">
+    <p class="eyebrow hero-eyebrow" data-i18n="eyebrow">Κύβος + πόλις. Παίζεται δωρεάν σε υπολογιστή και tablet, χωρίς εγκατάσταση.</p>
+    <h1 data-i18n="title">Χτίσε μια αρχαία ελληνική πόλη, κύβο κύβο.</h1>
+    <p class="lead" data-i18n="lead">Ένα νησί της αρχαίας Ελλάδας σε περιμένει. Μάζεψε ξύλο, πέτρα και πηλό, φτιάξε τα εργαλεία σου και ακολούθησε τον αρχαίο δρόμο από το θέατρο ως το ιερό, την αγορά και το στάδιο. Κάθε οικοδόμημα το στήνεις εσύ, κύβο κύβο, και μαθαίνεις την ιστορία του όσο χτίζεις.</p>
+    <div class="ctas">
+      <a class="btn btn-primary" href="https://game.kivopolis.com"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16l13-8Z"/></svg><span data-i18n="play">Παίξε τώρα</span></a>
+      <a class="btn btn-ghost" href="#how" data-i18n="howCta">Πώς παίζεται</a>
+    </div>
+    <div class="hero-credit">
+      <img src="diazoma.webp" width="2000" height="1414" alt="ΔΙΑΖΩΜΑ">
+      <span data-i18n="credit">Μια πρωτοβουλία του Σωματείου «ΔΙΑΖΩΜΑ»
+και της Θερμοκοιτίδας DHUB.</span>
+    </div>
+  </div>
+  <figure>
+    <img src="hero.webp" width="862" height="688" data-i18n-alt="imgAlt" alt="Στιγμιότυπο από το παιχνίδι: το εργοτάξιο του θεάτρου ανάμεσα σε ελιές και κυπαρίσσια, με τις κερκίδες του σχεδίου να φαίνονται ως φωτεινοί κύβοι-οδηγοί.">
+    <figcaption data-i18n="figcap">Το εργοτάξιο του θεάτρου, ο πρώτος σταθμός στο νησί.</figcaption>
+  </figure>
+</section>
+
+<section class="stats" data-i18n-aria="statsLabel" aria-label="Με μια ματιά">
+  <div class="wrap">
+    <div class="stat"><b>4</b><span data-i18n="stat1">αρχαίοι χώροι κατά μήκος του δρόμου</span></div>
+    <div class="stat"><b>2</b><span data-i18n="stat2">τρόποι παιχνιδιού: συλλογή υλικών ή δημιουργικό</span></div>
+    <div class="stat"><b>5</b><span data-i18n="stat3">παίκτες το πολύ στο ίδιο νησί</span></div>
+    <div class="stat"><b>20′</b><span data-i18n="stat4">διαρκεί μια μέρα στο νησί</span></div>
+  </div>
+</section>
+
+<section id="features" class="wrap section">
+  <div class="head">
+    <p class="eyebrow" data-i18n="featEyebrow">Το παιχνίδι</p>
+    <h2 class="h2" data-i18n="featTitle">Εξερεύνησε, μάζεψε υλικά, χτίσε και μάθε.</h2>
+  </div>
+  <div class="cards">
+    <article class="card"><span class="badge" style="background:#A8461F" aria-hidden="true">Α</span><h3 data-i18n="f1t">Ένα ολόκληρο νησί</h3><p data-i18n="f1b">Λόφοι, ελαιώνες, ένα ρέμα με πέτρινες γέφυρες κι ένας αρχαίος δρόμος που ενώνει τους χώρους. Ορόσημα και μια ερμαϊκή στήλη δείχνουν τον δρόμο.</p></article>
+    <article class="card"><span class="badge" style="background:#1F5A8A" aria-hidden="true">Β</span><h3 data-i18n="f2t">Μάζεψε και κατασκεύασε</h3><p data-i18n="f2b">Κόψε ξύλο ελιάς, φτιάξε εργαλεία στο εργαστήριο, ψήσε πηλό σε κεραμίδια στο καμίνι και κάνε μπρούντζο από χαλκό και κασσίτερο. Τα εργαλεία φθείρονται, κι έτσι φτιάχνεις καλύτερα.</p></article>
+    <article class="card"><span class="badge" style="background:#5E7A2E" aria-hidden="true">Γ</span><h3 data-i18n="f3t">Χτίσε με το σχέδιο</h3><p data-i18n="f3b">Στο σημάδι κάθε χώρου ενεργοποιείς το σχέδιο. Φωτεινοί κύβοι-οδηγοί δείχνουν πού μπαίνει κάθε κύβος. Δεν υπάρχουν έτοιμα κομμάτια.</p></article>
+    <article class="card"><span class="badge" style="background:#A8461F" aria-hidden="true">Δ</span><h3 data-i18n="f4t">Νερό που κυλά</h3><p data-i18n="f4b">Το νερό τρέχει στις πλαγιές και γεμίζει τα κοιλώματα. Μετέφερέ το με την υδρία, το πήλινο σταμνί της αρχαιότητας.</p></article>
+    <article class="card"><span class="badge" style="background:#1F5A8A" aria-hidden="true">Ε</span><h3 data-i18n="f5t">Μέρα, νύχτα και ζωή</h3><p data-i18n="f5b">Η μέρα γίνεται νύχτα, οι λυχνοστάτες φωτίζουν τα εργοτάξια, και πρόβατα, κατσίκες και κότες βόσκουν στα λιβάδια.</p></article>
+    <article class="card"><span class="badge" style="background:#5E7A2E" aria-hidden="true">ΣΤ</span><h3 data-i18n="f6t">Παίξτε μαζί</h3><p data-i18n="f6b">Έως πέντε φίλοι ή μια ομάδα της τάξης μπαίνουν στο ίδιο νησί και χτίζουν μαζί.</p></article>
+    <article class="card"><span class="badge" style="background:#A8461F" aria-hidden="true">Ζ</span><h3 data-i18n="f7t">Δημιουργική λειτουργία</h3><p data-i18n="f7b">Όλα τα υλικά στο σακίδιο, κύβοι που δεν τελειώνουν, άμεσο σπάσιμο και πτήση. Ιδανική για την τάξη.</p></article>
+    <article class="card"><span class="badge" style="background:#1F5A8A" aria-hidden="true">Η</span><h3 data-i18n="f8t">Μάθε την ιστορία</h3><p data-i18n="f8b">Σύντομες ιστορικές σημειώσεις εμφανίζονται την ώρα που τις χρειάζεσαι και μένουν στο ημερολόγιό σου.</p></article>
+  </div>
+</section>
+
+<section id="world" class="world">
+  <div class="wrap">
+    <div class="text">
+      <p class="eyebrow" data-i18n="wEyebrow">Ο κόσμος</p>
+      <h2 class="h2" data-i18n="wTitle">Ένα νησί γεμάτο υλικά και ιστορία.</h2>
+      <p data-i18n="wBody">Όλο το νησί είναι φτιαγμένο από κύβους: μπορείς να σκάψεις, να κόψεις και να χτίσεις παντού. Κάθε υλικό έχει τον τόπο του, και κάθε τόπος κρύβει κάτι που θα χρειαστείς.</p>
+      <p data-i18n="wBody2">Ο αρχαίος δρόμος ξεκινά από το θέατρο και οδηγεί στους χώρους των επόμενων οικοδομημάτων.</p>
+    </div>
+    <ul class="places">
+      <li><span class="sw" style="background:#DDD0B4" aria-hidden="true"></span><div><div class="name" data-i18n="pl1n">Η Κοιλάδα του Θεάτρου</div><div class="desc" data-i18n="pl1d">Το πρώτο εργοτάξιο, εκεί που ξεκινά η περιπέτεια.</div></div></li>
+      <li><span class="sw" style="background:#A39A8D" aria-hidden="true"></span><div><div class="name" data-i18n="pl2n">Ο αρχαίος δρόμος</div><div class="desc" data-i18n="pl2d">Ορόσημα, πέτρινες γέφυρες και μια ερμαϊκή στήλη στη διασταύρωση.</div></div></li>
+      <li><span class="sw" style="background:#6FA3C8" aria-hidden="true"></span><div><div class="name" data-i18n="pl3n">Το ρέμα</div><div class="desc" data-i18n="pl3d">Νερό που κυλά πάνω σε χαλίκι, για να γεμίσεις την υδρία σου.</div></div></li>
+      <li><span class="sw" style="background:#F1EDE4" aria-hidden="true"></span><div><div class="name" data-i18n="pl4n">Η βόρεια κορυφογραμμή</div><div class="desc" data-i18n="pl4d">Πυκνά δάση και λατομείο μαρμάρου για τις κερκίδες.</div></div></li>
+      <li><span class="sw" style="background:#C46A3F" aria-hidden="true"></span><div><div class="name" data-i18n="pl5n">Παραλίες και πέτρα</div><div class="desc" data-i18n="pl5d">Πηλός κάτω από την άμμο, χαλκός και κασσίτερος μέσα στον βράχο.</div></div></li>
+      <li><span class="sw" style="background:#7C9A45" aria-hidden="true"></span><div><div class="name" data-i18n="pl6n">Τα λιβάδια</div><div class="desc" data-i18n="pl6d">Πρόβατα για μαλλί, κατσίκες για γάλα και κότες για φτερά.</div></div></li>
+    </ul>
+  </div>
+</section>
+
+<section id="how" class="wrap section">
+  <div class="head">
+    <p class="eyebrow" data-i18n="howEyebrow">Πώς παίζεται</p>
+    <h2 class="h2" data-i18n="howTitle">Από το πρώτο κούτσουρο ελιάς ως ολόκληρη πόλη.</h2>
+  </div>
+  <ol class="steps">
+    <li><span class="num">01</span><h3 data-i18n="s1t">Διάλεξε πώς θα παίξεις</h3><p data-i18n="s1b">Συλλογή υλικών για την πλήρη εμπειρία ή δημιουργικό για γρήγορο χτίσιμο. Αλλάζει όποτε θέλεις.</p></li>
+    <li><span class="num">02</span><h3 data-i18n="s2t">Μάζεψε και κατασκεύασε</h3><p data-i18n="s2b">Ξεκίνα από μια ελιά. Ο οδηγός «Πρώτα βήματα» σε βοηθά να φτιάξεις τα πρώτα σου εργαλεία.</p></li>
+    <li><span class="num">03</span><h3 data-i18n="s3t">Χτίσε με το σχέδιο</h3><p data-i18n="s3b">Στο σημάδι του χώρου ενεργοποίησε το σχέδιο και ακολούθησε τους φωτεινούς κύβους.</p></li>
+    <li><span class="num">04</span><h3 data-i18n="s4t">Ακολούθησε τον δρόμο</h3><p data-i18n="s4b">Με κάθε οικοδόμημα έτοιμο, ο αρχαίος δρόμος σε οδηγεί στο επόμενο.</p></li>
+  </ol>
+  <div class="ctrls">
+    <div class="ctrl"><b data-i18n="ctrlDesktop">Υπολογιστής</b><p data-i18n="ctrlDesktopBody">WASD για κίνηση, ποντίκι για ματιά. Αριστερό κλικ σπάει, δεξί κλικ τοποθετεί. E για το σακίδιο, B για το σχέδιο από ψηλά, V για πρώτο ή τρίτο πρόσωπο.</p></div>
+    <div class="ctrl"><b data-i18n="ctrlTouch">Tablet και κινητό</b><p data-i18n="ctrlTouchBody">Κουμπιά κατεύθυνσης και άλματος, σύρε για να κοιτάξεις, κουμπί αξίνας για σπάσιμο και + για τοποθέτηση. Τσίμπημα για ζουμ στο σχέδιο.</p></div>
+  </div>
+</section>
+
+<section id="monuments" class="wrap section" style="padding-top:24px">
+  <div class="head">
+    <p class="eyebrow" data-i18n="mEyebrow">Τα μνημεία</p>
+    <h2 class="h2" data-i18n="mTitle">Τέσσερα οικοδομήματα κατά μήκος του αρχαίου δρόμου.</h2>
+    <p data-i18n="mBody">Το θέατρο χτίζεται ήδη. Το ιερό, η αγορά και το στάδιο έχουν τη θέση τους στο νησί και ανοίγουν το ένα μετά το άλλο.</p>
+  </div>
+  <div class="road">
+    <article class="done"><span class="pill" data-i18n="avail">Διαθέσιμο</span><h3 data-i18n="r1t">Το θέατρο</h3><p data-i18n="r1b">Ορχήστρα, πρώτη σειρά εδωλίων, κοίλον, κλίμακες, σκηνή και πάροδοι: 332 κύβοι σε εννέα αποστολές, με ξενάγηση στο τέλος.</p></article>
+    <article><span class="pill" data-i18n="soon">Σύντομα</span><h3 data-i18n="r2t">Το ιερό του Διονύσου</h3><p data-i18n="r2b">Ένας μικρός δωρικός ναός και ο βωμός του, δίπλα στο θέατρο.</p></article>
+    <article><span class="pill" data-i18n="soon">Σύντομα</span><h3 data-i18n="r3t">Η αγορά</h3><p data-i18n="r3b">Μια στοά και μια κρήνη με τρεχούμενο νερό.</p></article>
+    <article><span class="pill" data-i18n="soon">Σύντομα</span><h3 data-i18n="r4t">Το στάδιο</h3><p data-i18n="r4b">Ο δρόμος του αγώνα και οι πλαγιές των θεατών.</p></article>
+  </div>
+</section>
+
+<section id="schools" class="schools">
+  <div class="wrap">
+    <div class="text">
+      <p class="eyebrow" data-i18n="schEyebrow">Για σχολεία</p>
+      <h2 class="h2" data-i18n="schTitle">Ιστορία που χτίζεται στην τάξη.</h2>
+      <p data-i18n="schBody">Το KivoPolis φτιάχτηκε για να γνωρίζουν οι μαθητές τα αρχαία οικοδομήματα, τα μέρη και τα υλικά τους, χτίζοντάς τα. Η δημιουργική λειτουργία αφήνει την ομάδα να εστιάσει στο σχέδιο και στην ιστορία.</p>
+    </div>
+    <ul class="checks">
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F2C14E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg><span data-i18n="c1">Όλο το κείμενο του παιχνιδιού είναι στα ελληνικά.</span></li>
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F2C14E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg><span data-i18n="c2">Δεν χρειάζεται λογαριασμός ούτε εγκατάσταση: ανοίγει στον browser.</span></li>
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F2C14E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg><span data-i18n="c3">Δημιουργική λειτουργία με όλα τα υλικά, για μάθημα μίας ώρας.</span></li>
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F2C14E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg><span data-i18n="c4">Κοινά νησιά έως πέντε παικτών για ομαδική δουλειά.</span></li>
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F2C14E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg><span data-i18n="c5">Ορολογία με επιμέλεια από το επιστημονικό προσωπικό του Διαζώματος.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2 data-i18n="ctaTitle">Το νησί σε περιμένει.</h2>
+    <p data-i18n="ctaBody">Άνοιξε το παιχνίδι στον browser σου, πάρε το πρώτο κούτσουρο ελιάς και ακολούθησε τον αρχαίο δρόμο.</p>
+    <a class="btn btn-gold" href="https://game.kivopolis.com"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16l13-8Z"/></svg><span data-i18n="play">Παίξε τώρα</span></a>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="col">
+      <span class="fbrand"><img src="logo.svg" alt="" width="32" height="32">KivoPolis</span>
+      <span data-i18n="footNote">Τα οικοδομήματα του παιχνιδιού είναι φανταστικές, εκπαιδευτικές αποδόσεις και όχι αναπαραστάσεις συγκεκριμένων μνημείων.</span>
+    </div>
+    <div class="col credit">
+      <img class="partner" src="diazoma.webp" width="2000" height="1414" alt="ΔΙΑΖΩΜΑ">
+      <span data-i18n="credit">Μια πρωτοβουλία του Σωματείου «ΔΙΑΖΩΜΑ»
+και της Θερμοκοιτίδας DHUB.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var EN = {
+    navLabel: 'Main navigation', langLabel: 'Language',
+    navFeatures: 'The game', navWorld: 'The world', navMonuments: 'The monuments', navSchools: 'For schools',
+    play: 'Play now', eyebrow: 'Kyvos (cube) + polis (city). Free to play on computers and tablets, nothing to install.',
+    title: 'Build an ancient Greek city, block by block.',
+    lead: 'An island of ancient Greece is waiting. Gather wood, stone and clay, make your tools and follow the ancient road from the theatre to the sanctuary, the agora and the stadium. You raise every building yourself, block by block, and learn its story as you build.',
+    howCta: 'How it plays',
+    imgAlt: 'Game screenshot: the theatre building site among olive and cypress trees, with the blueprint’s seat rows shown as glowing guide blocks.',
+    figcap: 'The theatre site, the first stop on the island.', statsLabel: 'At a glance',
+    stat1: 'ancient sites along the road', stat2: 'ways to play: gathering or creative', stat3: 'players at most on one island', stat4: 'is one full day on the island',
+    featEyebrow: 'The game', featTitle: 'Explore, gather, build and learn.',
+    f1t: 'A whole island', f1b: 'Hills, olive groves, a stream with stone bridges and an ancient road that joins the sites. Boundary stones and a herm show the way.',
+    f2t: 'Gather and craft', f2b: 'Cut olive wood, make tools at the workshop, fire clay into terracotta in the kiln and alloy bronze from copper and tin. Tools wear out, so you make better ones.',
+    f3t: 'Build from the blueprint', f3b: 'At each site’s marker you activate the blueprint. Glowing guide blocks show where every block goes. There are no prefab pieces.',
+    f4t: 'Water that flows', f4b: 'Water runs down the slopes and fills the hollows. Carry it in a hydria, the clay water jar of antiquity.',
+    f5t: 'Day, night and life', f5b: 'Day turns to night, oil lamps light the building sites, and sheep, goats and chickens graze the meadows.',
+    f6t: 'Play together', f6b: 'Up to five friends, or a group from class, join the same island and build together.',
+    f7t: 'Creative mode', f7b: 'Every material in the backpack, blocks that never run out, instant breaking and flight. Made for the classroom.',
+    f8t: 'Learn the history', f8b: 'Short history notes pop up when you need them and stay in your journal.',
+    wEyebrow: 'The world', wTitle: 'An island full of materials and history.',
+    wBody: 'The whole island is made of blocks: you can dig, cut and build anywhere. Every material has its place, and every place holds something you will need.',
+    wBody2: 'The ancient road starts at the theatre and leads to the sites of the next buildings.',
+    pl1n: 'Theatre Valley', pl1d: 'The first building site, where the adventure begins.',
+    pl2n: 'The ancient road', pl2d: 'Boundary stones, stone bridges and a herm at the fork.',
+    pl3n: 'The stream', pl3d: 'Water running over gravel, to fill your hydria.',
+    pl4n: 'The northern ridge', pl4d: 'Thick woods and a marble quarry for the seats.',
+    pl5n: 'Beaches and rock', pl5d: 'Clay under the sand, copper and tin inside the rock.',
+    pl6n: 'The meadows', pl6d: 'Sheep for wool, goats for milk and chickens for feathers.',
+    howEyebrow: 'How it plays', howTitle: 'From the first olive log to a whole city.',
+    s1t: 'Choose how to play', s1b: 'Gathering for the full experience, or creative to build fast. Switch whenever you like.',
+    s2t: 'Gather and craft', s2b: 'Start with an olive tree. The First Steps guide helps you make your first tools.',
+    s3t: 'Build from the plan', s3b: 'Activate the blueprint at the site marker and follow the glowing blocks.',
+    s4t: 'Follow the road', s4b: 'With each building finished, the ancient road leads you to the next.',
+    ctrlDesktop: 'Desktop', ctrlDesktopBody: 'WASD to move, mouse to look. Left click breaks, right click places. E opens the backpack, B the overview of the plan, V switches first and third person.',
+    ctrlTouch: 'Tablet and phone', ctrlTouchBody: 'Direction and jump buttons, drag to look, the pickaxe button to break and + to place. Pinch to zoom in the overview.',
+    mEyebrow: 'The monuments', mTitle: 'Four buildings along the ancient road.',
+    mBody: 'The theatre can be built today. The sanctuary, the agora and the stadium already have their places on the island and open one after another.',
+    avail: 'Available', soon: 'Coming soon',
+    r1t: 'The theatre', r1b: 'Orchestra, front row, koilon, stairways, skene and parodoi: 332 blocks over nine missions, with a guided tour at the end.',
+    r2t: 'The sanctuary of Dionysus', r2b: 'A small Doric temple and its altar, next to the theatre.',
+    r3t: 'The agora', r3b: 'A stoa and a fountain house with running water.',
+    r4t: 'The stadium', r4b: 'The racetrack and the slopes where spectators sat.',
+    schEyebrow: 'For schools', schTitle: 'History your class can build.',
+    schBody: 'KivoPolis was made so students get to know ancient buildings, their parts and their materials by building them. Creative mode lets a group focus on the plan and the history.',
+    c1: 'All of the game’s text is in Greek.', c2: 'No account and no install: it opens in the browser.',
+    c3: 'Creative mode with every material, for a one-hour lesson.', c4: 'Shared islands of up to five players for group work.',
+    c5: 'Terminology reviewed by DIAZOMA’s scientific staff.',
+    ctaTitle: 'The island is waiting.', ctaBody: 'Open the game in your browser, take the first olive log and follow the ancient road.',
+    footNote: 'The game’s buildings are fictional, educational interpretations, not reconstructions of specific monuments.',
+    credit: 'An initiative of the DIAZOMA Association\nand the DHUB incubator.'
+  };
+  var EL = {};
+  function collect(attr, prop) {
+    document.querySelectorAll('[' + attr + ']').forEach(function (n) { EL[n.getAttribute(attr)] = prop ? n.getAttribute(prop) : n.textContent; });
+  }
+  collect('data-i18n'); collect('data-i18n-aria', 'aria-label'); collect('data-i18n-alt', 'alt');
+  var titles = { el: document.title, en: 'KivoPolis · Build an ancient Greek city, block by block' };
+
+  function apply(lang) {
+    var d = lang === 'en' ? EN : EL;
+    document.documentElement.lang = lang;
+    document.title = titles[lang];
+    document.querySelectorAll('[data-i18n]').forEach(function (n) { var k = n.getAttribute('data-i18n'); if (d[k]) n.textContent = d[k]; });
+    document.querySelectorAll('[data-i18n-aria]').forEach(function (n) { var k = n.getAttribute('data-i18n-aria'); if (d[k]) n.setAttribute('aria-label', d[k]); });
+    document.querySelectorAll('[data-i18n-alt]').forEach(function (n) { var k = n.getAttribute('data-i18n-alt'); if (d[k]) n.setAttribute('alt', d[k]); });
+    document.querySelectorAll('.lang button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-lang') === lang)); });
+    try { localStorage.setItem('kivopolis-landing-lang', lang); } catch (e) {}
+  }
+
+  document.querySelectorAll('.lang button').forEach(function (b) {
+    b.addEventListener('click', function () { apply(b.getAttribute('data-lang')); });
+  });
+
+  var q = new URLSearchParams(location.search).get('lang');
+  var saved = null;
+  try { saved = localStorage.getItem('kivopolis-landing-lang'); } catch (e) {}
+  var start = q === 'en' || q === 'el' ? q : (saved === 'en' ? 'en' : 'el');
+  if (start !== 'el') apply(start);
+})();
+</script>
+</body>
+</html>
