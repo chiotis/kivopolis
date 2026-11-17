@@ -39,6 +39,12 @@ export const Block = {
   metope: 33,
   statueBase: 34,
   bronze: 35,
+  // The agora (Phase 14): the fountain house's water, and the market.
+  lionSpout: 36,
+  pipe: 37,
+  pithos: 38,
+  amphora: 39,
+  stall: 40,
 } as const
 export type BlockId = (typeof Block)[keyof typeof Block]
 
@@ -51,6 +57,7 @@ export const Tile = {
   drumSide: 27, drumTop: 28, capitalSide: 29, capitalTop: 30, triglyph: 31,
   // Tiles 32–49 are item icons (items.ts); the temple carries on after them.
   metope: 50, statueBase: 51, bronze: 52,
+  lionSpout: 53, pipeSide: 54, pipeEnd: 55, pithosSide: 56, pithosTop: 57, amphoraSide: 58, amphoraTop: 59, stallSide: 60, stallTop: 61,
 } as const
 
 export type ToolType = 'pickaxe' | 'axe' | 'shovel'
@@ -118,6 +125,13 @@ const defs: Omit<BlockDef, 'id'>[] = [
   { key: 'metope', hardness: 1.4, opaque: true, solid: true, tiles: { top: Tile.marble, side: Tile.metope, bottom: Tile.marble }, color: '#efe9dc', sound: 'stone', tool: 'pickaxe', tier: 2 },
   { key: 'statueBase', hardness: 1.4, opaque: true, solid: true, tiles: { top: Tile.marble, side: Tile.statueBase, bottom: Tile.marble }, color: '#e6decd', sound: 'stone', tool: 'pickaxe', tier: 2 },
   { key: 'bronze', hardness: 1.6, opaque: true, solid: true, tiles: all(Tile.bronze), color: '#a07a45', sound: 'stone', tool: 'pickaxe', tier: 2 },
+  // The agora (Phase 14). The spout and the pipe carry water to the fountain house (14c); the jars
+  // and the stall furnish the market. The jars are cut-outs, like the lamp, and stand solid.
+  { key: 'lionSpout', hardness: 1.4, opaque: true, solid: true, tiles: { top: Tile.marble, side: Tile.lionSpout, bottom: Tile.marble }, color: '#e9e2d3', sound: 'stone', tool: 'pickaxe', tier: 2 },
+  { key: 'pipe', hardness: 0.9, opaque: true, solid: true, tiles: { top: Tile.pipeSide, side: Tile.pipeSide, bottom: Tile.pipeEnd }, color: '#b8643f', sound: 'stone', tool: 'pickaxe', tier: 1 },
+  { key: 'pithos', hardness: 0.9, opaque: false, solid: true, tiles: { top: Tile.pithosTop, side: Tile.pithosSide, bottom: Tile.pithosTop }, color: '#b8643f', sound: 'stone', tool: 'pickaxe', tier: 1 },
+  { key: 'amphora', hardness: 0.6, opaque: false, solid: true, tiles: { top: Tile.amphoraTop, side: Tile.amphoraSide, bottom: Tile.amphoraTop }, color: '#c27a50', sound: 'stone', tool: 'pickaxe', tier: 0 },
+  { key: 'stall', hardness: 0.7, opaque: true, solid: true, tiles: { top: Tile.stallTop, side: Tile.stallSide, bottom: Tile.planks }, color: '#a87a51', sound: 'wood', tool: 'axe', tier: 0 },
 ]
 
 export const blocks: BlockDef[] = defs.map((def, id) => ({ ...def, id: id as BlockId }))

@@ -36,6 +36,13 @@ export const recipes: Recipe[] = [
   { pattern: ['MM', 'MM'], keys: { M: 'marble' }, result: { item: 'metope', count: 4 } },
   { pattern: ['MBM'], keys: { M: 'marble', B: 'bronzeIngot' }, result: { item: 'statueBase', count: 2 } },
   { ingredients: ['bronzeIngot'], result: { item: 'bronze', count: 1 } },
+  // The agora (Phase 14): a lion's head carved for the fountain, clay pipes and jars from fired
+  // tiles, and a market stall with a woollen awning.
+  { pattern: ['MM', 'M '], keys: { M: 'marble' }, result: { item: 'lionSpout', count: 1 } },
+  { pattern: ['TT'], keys: { T: 'terracotta' }, result: { item: 'pipe', count: 2 } },
+  { pattern: ['T T', 'T T', 'TTT'], keys: { T: 'terracotta' }, result: { item: 'pithos', count: 1 } },
+  { pattern: [' T ', 'T T', ' T '], keys: { T: 'terracotta' }, result: { item: 'amphora', count: 1 } },
+  { pattern: ['WWW', 'P P'], keys: { W: 'wool', P: 'planks' }, result: { item: 'stall', count: 1 } },
   ...tool('planks', 'wood'),
   ...tool('limestone', 'stone'),
   ...tool('bronzeIngot', 'bronze'),

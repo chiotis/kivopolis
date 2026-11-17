@@ -85,6 +85,49 @@ describe('the temple parts (Phase 13)', () => {
   })
 })
 
+describe('the agora parts (Phase 14)', () => {
+  const agora = ['lionSpout', 'pipe', 'pithos', 'amphora', 'stall'] as const
+
+  it('follow the temple parts with their own ids, and every block id matches its key', () => {
+    expect(agora.map((key) => Block[key])).toEqual([36, 37, 38, 39, 40])
+    for (const [key, id] of Object.entries(Block)) expect(blocks[id].key).toBe(key)
+    for (const key of agora) {
+      expect(blockNames[key]).toBeTruthy()
+      expect(itemByKey.get(key)?.block).toBe(Block[key])
+    }
+    // The jars are cut-outs you cannot walk through.
+    expect(block('pithos').opaque).toBe(false)
+    expect(block('pithos').solid).toBe(true)
+  })
+
+  it('use atlas tiles no other block or icon uses', () => {
+    const icons = new Set<number>(Object.values(ItemTile))
+    const tiles = [Tile.lionSpout, Tile.pipeSide, Tile.pipeEnd, Tile.pithosSide, Tile.pithosTop, Tile.amphoraSide, Tile.amphoraTop, Tile.stallSide, Tile.stallTop]
+    expect(new Set(tiles).size).toBe(tiles.length)
+    const others = new Set(blocks.filter((def) => !agora.includes(def.key as never)).flatMap((def) => Object.values(def.tiles)))
+    for (const tile of tiles) {
+      expect(tile).toBeLessThan(64)
+      expect(icons.has(tile) || others.has(tile)).toBe(false)
+    }
+  })
+
+  it('are carved, fired and joined at the workshop', () => {
+    const m = s('marble'), t = s('terracotta'), w = s('wool'), p = s('planks')
+    expect(matchRecipe([m, m, m, null], 2)?.result).toEqual(s('lionSpout'))
+    expect(matchRecipe([t, t, null, null], 2)?.result).toEqual(s('pipe', 2))
+    expect(matchRecipe([t, null, t, t, null, t, t, t, t], 3)?.result).toEqual(s('pithos'))
+    expect(matchRecipe([null, t, null, t, null, t, null, t, null], 3)?.result).toEqual(s('amphora'))
+    expect(matchRecipe([w, w, w, p, null, p, null, null, null], 3)?.result).toEqual(s('stall'))
+  })
+
+  it('come with history notes about water and the market', () => {
+    for (const fact of ['water', 'market'] as const) {
+      expect(factIds).toContain(fact)
+      expect(copy.facts[fact].text.length).toBeGreaterThan(80)
+    }
+  })
+})
+
 describe('mining', () => {
   it('needs the right tool tier for a drop and speeds up with better tools', () => {
     expect(mining(block('limestone'), null)).toMatchObject({ harvest: false })
