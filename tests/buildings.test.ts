@@ -13,10 +13,10 @@ describe('buildings open one at a time', () => {
     const start = progress()
     expect(unlocked(start, 'theatre')).toBe(true)
     expect(buildingStatus(start, 'sanctuary')).toBe('locked')
-    // Finishing the theatre opens the sanctuary; its plan comes in a later phase.
+    // Finishing the theatre opens the sanctuary, whose plan exists since Phase 13.
     const theatreDone = progress({ discovered: true, completed: true })
     expect(buildingStatus(theatreDone, 'theatre')).toBe('done')
-    expect(buildingStatus(theatreDone, 'sanctuary')).toBe('coming')
+    expect(buildingStatus(theatreDone, 'sanctuary')).toBe('open')
     expect(buildingStatus(theatreDone, 'agora')).toBe('locked')
     const sanctuaryDone = progress({ completed: true, buildings: { sanctuary: { discovered: true, completed: true, celebrated: [] } } })
     expect(buildingStatus(sanctuaryDone, 'agora')).toBe('coming')

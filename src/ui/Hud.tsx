@@ -4,7 +4,8 @@ import {
   Backpack, Camera, ChevronsUp, DraftingCompass, Eye, EyeOff, Footprints, Lightbulb, Maximize, Minimize, Landmark, Mouse, Move, Pause, Pickaxe, Plus, Route, Settings2, Sparkles, X,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { buildings, copy, itemName, missions } from '../game/el'
+import { buildings, copy, itemName, missions, stepText } from '../game/el'
+import { activeStep, planOf, planSteps, stepMaterials, stepPoints, stepReady, stepTotal, usePlans, type Plan } from '../game/plans'
 import { inRoom } from '../game/save'
 import { TUNICS, roomActions, useRoom } from '../net/roomState'
 import { PHRASES, type PlayerInfo } from '../net/protocol'
@@ -53,6 +54,8 @@ export function MissionPanel() {
   const misplaced = wrong.filter((i) => cells[i].mission === mission).length
   // In one of the new areas the panel tells about the building there instead of the theatre's step.
   const here = buildingHere(player[0], player[2])
+  const plan = here ? planOf(here) : null
+  if (here && plan && buildingStatus(progress, here) !== 'locked') return <PlanPanel plan={plan} brief={brief} setBrief={setBrief} />
   if (here && here !== 'theatre') {
     const status = buildingStatus(progress, here)
     return (
@@ -92,6 +95,54 @@ export function MissionPanel() {
       <div className="quest-foot">
         <span title={copy.total}><Landmark size={13} /><span className="pixel">{Math.round(builtTotal(counts) / totalCells * 100)}%</span></span>
         <span title={copy.points}><Sparkles size={13} /><strong className="pixel" data-testid="points">{points.toLocaleString('el')}</strong></span>
+        <button className="hud-mini wide" onClick={() => setPanel('journal')}><BookOpen size={13} />{copy.journal}</button>
+      </div>
+    </aside>
+  )
+}
+
+/** The mission panel for a building after the theatre: its current step, as for the theatre. */
+function PlanPanel({ plan, brief, setBrief }: { plan: Plan; brief: boolean; setBrief: (brief: boolean) => void }) {
+  const { setPanel } = useGame()
+  const known = useShared((state) => state.buildings[plan.id])
+  const site = usePlans((state) => state.sites[plan.id])
+  if (!site) return null
+  const discovered = known?.discovered ?? false
+  const step = activeStep(plan, site.counts)
+  const index = step ? plan.steps.findIndex(({ id }) => id === step) : plan.steps.length - 1
+  const ready = step ? stepReady(plan, step) : false
+  const info = step ? stepText(step) : null
+  const total = step ? stepTotal(plan, step) : 0
+  const done = step ? site.counts[step] ?? 0 : 0
+  const misplaced = step ? site.wrong.filter((i) => plan.cells[i].step === step).length : 0
+  const celebrated = known?.celebrated ?? []
+  return (
+    <aside className="hud-panel hud-quest" aria-label={copy.mission}>
+      <div className="quest-head">
+        <span className="pixel quest-step">{buildings[plan.id].title.toLocaleUpperCase('el')} · {copy.stepOf} {String(index + 1).padStart(2, '0')}/{String(plan.steps.length).padStart(2, '0')}</span>
+        <button className="hud-mini" onClick={() => setBrief(!brief)} aria-expanded={brief} aria-label={copy.missionBrief} title={copy.missionBrief}>
+          {brief ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+      </div>
+      <h2 className="pixel">{info?.title ?? buildings[plan.id].title}</h2>
+      {brief && <p className="quest-text">{!discovered ? copy.readTheSign : ready ? info?.description : copy.stepComing}</p>}
+      {discovered && ready && <div className="quest-progress">
+        <div><span>{copy.placed}</span><strong className="pixel" data-testid="mission-count">{done} / {total}</strong></div>
+        <span className="xp-bar" role="progressbar" aria-label={copy.placed} aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
+          <span style={{ width: `${(done / total) * 100}%` }} />
+        </span>
+      </div>}
+      {discovered && ready && step && <Materials list={stepMaterials(plan, step, site)} />}
+      {discovered && misplaced > 0 && <p className="quest-warning">{copy.wrongBlocks}</p>}
+      <ol className="quest-steps" aria-label={copy.total}>
+        {plan.steps.map(({ id }, i) => (
+          <li key={id} title={stepText(id)?.title} className={celebrated.includes(id) || i < index ? 'done' : i === index ? 'current' : ''}>
+            <span className="visually-hidden">{stepText(id)?.title}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="quest-foot">
+        <span title={copy.points}><Sparkles size={13} /><strong className="pixel">{stepPoints(plan, celebrated).toLocaleString('el')}</strong></span>
         <button className="hud-mini wide" onClick={() => setPanel('journal')}><BookOpen size={13} />{copy.journal}</button>
       </div>
     </aside>
@@ -362,7 +413,8 @@ export function Milestone() {
     const timer = window.setTimeout(dismissMilestone, 9000)
     return () => window.clearTimeout(timer)
   }, [milestone, dismissMilestone])
-  const item = objectives.find(({ id }) => id === milestone)
+  const item = objectives.find(({ id }) => id === milestone) ?? planSteps.get(milestone ?? '')?.steps.find(({ id }) => id === milestone)
+  const text = milestone && milestone !== 'discover' ? stepText(milestone) : null
   return (
     <AnimatePresence>
       {milestone && <motion.div key={milestone} className="hud-panel hud-toast" role="status" onClick={dismissMilestone}
@@ -370,8 +422,8 @@ export function Milestone() {
         <span className="toast-icon"><Award size={20} /></span>
         <div>
           <span className="pixel toast-kicker">{copy.milestone}{Boolean(item?.reward) && milestone !== 'finish' && ` +${item?.reward}`}</span>
-          <strong className="pixel">{milestone === 'discover' ? copy.discovered : missions[milestone].title}</strong>
-          <p>{missions[milestone].note}</p>
+          <strong className="pixel">{milestone === 'discover' ? copy.discovered : text?.title}</strong>
+          <p>{milestone === 'discover' ? missions.discover.note : text?.note}</p>
         </div>
       </motion.div>}
     </AnimatePresence>

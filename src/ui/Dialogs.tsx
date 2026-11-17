@@ -3,7 +3,8 @@ import { Award, Backpack, BookOpen, CircleHelp, Compass, Flame, Hammer, Landmark
 import { InventoryScreen } from './InventoryScreen'
 import { ModeChoice } from './ModeChoice'
 import { PartInfo } from './Parts'
-import { buildings, copy, missions } from '../game/el'
+import { buildings, copy, missions, stepText } from '../game/el'
+import { plans } from '../game/plans'
 import { inRoom } from '../game/save'
 import { leaveRoom, requestRoom, takeRoomError } from '../net/client'
 import { useRoom } from '../net/roomState'
@@ -88,6 +89,10 @@ export function Dialogs() {
             {BUILDING_ORDER.some((id) => id !== 'theatre' && siteProgress(progress, id).discovered) && <h3 className="journal-heading">{copy.buildingsJournal}</h3>}
             {BUILDING_ORDER.filter((id) => id !== 'theatre' && siteProgress(progress, id).discovered).map((id) =>
               <article key={id}><h3>{buildings[id].title}</h3><p>{buildings[id].intro}</p></article>)}
+            {plans.flatMap((plan) => progress.buildings[plan.id]?.celebrated ?? []).map((id) => {
+              const text = stepText(id)
+              return text && <article key={id}><h3>{text.title}</h3><p>{text.note}</p></article>
+            })}
             {progress.facts.map((id) => <article key={id}><h3>{copy.facts[id].title}</h3><p>{copy.facts[id].text}</p></article>)}
           </div>
         )}
@@ -141,6 +146,8 @@ function BuildingSign({ id }: { id: (typeof BUILDING_ORDER)[number] }) {
       <p className={`building-status ${status}`}>
         {status === 'locked' && <><Lock size={15} />{copy.buildingLocked(buildings[previousBuilding(id)].title.toLocaleLowerCase('el'))}</>}
         {status === 'coming' && copy.buildingComing}
+        {status === 'open' && <><Hammer size={15} />{copy.buildingOpen}</>}
+        {status === 'done' && <><Award size={15} />{copy.buildingDone}</>}
       </p>
     </>
   )

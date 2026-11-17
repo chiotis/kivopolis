@@ -1,7 +1,7 @@
 import { VoxelWorld } from '../src/voxel/world'
 import { Block, blocks, isKnownBlock, isFlowing } from '../src/voxel/blocks'
 import { S, SX, SZ, index, inside, wx, wy, wz } from '../src/voxel/grid'
-import { cells } from '../src/game/blueprints/theatre'
+import { cellsOfStep, isStep } from '../src/game/plans'
 import { initialShared, type Shared } from '../src/game/shared'
 import { SEED } from '../src/voxel/generate'
 import { DAY_SECONDS, isNight } from '../src/game/daylight'
@@ -49,7 +49,6 @@ const REACH = 9
 /** Shared fields a player may change, and which of them only the room's creator may change. */
 const SHARED_KEYS = new Set<keyof Shared>(['started', 'discovered', 'completed', 'celebrated', 'buildings', 'facts', 'creative'])
 const HOST_ONLY = new Set<keyof Shared>(['creative'])
-const missions = new Set(cells.map((cell) => cell.mission))
 
 const isInt = (value: unknown): value is number => Number.isInteger(value)
 const isVec = (value: unknown): value is Vec3 => Array.isArray(value) && value.length === 3 && value.every(Number.isFinite)
@@ -284,10 +283,10 @@ export class Room {
   private apply(member: Member, action: WorldAction): boolean {
     if (!action || typeof action !== 'object') return false
     if (action.type === 'restart') {
-      if (!member.info.host || !missions.has(action.mission as never)) return false
+      if (!member.info.host || !isStep(action.mission)) return false
       let changed = false
-      for (const cell of cells) {
-        if (cell.mission !== action.mission || !cell.accept.includes(this.world.get(cell.x, cell.y, cell.z))) continue
+      for (const cell of cellsOfStep(action.mission)) {
+        if (!cell.accept.includes(this.world.get(cell.x, cell.y, cell.z))) continue
         changed = this.world.set(cell.x, cell.y, cell.z, Block.air) || changed
       }
       return changed

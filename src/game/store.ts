@@ -8,7 +8,8 @@ import { getWorld, resetWorld } from '../voxel/world'
 import { HOTBAR, resetInventory, useInventory } from './inventory'
 import { clearDrops } from '../world/dropState'
 import { onSaveStatus, readRecord, saveAvailable, writeRecord } from './save'
-import { buildingStatus, readBuildings, signNear } from './buildings'
+import { buildingHere, buildingStatus, readBuildings, signNear } from './buildings'
+import { activeStep, finishedSteps, planOf, plans, trackPlans, usePlans } from './plans'
 import { factIds, initialShared, useShared, type Fact, type Shared } from './shared'
 import { apply } from './actions'
 import type { BuildingId } from './regions'
@@ -54,7 +55,8 @@ interface State {
   /** The step just finished, congratulated at the top of the next step's window. */
   congrats: Mission | null
   mode: Mode
-  milestone: Mission | null
+  /** A finished step shown in the corner note: a theatre mission or a later building's step. */
+  milestone: string | null
   /** Notes waiting to pop up in the top-right corner, oldest first. */
   facts: Fact[]
   /** Selected hotbar slot while exploring. */
@@ -242,7 +244,10 @@ export const useGame = create<State>((set, get) => ({
     if (sign && sign !== 'theatre') {
       const known = shared.buildings[sign]
       if (buildingStatus(shared, sign) !== 'locked' && !known?.discovered) {
-        share({ buildings: { ...shared.buildings, [sign]: { completed: false, celebrated: [], ...known, discovered: true } } })
+        // Steps already standing when the plan is first read count, without a burst of celebrations.
+        const plan = planOf(sign), site = usePlans.getState().sites[sign]
+        const celebrated = plan && site ? finishedSteps(plan, site.counts) : []
+        share({ buildings: { ...shared.buildings, [sign]: { completed: false, ...known, celebrated, discovered: true } } })
       }
       set({ panel: 'building', building: sign })
       return
@@ -261,6 +266,19 @@ export const useGame = create<State>((set, get) => ({
   },
   restartMission: () => {
     const shared = useShared.getState()
+    // In a later building's area, restart the step being built there.
+    const [px, , pz] = get().player
+    const here = buildingHere(px, pz)
+    const plan = here ? planOf(here) : null
+    const site = plan ? usePlans.getState().sites[plan.id] : undefined
+    if (plan && site && shared.buildings[plan.id]?.discovered) {
+      const step = activeStep(plan, site.counts)
+      if (step) apply({ type: 'restart', mission: step, at: get().player })
+      const known = shared.buildings[plan.id]!
+      share({ buildings: { ...shared.buildings, [plan.id]: { ...known, celebrated: known.celebrated.filter((id) => id !== step) } } })
+      set({ panel: null, milestone: null })
+      return
+    }
     const mission = activeMission(shared.discovered, useSite.getState().counts)
     if (mission !== 'discover') apply({ type: 'restart', mission, at: get().player })
     share({ completed: false, celebrated: useShared.getState().celebrated.filter((id) => id !== mission) })
@@ -301,6 +319,7 @@ function stockCreativeHotbar() {
 
 // Rebuild old prefab saves as blocks, then follow the world for mission progress.
 trackSite(getWorld())
+trackPlans(getWorld())
 migrateLegacy(loaded.legacy)
 
 useSite.subscribe((site, previous) => {
@@ -314,6 +333,24 @@ useSite.subscribe((site, previous) => {
   if (!fresh.length) return
   share({ celebrated: [...shared.celebrated, ...fresh] })
   if (state.screen === 'game') useGame.setState(celebrate(fresh.at(-1)!))
+})
+
+// The later buildings: a correct block in the step being built chimes, and each step finished in
+// order is celebrated once, in the corner note.
+usePlans.subscribe(({ sites }, previous) => {
+  const state = useGame.getState()
+  for (const plan of plans) {
+    const known = useShared.getState().buildings[plan.id]
+    const site = sites[plan.id], before = previous.sites[plan.id]
+    if (!known?.discovered || !site) continue
+    const step = before ? activeStep(plan, before.counts) : null
+    if (step && state.screen === 'game' && state.settings.sound && (site.counts[step] ?? 0) > (before?.counts[step] ?? 0)) placementSound()
+    const fresh = finishedSteps(plan, site.counts).filter((id) => !known.celebrated.includes(id))
+    if (!fresh.length) continue
+    const buildings = useShared.getState().buildings
+    share({ buildings: { ...buildings, [plan.id]: { ...known, celebrated: [...known.celebrated, ...fresh] } } })
+    if (state.screen === 'game' && !state.panel) useGame.setState({ milestone: fresh.at(-1)! })
+  }
 })
 
 /**
