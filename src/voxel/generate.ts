@@ -2,7 +2,6 @@ import { SEA_CAVES, cliffWeight, ground, islandEdge, sandyShore, streamBed } fro
 import { AREAS, ROADS, ROAD_WIDTH, RIDGE, STREAM, STREAM_WIDTH, areaWeight, bridges, farFrom, nearest, onRoad, oreHill, roadDistance, type Point2 } from '../game/regions'
 import { KOILON_EDGE, parodosZ, siteMarker, spawn, tourMarker } from '../game/theatre'
 import { cells } from '../game/blueprints/theatre'
-import { FLOOR as SANCTUARY_FLOOR, WALL as SANCTUARY_WALL, sanctuaryCore } from '../game/blueprints/sanctuary'
 import { plans } from '../game/plans'
 import { Block } from './blocks'
 import { OY, S, SEA_FLOOR_Y, SEA_Y, SX, SY, SZ, bx, bz, wx, wz } from './grid'
@@ -350,20 +349,21 @@ function site(grid: Grid) {
 }
 
 /**
- * The sacred ground of the sanctuary (Phase 13): a level grass terrace one block wider than the
- * boundary wall, cleared of trees and stones, with the temple's earth core already heaped up.
- * Then, as for the theatre, every blueprint cell starts empty with solid ground under its footings.
+ * The building grounds after the theatre (Phase 13 on): each plan's rectangle levelled to grass,
+ * cleared of trees and stones, with any earth core (the temple's) already heaped up. Then, as for
+ * the theatre, every blueprint cell starts empty with solid ground under its footings.
  */
-function sacredGround(grid: Grid) {
-  const top = SANCTUARY_FLOOR - 1
-  for (let x = SANCTUARY_WALL.x0 - 1; x <= SANCTUARY_WALL.x1 + 1; x++) {
-    for (let z = SANCTUARY_WALL.z0 - 1; z <= SANCTUARY_WALL.z1 + 1; z++) {
-      for (let y = topOf(grid, x, z); y > top; y--) grid.fill(x, y, z, Block.air)
-      footing(grid, x, z, top - 1, Block.soil)
-      grid.fill(x, top, z, Block.grass)
+function buildingGrounds(grid: Grid) {
+  for (const { ground, core } of plans) {
+    for (let x = ground.x0; x <= ground.x1; x++) {
+      for (let z = ground.z0; z <= ground.z1; z++) {
+        for (let y = topOf(grid, x, z); y > ground.top; y--) grid.fill(x, y, z, Block.air)
+        footing(grid, x, z, ground.top - 1, Block.soil)
+        grid.fill(x, ground.top, z, Block.grass)
+      }
     }
+    for (const [x, y, z] of core ?? []) grid.fill(x, y, z, Block.soil)
   }
-  for (const [x, y, z] of sanctuaryCore) grid.fill(x, y, z, Block.soil)
   for (const plan of plans) {
     for (const cell of plan.cells) grid.fill(cell.x, cell.y, cell.z, Block.air)
     for (const cell of plan.cells) if (cell.footing) footing(grid, cell.x, cell.z, cell.y - 1, Block.soil)
@@ -386,7 +386,7 @@ export function generate(grid: Grid) {
   boulders(grid)
   seaCaves(grid)
   for (const point of bridges()) bridge(grid, point)
-  sacredGround(grid)
+  buildingGrounds(grid)
   markers(grid)
   site(grid)
   sea(grid)

@@ -30,8 +30,9 @@ export const AREAS: readonly Area[] = [
   // Widened to the west in Phase 13 for the temple, its altar and the boundary wall (the stream runs
   // close by on the east). The road passes through the sacred ground by two gateways.
   { id: 'sanctuary', x: -34, z: 20.5, rx: 11.5, rz: 8.5, height: 0.6, entrance: [-23.4, 15.6], sign: [-21.2, 16] },
-  // The open square on the western plain, beyond the wooded ridge.
-  { id: 'agora', x: -60, z: 4, rx: 10.5, rz: 10.5, height: 0.5, entrance: [-51.2, 8.6], sign: [-49, 8.3] },
+  // The open square on the western plain, beyond the wooded ridge. Reaches a little further north
+  // since Phase 14, so the stoa along its north side stands inside it.
+  { id: 'agora', x: -60, z: 3, rx: 10.5, rz: 12, height: 0.5, entrance: [-51.2, 8.6], sign: [-49, 8.3] },
   // A long, level valley floor between two low hills; the track runs along x.
   { id: 'stadium', x: 24, z: 40, rx: 25, rz: 6.5, height: 0.4, entrance: [-1.6, 39.6], sign: [0.6, 37.4] },
 ]
