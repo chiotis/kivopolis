@@ -256,6 +256,14 @@ The city's public square, where people met, traded and discussed public affairs.
 
 The first time a player places one, a history note appears: the stade race, the unit of length that gave the stadium its name, and the balbis; or how an arch stands, with Olympia's vaulted entrance. Animals keep off both blocks. The track is surfaced with ordinary sand.
 
+**Status (2026-11-17): 15b done (track, starting lines, banks).** The stadium is a plan like the agora (`src/game/blueprints/stadium.ts`), with seven steps. The first four are built now:
+1. **The track:** sand laid in a bed one block deep, 80 × 8 blocks (40 × 4 units) down the middle of the valley floor.
+2. **The starting lines:** a row of 8 starting sills across the track, two blocks in from each end, flush with the sand.
+3. **The spectator banks:** earth (grass or soil) heaped in two steps, each 3 blocks deep, on both sides of the track between the starting lines. A 2-block walkway runs between each bank and the track. Where the hills reach over the banks, the generator cuts them back.
+4. **The judges' seats:** in the middle of the south bank, as at Olympia, a marble floor on the upper step with a marble bench and back.
+
+The last three steps (the vaulted entrance, the turning posts, the water channel) have no cells yet and arrive in 15c, so the stadium is not marked finished. 2,032 blocks so far. The track starts 5 units east of the road's entrance, leaving room for the tunnel.
+
 **Tasks, in order**
 1. **The track (δρόμος)**: a long, straight, level strip of packed sand or soil. **Shorter than a real stade (decided)**: as long as the valley allows, about 50–60 world units. The history note gives the real length, about 180–190 metres.
 2. **The starting line (βαλβίς)**: a row of stone sills with grooves for the runners' toes, at each end.
