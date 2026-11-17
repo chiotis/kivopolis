@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { inventory, insert, resetInventory, useInventory } from '../src/game/inventory'
 import { itemByKey, mining, rollDrop, type Stack } from '../src/game/items'
 import { matchRecipe, recipes } from '../src/game/recipes'
-import { blockByKey } from '../src/voxel/blocks'
+import { Block, Tile, blockByKey, blocks, isKnownBlock } from '../src/voxel/blocks'
+import { ItemTile } from '../src/game/items'
+import { blockNames, copy } from '../src/game/el'
+import { factIds } from '../src/game/shared'
 
 const s = (item: string, count = 1): Stack => ({ item, count })
 const block = (key: string) => blockByKey.get(key)!
@@ -34,6 +37,51 @@ describe('recipes', () => {
     expect(matchRecipe([null, null, null, s('limestone')], 2)?.result).toEqual(s('gravel', 2))
     expect(matchRecipe([s('limestone'), s('limestone'), s('limestone'), s('limestone')], 2)?.result).toEqual(s('ashlar', 4))
     expect(matchRecipe([s('limestone'), s('limestone'), null, null], 2)).toBeNull()
+  })
+})
+
+describe('the temple parts (Phase 13)', () => {
+  const temple = ['columnDrum', 'capital', 'triglyph', 'metope', 'statueBase', 'bronze'] as const
+
+  it('are new blocks after the flowing water, so saved worlds keep their ids', () => {
+    expect(temple.map((key) => Block[key])).toEqual([30, 31, 32, 33, 34, 35])
+    expect(Block.flow7).toBe(29)
+    for (const key of temple) {
+      expect(isKnownBlock(Block[key])).toBe(true)
+      expect(blockNames[key]).toBeTruthy()
+      // Carved marble and bronze need a stone pickaxe, as marble does.
+      expect(block(key).tool).toBe('pickaxe')
+      expect(block(key).tier).toBe(2)
+      expect(itemByKey.get(key)?.block).toBe(Block[key])
+    }
+  })
+
+  it('use atlas tiles of their own that no item icon shares', () => {
+    const icons = new Set<number>(Object.values(ItemTile))
+    const tiles = [Tile.drumSide, Tile.drumTop, Tile.capitalSide, Tile.capitalTop, Tile.triglyph, Tile.metope, Tile.statueBase, Tile.bronze]
+    expect(new Set(tiles).size).toBe(tiles.length)
+    for (const tile of tiles) {
+      expect(icons.has(tile)).toBe(false)
+      expect(tile).toBeLessThan(64)
+    }
+    for (const def of blocks) for (const tile of Object.values(def.tiles)) expect(icons.has(tile)).toBe(false)
+  })
+
+  it('are carved from marble at the workshop, and bronze is cast from ingots', () => {
+    const m = s('marble'), b = s('bronzeIngot')
+    expect(matchRecipe([m, null, null, null], 2)?.result).toEqual(s('columnDrum'))
+    expect(matchRecipe([m, m, null, null], 2)?.result).toEqual(s('capital'))
+    expect(matchRecipe([m, null, m, null], 2)?.result).toEqual(s('triglyph', 2))
+    expect(matchRecipe([m, m, m, m], 2)?.result).toEqual(s('metope', 4))
+    expect(matchRecipe([m, b, m, null, null, null, null, null, null], 3)?.result).toEqual(s('statueBase', 2))
+    expect(matchRecipe([null, b, null, null], 2)?.result).toEqual(s('bronze'))
+  })
+
+  it('come with history notes', () => {
+    for (const fact of ['column', 'frieze', 'bronze'] as const) {
+      expect(factIds).toContain(fact)
+      expect(copy.facts[fact].text.length).toBeGreaterThan(80)
+    }
   })
 })
 

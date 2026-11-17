@@ -87,7 +87,10 @@ export function insideBuilding(x: number, z: number) {
 }
 
 /** Blocks that players build with: animals never climb onto them, so they cannot end up on a wall or a roof. */
-const BUILT = new Set<number>([Block.marble, Block.terracotta, Block.ashlar, Block.planks, Block.workshop, Block.kiln, Block.lamp, Block.wool])
+const BUILT = new Set<number>([
+  Block.marble, Block.terracotta, Block.ashlar, Block.planks, Block.workshop, Block.kiln, Block.lamp, Block.wool,
+  Block.columnDrum, Block.capital, Block.triglyph, Block.metope, Block.statueBase, Block.bronze,
+])
 
 /** After this long without getting anywhere, an animal jumps down from wherever it stands. */
 export const STUCK_JUMP = 4

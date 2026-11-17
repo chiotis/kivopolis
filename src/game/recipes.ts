@@ -29,6 +29,13 @@ export const recipes: Recipe[] = [
   // A water jar shaped from three fired tiles: carries water from the sea or a spring.
   { pattern: ['T T', ' T '], keys: { T: 'terracotta' }, result: { item: 'hydria', count: 1 } },
   { ingredients: ['copperIngot', 'copperIngot', 'copperIngot', 'tinIngot'], result: { item: 'bronzeIngot', count: 4 } },
+  // The temple (Phase 13): marble carved into the parts of a Doric temple, and bronze for the statue.
+  { ingredients: ['marble'], result: { item: 'columnDrum', count: 1 } },
+  { pattern: ['MM'], keys: { M: 'marble' }, result: { item: 'capital', count: 1 } },
+  { pattern: ['M', 'M'], keys: { M: 'marble' }, result: { item: 'triglyph', count: 2 } },
+  { pattern: ['MM', 'MM'], keys: { M: 'marble' }, result: { item: 'metope', count: 4 } },
+  { pattern: ['MBM'], keys: { M: 'marble', B: 'bronzeIngot' }, result: { item: 'statueBase', count: 2 } },
+  { ingredients: ['bronzeIngot'], result: { item: 'bronze', count: 1 } },
   ...tool('planks', 'wood'),
   ...tool('limestone', 'stone'),
   ...tool('bronzeIngot', 'bronze'),

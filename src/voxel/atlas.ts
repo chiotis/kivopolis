@@ -183,6 +183,57 @@ painters[Tile.wool] = (x, y, rng) => {
   const curl = (Math.sin(x * 1.7 + y * 0.9) + Math.cos(y * 1.9 - x * 0.6)) > 1.2
   return curl ? hex('#d7d0bf', Math.round((rng() - 0.5) * 10)) : hex('#ece6d6', Math.round((rng() - 0.5) * 14))
 }
+// ---- The temple (Phase 13) ----------------------------------------------------------------
+const marbleShade = (rng: () => number, shift = 0) => hex('#efe9dc', shift + Math.round((rng() - 0.5) * 8))
+/** Doric flutes: four shallow grooves per block, meeting in sharp edges, so a 2 × 2 column shows eight a side. */
+const flute = (x: number, rng: () => number) => {
+  const phase = x % 4
+  return phase === 0 ? hex('#cfc6b4', Math.round((rng() - 0.5) * 6)) : phase === 1 ? marbleShade(rng, -14) : marbleShade(rng, phase === 3 ? 6 : 0)
+}
+painters[Tile.drumSide] = (x, y, rng) => (y === 15 ? hex('#d8cfbe', 0) : flute(x, rng))
+painters[Tile.drumTop] = (x, y, rng) => {
+  // The bed of a drum: a smoothed band round the edge, a rougher middle and a square dowel hole.
+  const edge = Math.min(x, y, 15 - x, 15 - y)
+  if (x >= 7 && x <= 8 && y >= 7 && y <= 8) return '#8f8676'
+  return edge < 3 ? marbleShade(rng, 4) : marbleShade(rng, -10 + Math.round((rng() - 0.5) * 10))
+}
+painters[Tile.capitalSide] = (x, y, rng) => {
+  // From the top: the square abacus, the swelling echinus, three ring annulets, then the fluted neck.
+  if (y <= 3) return y === 3 ? hex('#a99f8b', 0) : marbleShade(rng, 10)
+  // The echinus catches the light at its shoulder and falls into shadow below.
+  if (y <= 9) return marbleShade(rng, 8 - (y - 4) * 9)
+  if (y <= 12) return y % 2 === 0 ? hex('#aaa08c', 0) : marbleShade(rng, 2)
+  return flute(x, rng)
+}
+painters[Tile.capitalTop] = (x, y, rng) => (Math.min(x, y, 15 - x, 15 - y) === 0 ? hex('#d3cab8', 0) : marbleShade(rng, 6))
+painters[Tile.triglyph] = (x, y, rng) => {
+  // Three upright bars with two grooves between them and half-grooves at the edges, painted dark
+  // blue as Greek temples were, under a light band.
+  if (y <= 1) return y === 1 ? '#2e3b55' : '#4a5d80'
+  const groove = x === 0 || x === 15 || x === 4 || x === 5 || x === 10 || x === 11
+  return groove ? hex('#26314a', Math.round((rng() - 0.5) * 6)) : hex(x === 1 || x === 6 || x === 12 ? '#4f6388' : '#3d4e6b', Math.round((rng() - 0.5) * 8))
+}
+painters[Tile.metope] = (x, y, rng) => {
+  // A plain square panel in a slightly sunken frame.
+  const edge = Math.min(x, y, 15 - x, 15 - y)
+  return edge === 0 ? hex('#cfc7b8', 0) : edge === 1 ? marbleShade(rng, -8) : marbleShade(rng, 4)
+}
+painters[Tile.statueBase] = (x, y, rng) => {
+  // A moulded pedestal with a band of carved letters.
+  if (y <= 1 || y >= 14) return y === 1 || y === 14 ? hex('#cbc2b0', 0) : marbleShade(rng, 8)
+  if (y >= 6 && y <= 9 && x >= 2 && x <= 13) {
+    const letter = (x * 5 + y * 3 + Math.floor(x / 3) * 7) % 4 === 0 || (y === 7 && x % 3 === 1)
+    return letter ? '#8c7a5c' : marbleShade(rng, -4)
+  }
+  return marbleShade(rng, 0)
+}
+painters[Tile.bronze] = (x, y, rng) => {
+  // Cast bronze: dark warm metal in soft mottled patches, with a little green patina here and there.
+  const r = rng()
+  if (r > 0.975) return hex('#6f9a86', Math.round((rng() - 0.5) * 10))
+  const mottle = Math.round((Math.sin(x * 0.9 + y * 0.4) + Math.cos(y * 1.1 - x * 0.5)) * 5)
+  return hex('#a07a45', mottle * 2 + Math.round((r - 0.5) * 8))
+}
 // Milk in a small clay jug, and a white feather.
 itemTiles[46] = (x, y) => {
   if (y >= 3 && y <= 4 && x >= 6 && x <= 10) return '#f6f3ea'
