@@ -165,6 +165,8 @@ Players build together in the same world. One player creates a room and gets a s
 ## Phase 13: The sanctuary of Dionysus (Ἱερὸ τοῦ Διονύσου)
 Theatres stood in the sanctuary of Dionysus, so this is the natural next step.
 
+**Status (2026-11-17): 13a done (blocks).** Six new blocks after the flowing water (ids 30–35), so saved worlds keep their ids: column drum (fluted on every side, a dowel hole in its bed), Doric capital (abacus, echinus, annulets), triglyph (painted dark blue, as temples were), metope (a plain panel), statue base (with carved letters) and bronze. Workshop recipes: 1 marble → 1 drum, 2 marble side by side → 1 capital, 2 marble stacked → 2 triglyphs, 4 marble → 4 metopes, marble–bronze ingot–marble → 2 statue bases, 1 bronze ingot → 1 bronze block. The cult statue is built block by block from bronze blocks on the statue base, like everything else. Three history notes come the first time a part is placed: the Doric column, triglyphs and metopes, bronze statues. Animals do not climb any of them. Next: 13b, the terrace and tasks 1–4.
+
 **Size and layout (decided 2026-11-17)**
 - **Columns 2 × 2 blocks** (1 m thick), about 11 blocks tall with the capital, roughly the Doric 1 : 5.5. Axial spacing 4 blocks (a 2-block gap between columns).
 - **The temple faces east**, with the altar in front of it to the east and the gateway in the boundary wall on the road, which arrives from the east.

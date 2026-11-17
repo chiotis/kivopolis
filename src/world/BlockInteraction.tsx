@@ -267,6 +267,10 @@ export function BlockInteraction() {
         blockInput.swing = performance.now()
         if (!useShared.getState().creative) inventory.take(state.hotbar)
         if (id === Block.lamp) state.learn('lamp')
+        // The temple's parts each bring a history note the first time one is set in place.
+        if (id === Block.columnDrum || id === Block.capital) state.learn('column')
+        if (id === Block.triglyph || id === Block.metope) state.learn('frieze')
+        if (id === Block.bronze || id === Block.statueBase) state.learn('bronze')
         if (state.settings.sound) blockSound(blocks[id].sound, 'place')
         if (!state.settings.reducedMotion) popped.current = { x, y, z, at: performance.now() }
       }

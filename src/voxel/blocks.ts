@@ -32,6 +32,13 @@ export const Block = {
   flow5: 27,
   flow6: 28,
   flow7: 29,
+  // The temple of Dionysus (Phase 13): carved marble parts and bronze.
+  columnDrum: 30,
+  capital: 31,
+  triglyph: 32,
+  metope: 33,
+  statueBase: 34,
+  bronze: 35,
 } as const
 export type BlockId = (typeof Block)[keyof typeof Block]
 
@@ -41,6 +48,9 @@ export const Tile = {
   logSide: 8, logTop: 9, oliveLeaves: 10, cypressLeaves: 11, gravel: 12, ashlar: 13, planks: 14, path: 15,
   bedrock: 16, pathSide: 17, workshopTop: 18, workshopSide: 19, kilnSide: 20, kilnTop: 21,
   copperOre: 22, tinOre: 23, lampSide: 24, lampTop: 25, wool: 26,
+  drumSide: 27, drumTop: 28, capitalSide: 29, capitalTop: 30, triglyph: 31,
+  // Tiles 32–49 are item icons (items.ts); the temple carries on after them.
+  metope: 50, statueBase: 51, bronze: 52,
 } as const
 
 export type ToolType = 'pickaxe' | 'axe' | 'shovel'
@@ -101,6 +111,13 @@ const defs: Omit<BlockDef, 'id'>[] = [
   ...([1, 2, 3, 4, 5, 6, 7] as const).map((level) => ({
     key: `flow${level}` as const, hardness: Infinity, opaque: false, solid: false, tiles: all(0), color: '#4f93a0', sound: 'soft' as const, tier: 9, drop: null,
   })),
+  // The temple (Phase 13): marble carved at the workshop, and bronze for the cult statue.
+  { key: 'columnDrum', hardness: 1.4, opaque: true, solid: true, tiles: { top: Tile.drumTop, side: Tile.drumSide, bottom: Tile.drumTop }, color: '#ebe4d5', sound: 'stone', tool: 'pickaxe', tier: 2 },
+  { key: 'capital', hardness: 1.4, opaque: true, solid: true, tiles: { top: Tile.capitalTop, side: Tile.capitalSide, bottom: Tile.drumTop }, color: '#ebe4d5', sound: 'stone', tool: 'pickaxe', tier: 2 },
+  { key: 'triglyph', hardness: 1.4, opaque: true, solid: true, tiles: { top: Tile.marble, side: Tile.triglyph, bottom: Tile.marble }, color: '#3d4e6b', sound: 'stone', tool: 'pickaxe', tier: 2 },
+  { key: 'metope', hardness: 1.4, opaque: true, solid: true, tiles: { top: Tile.marble, side: Tile.metope, bottom: Tile.marble }, color: '#efe9dc', sound: 'stone', tool: 'pickaxe', tier: 2 },
+  { key: 'statueBase', hardness: 1.4, opaque: true, solid: true, tiles: { top: Tile.marble, side: Tile.statueBase, bottom: Tile.marble }, color: '#e6decd', sound: 'stone', tool: 'pickaxe', tier: 2 },
+  { key: 'bronze', hardness: 1.6, opaque: true, solid: true, tiles: all(Tile.bronze), color: '#a07a45', sound: 'stone', tool: 'pickaxe', tier: 2 },
 ]
 
 export const blocks: BlockDef[] = defs.map((def, id) => ({ ...def, id: id as BlockId }))

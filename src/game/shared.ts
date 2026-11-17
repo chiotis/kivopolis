@@ -30,8 +30,8 @@ export interface Shared {
 }
 
 /** History notes that pop up the first time something happens in the world. */
-export type Fact = 'night' | 'lamp' | 'sheep' | 'goat' | 'chicken' | 'hydria'
-export const factIds: readonly Fact[] = ['night', 'lamp', 'sheep', 'goat', 'chicken', 'hydria']
+export type Fact = 'night' | 'lamp' | 'sheep' | 'goat' | 'chicken' | 'hydria' | 'column' | 'frieze' | 'bronze'
+export const factIds: readonly Fact[] = ['night', 'lamp', 'sheep', 'goat', 'chicken', 'hydria', 'column', 'frieze', 'bronze']
 
 export const initialShared = (): Shared => ({
   started: false, discovered: false, completed: false, celebrated: [], buildings: {}, facts: [], time: 0.3, creative: false,
