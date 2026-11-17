@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "vitest run tests/theatre.test.ts tests/voxel.test.ts tests/items.test.ts tests/world-life.test.ts tests/water.test.ts tests/settings.test.ts tests/island.test.ts tests/buildings.test.ts tests/shared.test.ts tests/rooms.test.ts tests/sanctuary.test.ts",
+    "test": "vitest run tests/theatre.test.ts tests/voxel.test.ts tests/items.test.ts tests/world-life.test.ts tests/water.test.ts tests/settings.test.ts tests/island.test.ts tests/buildings.test.ts tests/shared.test.ts tests/rooms.test.ts tests/sanctuary.test.ts tests/agora.test.ts",
     "test:e2e": "playwright test",
     "build:server": "esbuild server/main.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=server/dist/index.mjs",
     "server": "npm run build:server && node server/dist/index.mjs",

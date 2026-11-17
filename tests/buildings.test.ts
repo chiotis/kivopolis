@@ -19,7 +19,7 @@ describe('buildings open one at a time', () => {
     expect(buildingStatus(theatreDone, 'sanctuary')).toBe('open')
     expect(buildingStatus(theatreDone, 'agora')).toBe('locked')
     const sanctuaryDone = progress({ completed: true, buildings: { sanctuary: { discovered: true, completed: true, celebrated: [] } } })
-    expect(buildingStatus(sanctuaryDone, 'agora')).toBe('coming')
+    expect(buildingStatus(sanctuaryDone, 'agora')).toBe('open')
     expect(buildingStatus(sanctuaryDone, 'stadium')).toBe('locked')
   })
 

@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { isEmpty } from '../voxel/blocks'
 import type { BuildingId } from './regions'
-import { SANCTUARY_STEPS, sanctuaryCells } from './blueprints/sanctuary'
+import { FLOOR as SANCTUARY_FLOOR, SANCTUARY_STEPS, WALL, sanctuaryCells, sanctuaryCore } from './blueprints/sanctuary'
+import { AGORA_STEPS, GROUND as AGORA_GROUND, agoraCells } from './blueprints/agora'
 import { cells as theatreCells } from './blueprints/theatre'
 
 /**
@@ -22,10 +23,23 @@ export interface PlanCell {
   footing?: boolean
 }
 export interface PlanStep { id: string; reward: number }
-export interface Plan { id: Exclude<BuildingId, 'theatre'>; steps: readonly PlanStep[]; cells: readonly PlanCell[] }
+/** A rectangle the generator levels to grass at `top`, clearing what stands above it. */
+export interface PlanGround { x0: number; x1: number; z0: number; z1: number; top: number }
+export interface Plan {
+  id: Exclude<BuildingId, 'theatre'>
+  steps: readonly PlanStep[]
+  cells: readonly PlanCell[]
+  ground: PlanGround
+  /** Earth heaped up when the game starts, for a structure to be built round (the temple's krepis). */
+  core?: readonly (readonly [number, number, number])[]
+}
 
 export const plans: readonly Plan[] = [
-  { id: 'sanctuary', steps: SANCTUARY_STEPS, cells: sanctuaryCells },
+  {
+    id: 'sanctuary', steps: SANCTUARY_STEPS, cells: sanctuaryCells, core: sanctuaryCore,
+    ground: { x0: WALL.x0 - 1, x1: WALL.x1 + 1, z0: WALL.z0 - 1, z1: WALL.z1 + 1, top: SANCTUARY_FLOOR - 1 },
+  },
+  { id: 'agora', steps: AGORA_STEPS, cells: agoraCells, ground: AGORA_GROUND },
 ]
 export const planOf = (id: BuildingId) => plans.find((plan) => plan.id === id) ?? null
 /** Every step of every plan, so a step id alone says which building it belongs to. */
