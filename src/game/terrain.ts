@@ -1,4 +1,5 @@
 import { AREAS, ORE_HILL, RIDGE, STADIUM_HILLS, STREAM, STREAM_BED, STREAM_WIDTH, TALL_HILL, areaWeight, farFrom, nearest, oreHill, smoothstep, tallHill, type Point2 } from './regions'
+import { OX, OY, OZ, S } from '../voxel/grid'
 import { KOILON_EDGE, inAisle, rowBase, rowRise, siteMarker, terraceOf, tourMarker } from './theatre'
 
 /** Angle difference wrapped to -π…π. */
@@ -187,3 +188,11 @@ export function canWalk(x: number, z: number, blockers: Obstacle[]) {
   return Math.hypot(x, z) < islandEdge(angle) - 3.2
     && !blockers.some((item) => Math.hypot(item.x - x, item.z - z) < item.radius + 0.23)
 }
+
+/** Ground height in world units to whole blocks above OY (the generator's rounding). */
+export const level = (height: number) => Math.floor(height * 2 + 0.25)
+/**
+ * The top block of the generated ground in a column (block coordinates), before trees, roads'
+ * stones or building grounds: what a blueprint can count on without generating the world.
+ */
+export const blockTop = (x: number, z: number) => OY + level(ground((x - OX) * S + S / 2, (z - OZ) * S + S / 2)) - 1

@@ -21,6 +21,8 @@ export interface PlanCell {
   step: string
   /** The lowest course of a structure: the generator gives it solid ground underneath. */
   footing?: boolean
+  /** Laid in the ground (the agora's pipe): the generator clears everything above it. */
+  open?: boolean
 }
 export interface PlanStep { id: string; reward: number }
 /** A rectangle the generator levels to grass at `top`, clearing what stands above it. */
