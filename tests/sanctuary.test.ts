@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ALTAR, CELLA, FLOOR, GATE, KREPIS, STYLOBATE, TEMPLE_FLOOR, WALL, sanctuaryCells, sanctuaryCore } from '../src/game/blueprints/sanctuary'
+import { ALTAR, CELLA, COLUMNS, COLUMN_HEIGHT, ENTABLATURE, FLOOR, GATE, KREPIS, ROOF, STATUE, STYLOBATE, TEMPLE_FLOOR, WALL, roofHeight, sanctuaryCells, sanctuaryCore } from '../src/game/blueprints/sanctuary'
 import { activeStep, cellsOfStep, finishedSteps, isStep, measurePlan, planOf, stepMaterials, stepReady, stepTotal } from '../src/game/plans'
 import { cells as theatreCells } from '../src/game/blueprints/theatre'
 import { area, areaAt, ROADS, STREAM, STREAM_WIDTH, nearest, onRoad } from '../src/game/regions'
@@ -12,9 +12,9 @@ const world = new VoxelWorld()
 const centre = (x: number, z: number) => [wx(x) + S / 2, wz(z) + S / 2] as const
 
 describe('the sanctuary plan', () => {
-  it('has eight steps, the first four with cells, each with Greek texts', () => {
+  it('has eight steps, all with cells, each with Greek texts', () => {
     expect(plan.steps.map(({ id }) => id)).toEqual(['peribolos', 'altar', 'krepis', 'cella', 'columns', 'entablature', 'roof', 'statue'])
-    expect(plan.steps.map(({ id }) => stepReady(plan, id))).toEqual([true, true, true, true, false, false, false, false])
+    expect(plan.steps.every(({ id }) => stepReady(plan, id))).toBe(true)
     for (const { id } of plan.steps) expect(sanctuarySteps[id]?.note.length).toBeGreaterThan(40)
   })
 
@@ -36,9 +36,9 @@ describe('the sanctuary plan', () => {
     expect((ALTAR.z0 + ALTAR.z1) / 2).toBeCloseTo((KREPIS.z0 + KREPIS.z1) / 2)
     expect(CELLA.door).toBeGreaterThan(CELLA.x0)
     expect(TEMPLE_FLOOR).toBe(FLOOR + 3)
-    // The stylobate's marble band is two blocks wide, room for the 2 × 2 columns.
+    // The stylobate's marble band is three blocks wide: the 2 × 2 columns stand one block in from its edge.
     const band = sanctuaryCells.filter((cell) => cell.step === 'krepis' && cell.y === FLOOR + 2 && cell.block === Block.marble)
-    expect(band).toHaveLength(24 * 16 - 20 * 12)
+    expect(band).toHaveLength(24 * 16 - 18 * 10)
   })
 
   it('lies inside the widened terrace, clear of the stream, with the road through both gateways', () => {
@@ -83,11 +83,53 @@ describe('the sanctuary plan', () => {
     const materials = stepMaterials(plan, 'altar', site)
     expect(materials.map(({ block }) => block).sort()).toEqual([Block.marble, Block.ashlar].sort())
     expect(materials.every(({ placed }) => placed === 0)).toBe(true)
-    // With the first four built, the next step is one still to come.
+    // With every block in place, every step is finished.
     for (const cell of sanctuaryCells) test.set(cell.x, cell.y, cell.z, cell.block)
     site = measurePlan(test, plan)
-    expect(finishedSteps(plan, site.counts)).toEqual(['peribolos', 'altar', 'krepis', 'cella'])
-    expect(activeStep(plan, site.counts)).toBe('columns')
+    expect(finishedSteps(plan, site.counts)).toEqual(plan.steps.map(({ id }) => id))
+    expect(activeStep(plan, site.counts)).toBeNull()
     void bx; void bz
+  })
+
+  it('raises 16 Doric columns, 2 × 2 blocks and as tall as the cella, on the marble band of the stylobate', () => {
+    expect(COLUMNS).toHaveLength(16)
+    const columns = sanctuaryCells.filter((cell) => cell.step === 'columns')
+    expect(columns).toHaveLength(16 * 4 * COLUMN_HEIGHT)
+    const band = new Set(sanctuaryCells.filter((cell) => cell.step === 'krepis' && cell.block === Block.marble).map(({ x, z }) => `${x},${z}`))
+    for (const cell of columns) expect(band.has(`${cell.x},${cell.z}`)).toBe(true)
+    for (const cell of columns) expect(cell.block).toBe(cell.y === TEMPLE_FLOOR + COLUMN_HEIGHT - 1 ? Block.capital : Block.columnDrum)
+    const cellaTop = Math.max(...sanctuaryCells.filter((cell) => cell.step === 'cella').map(({ y }) => y))
+    expect(cellaTop).toBe(TEMPLE_FLOOR + COLUMN_HEIGHT - 1)
+    // Four along each end, six along each side.
+    expect(new Set(COLUMNS.map(([x]) => x)).size).toBe(6)
+    expect(new Set(COLUMNS.map(([, z]) => z)).size).toBe(4)
+  })
+
+  it('puts a triglyph over every column in the frieze, with metopes between them', () => {
+    const frieze = sanctuaryCells.filter((cell) => cell.step === 'entablature' && cell.y === ENTABLATURE + 1)
+    const at = (x: number, z: number) => frieze.find((cell) => cell.x === x && cell.z === z)?.block
+    for (const [x, z] of COLUMNS) {
+      const outer: [number, number][] = [[x, z], [x + 1, z], [x, z + 1], [x + 1, z + 1]]
+      const face = outer.map(([cx, cz]) => at(cx, cz)).filter((block) => block === Block.triglyph || block === Block.metope)
+      expect(face.length, `${x},${z}`).toBeGreaterThan(0)
+      expect(face.every((block) => block === Block.triglyph)).toBe(true)
+    }
+    expect(frieze.some((cell) => cell.block === Block.metope)).toBe(true)
+  })
+
+  it('covers the temple with a symmetrical tiled roof on pediments, and puts the statue in the cella facing the door', () => {
+    const roof = sanctuaryCells.filter((cell) => cell.step === 'roof' && cell.block === Block.terracotta)
+    expect(roof).toHaveLength((STYLOBATE.x1 - STYLOBATE.x0 + 1) * (STYLOBATE.z1 - STYLOBATE.z0 + 1))
+    for (let z = STYLOBATE.z0; z <= STYLOBATE.z1; z++) expect(roofHeight(z)).toBe(roofHeight(STYLOBATE.z0 + STYLOBATE.z1 - z))
+    expect(roofHeight(STYLOBATE.z0)).toBe(ROOF)
+    const statue = sanctuaryCells.filter((cell) => cell.step === 'statue')
+    for (const cell of statue) {
+      expect(cell.x).toBeGreaterThan(CELLA.x0)
+      expect(cell.x).toBeLessThan(CELLA.door)
+      expect(cell.z).toBeGreaterThan(CELLA.z0)
+      expect(cell.z).toBeLessThan(CELLA.z1)
+    }
+    expect(statue.filter((cell) => cell.block === Block.statueBase)).toHaveLength((STATUE.x1 - STATUE.x0 + 1) * (STATUE.z1 - STATUE.z0 + 1))
+    expect(statue.filter((cell) => cell.block === Block.bronze).length).toBeGreaterThan(25)
   })
 })

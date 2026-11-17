@@ -15,7 +15,7 @@ An ancient road joins every area, starting from the theatre's paths. Up to 5 pla
 | 10 | Flowing water and the hydria | medium | Water runs above sea level, and players can carry it |
 | 11 | A larger island, the ancient road, and a game with more than one building | large | Players walk the road to areas that are empty but marked |
 | 12 | Multiplayer: up to 5 players in a shared room | large | Friends or a class group build the same theatre together |
-| 13 | The sanctuary of Dionysus (small, 4 × 6 temple) | medium | The second building can be built |
+| 13 | The sanctuary of Dionysus (small, 4 × 6 temple) — done | medium | The second building can be built |
 | 14 | The agora: stoa and fountain house | large | The third building, with running water |
 | 15 | The stadium (shortened track) | medium | The fourth building |
 | 16 | Survival (last) | medium | The full gather → eat → build loop |
@@ -172,6 +172,13 @@ Theatres stood in the sanctuary of Dionysus, so this is the natural next step.
 - `src/game/plans.ts` holds the plans of the buildings after the theatre: steps, cells, counting from the world, materials, and restart by step id (also in rooms). The theatre's missions are unchanged.
 - `src/game/blueprints/sanctuary.ts`: the boundary wall with two gateways (280 blocks), the altar (56), the krepis (560: two ashlar steps, the stylobate's 2-block marble band for the columns, and a floor of any dressed stone) and the cella with its door and porch (432). 1,328 blocks in all.
 - Reading the signpost activates the plan; the mission panel, the ghost blocks, red outlines, the chime, a corner note per finished step, journal notes and restarting a step all work as for the theatre. Steps 5–8 show as still to come.
+
+**Status (2026-11-17): 13c done, Phase 13 complete.**
+- Columns (704 blocks): 16 Doric columns, 2 × 2 blocks, ten drums and a capital each, one block in from the stylobate's edge. The stylobate's marble band is now three blocks wide so every column stands on marble.
+- Entablature (400): a marble architrave over the column ring, the frieze with a triglyph over every column and between them and metopes in the gaps, and a marble cornice to the stylobate's edge.
+- Roof (432): terracotta in two slopes, rising one block for every two to a ridge along the temple, closed by a marble pediment at each end.
+- Statue (43): a statue base at the west end of the cella and a bronze Dionysus built block by block, with the thyrsus in his right hand, facing the door.
+- 2,907 blocks in all. When every step stands, the sanctuary is finished: the signpost window says so, and the agora's signpost opens (its plan comes in Phase 14). Not done: a tour of the sanctuary like the theatre's.
 
 **Size and layout (decided 2026-11-17)**
 - **Columns 2 × 2 blocks** (1 m thick), about 11 blocks tall with the capital, roughly the Doric 1 : 5.5. Axial spacing 4 blocks (a 2-block gap between columns).
