@@ -45,6 +45,9 @@ export const Block = {
   pithos: 38,
   amphora: 39,
   stall: 40,
+  // The stadium (Phase 15): the starting line, and the vault of the entrance tunnel.
+  balbis: 41,
+  voussoir: 42,
 } as const
 export type BlockId = (typeof Block)[keyof typeof Block]
 
@@ -58,6 +61,8 @@ export const Tile = {
   // Tiles 32–49 are item icons (items.ts); the temple carries on after them.
   metope: 50, statueBase: 51, bronze: 52,
   lionSpout: 53, pipeSide: 54, pipeEnd: 55, pithosSide: 56, pithosTop: 57, amphoraSide: 58, amphoraTop: 59, stallSide: 60, stallTop: 61,
+  // The last two tiles of the atlas.
+  balbisTop: 62, voussoir: 63,
 } as const
 
 export type ToolType = 'pickaxe' | 'axe' | 'shovel'
@@ -132,6 +137,10 @@ const defs: Omit<BlockDef, 'id'>[] = [
   { key: 'pithos', hardness: 0.9, opaque: false, solid: true, tiles: { top: Tile.pithosTop, side: Tile.pithosSide, bottom: Tile.pithosTop }, color: '#b8643f', sound: 'stone', tool: 'pickaxe', tier: 1 },
   { key: 'amphora', hardness: 0.6, opaque: false, solid: true, tiles: { top: Tile.amphoraTop, side: Tile.amphoraSide, bottom: Tile.amphoraTop }, color: '#c27a50', sound: 'stone', tool: 'pickaxe', tier: 0 },
   { key: 'stall', hardness: 0.7, opaque: true, solid: true, tiles: { top: Tile.stallTop, side: Tile.stallSide, bottom: Tile.planks }, color: '#a87a51', sound: 'wood', tool: 'axe', tier: 0 },
+  // The stadium (Phase 15). The starting sill is limestone with two grooves for the runners' toes on
+  // top; the vault stone is a wedge of ashlar, cut to lean on its neighbours in an arch.
+  { key: 'balbis', hardness: 1.1, opaque: true, solid: true, tiles: { top: Tile.balbisTop, side: Tile.limestone, bottom: Tile.limestone }, color: '#cdb995', sound: 'stone', tool: 'pickaxe', tier: 1 },
+  { key: 'voussoir', hardness: 1.2, opaque: true, solid: true, tiles: { top: Tile.ashlar, side: Tile.voussoir, bottom: Tile.ashlar }, color: '#dcc49c', sound: 'stone', tool: 'pickaxe', tier: 1 },
 ]
 
 export const blocks: BlockDef[] = defs.map((def, id) => ({ ...def, id: id as BlockId }))

@@ -128,6 +128,39 @@ describe('the agora parts (Phase 14)', () => {
   })
 })
 
+describe('the stadium parts (Phase 15)', () => {
+  const stadium = ['balbis', 'voussoir'] as const
+
+  it('follow the agora parts with their own ids and names', () => {
+    expect(stadium.map((key) => Block[key])).toEqual([41, 42])
+    for (const key of stadium) {
+      expect(blockNames[key]).toBeTruthy()
+      expect(itemByKey.get(key)?.block).toBe(Block[key])
+      expect(block(key).opaque && block(key).solid).toBe(true)
+    }
+  })
+
+  it('use the last two atlas tiles, which nothing else uses', () => {
+    const icons = new Set<number>(Object.values(ItemTile))
+    const others = new Set(blocks.filter((def) => !stadium.includes(def.key as never)).flatMap((def) => Object.values(def.tiles)))
+    expect([Tile.balbisTop, Tile.voussoir]).toEqual([62, 63])
+    for (const tile of [Tile.balbisTop, Tile.voussoir]) expect(icons.has(tile) || others.has(tile)).toBe(false)
+  })
+
+  it('are cut at the workshop', () => {
+    const l = s('limestone'), a = s('ashlar')
+    expect(matchRecipe([l, l, l, null, null, null, null, null, null], 3)?.result).toEqual(s('balbis', 2))
+    expect(matchRecipe([a, null, a, null, a, null, null, null, null], 3)?.result).toEqual(s('voussoir', 3))
+  })
+
+  it('come with history notes about the race and the vault', () => {
+    for (const fact of ['stade', 'vault'] as const) {
+      expect(factIds).toContain(fact)
+      expect(copy.facts[fact].text.length).toBeGreaterThan(80)
+    }
+  })
+})
+
 describe('mining', () => {
   it('needs the right tool tier for a drop and speeds up with better tools', () => {
     expect(mining(block('limestone'), null)).toMatchObject({ harvest: false })

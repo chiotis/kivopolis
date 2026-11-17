@@ -90,7 +90,7 @@ export function insideBuilding(x: number, z: number) {
 const BUILT = new Set<number>([
   Block.marble, Block.terracotta, Block.ashlar, Block.planks, Block.workshop, Block.kiln, Block.lamp, Block.wool,
   Block.columnDrum, Block.capital, Block.triglyph, Block.metope, Block.statueBase, Block.bronze,
-  Block.lionSpout, Block.pipe, Block.pithos, Block.amphora, Block.stall,
+  Block.lionSpout, Block.pipe, Block.pithos, Block.amphora, Block.stall, Block.balbis, Block.voussoir,
 ])
 
 /** After this long without getting anywhere, an animal jumps down from wherever it stands. */

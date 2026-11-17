@@ -245,6 +245,17 @@ The city's public square, where people met, traded and discussed public affairs.
 **What players learn:** public life, trade, the stoa as shelter and meeting place, and how water reached the city. The hydria from Phase 10 gets used here.
 
 ## Phase 15: The stadium (Στάδιον)
+**Size and layout (decided 2026-11-17)**
+- **The track is 40 × 4 units (80 × 8 blocks)**, four lanes of 2 blocks, surfaced with packed sand that players lay: about 640 blocks. It runs along the valley floor, leaving room at the west end for the entrance tunnel and at the east end for the turning posts.
+- **Water from a second spring** on the valley's hill, brought by a clay pipe to a lion's head at the head of the channel, using the agora's water rules (`plumbing.ts`). The channel runs along the track and fills the drinking basins.
+- Built in three slices, like Phases 13 and 14: **15a** the new blocks; **15b** the track, the starting lines and the spectator banks; **15c** the tunnel, the turning posts, the water channel and the closing tour with a run along the track.
+
+**Status (2026-11-17): 15a done (blocks).** Two new blocks (ids 41–42), which take the atlas's last two tiles:
+- **Βαλβίδα (the starting sill):** limestone with two grooves across its top for the runners' toes. 3 limestone in a row → 2 sills.
+- **Σφηνόλιθος (the vault stone):** an ashlar wedge, its joints leaning in towards the arch's centre. 3 ashlar in a V → 3 stones.
+
+The first time a player places one, a history note appears: the stade race, the unit of length that gave the stadium its name, and the balbis; or how an arch stands, with Olympia's vaulted entrance. Animals keep off both blocks. The track is surfaced with ordinary sand.
+
 **Tasks, in order**
 1. **The track (δρόμος)**: a long, straight, level strip of packed sand or soil. **Shorter than a real stade (decided)**: as long as the valley allows, about 50–60 world units. The history note gives the real length, about 180–190 metres.
 2. **The starting line (βαλβίς)**: a row of stone sills with grooves for the runners' toes, at each end.

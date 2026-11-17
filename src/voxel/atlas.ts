@@ -291,6 +291,21 @@ painters[Tile.stallSide] = (x, y, rng) => {
   return painters[Tile.planks](x, y, rng)
 }
 painters[Tile.stallTop] = (x, y, rng) => (Math.floor(x / 3) % 2 === 0 ? hex('#b84a3a', Math.round((rng() - 0.5) * 10)) : hex('#ece6d6', Math.round((rng() - 0.5) * 8)))
+// The starting sill (βαλβίς): limestone with two parallel grooves across it, where the runners set
+// their toes, and the joints between the slabs at its ends.
+painters[Tile.balbisTop] = (x, y, rng) => {
+  if (y === 4 || y === 9) return hex('#7f705c', Math.round((rng() - 0.5) * 6))
+  if (y === 5 || y === 10) return hex('#a49276', Math.round((rng() - 0.5) * 6))
+  if (x === 0 || x === 15) return '#ad9470'
+  return hex('#cdb995', Math.round((rng() - 0.5) * 14))
+}
+// The vault stone: an ashlar wedge, its joints leaning in towards the centre of the arch below.
+painters[Tile.voussoir] = (x, y, rng) => {
+  const left = Math.round(1 + y * 0.2), right = Math.round(14 - y * 0.2)
+  if (y === 0 || x === left || x === right) return hex('#ad9470', 0)
+  if (x === left + 1 || x === right - 1) return hex('#c7ad85', Math.round((rng() - 0.5) * 8))
+  return hex('#dcc49c', Math.round((rng() - 0.5) * 14))
+}
 // Milk in a small clay jug, and a white feather.
 itemTiles[46] = (x, y) => {
   if (y >= 3 && y <= 4 && x >= 6 && x <= 10) return '#f6f3ea'
