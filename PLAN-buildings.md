@@ -30,7 +30,7 @@ Phase 10 comes first because the agora's fountain house needs water that flows. 
 - Flowing water is stored as seven extra block ids (`flow1`–`flow7`, ids 23–29) instead of a separate level byte. Saves, edits and later network messages stay plain block changes, and no save format change was needed.
 - Water spreads sideways only from a cell resting on solid ground, so falling water does not fan out over a pool or the sea.
 - The empty hydria looks through flowing water to the nearest source; aiming at flowing water alone shows a hint. Filling takes the source, pouring places one.
-- Not done: the ripple texture does not yet drift along the direction of flow; all water shares one drifting texture.
+- The ripples run along the flow (2026-11-17): each water vertex carries a flow direction (`flowDirection` in flow.ts, averaged at corners), and the voxel water's shader slides two copies of the ripple texture along it and cross-fades them. Sources and the sea keep the plain drift; the sides of flowing water run downwards.
 - Rules: `src/voxel/flow.ts`. Ticks: `VoxelWorld.tickWater()`, driven at 4 per second from `VoxelTerrain`.
 This is the work left over from Phase 8. Today water fills only cells at or below sea level (`SEA_Y`, 14), all at once, capped at 4096 cells (`VoxelWorld.flood` in `src/voxel/world.ts`). Above sea level, holes stay dry.
 
@@ -116,6 +116,8 @@ Today `objectives`, the signpost, the tour and saved progress are all written fo
 - Third slice (2026-11-16): the room runs the dropped items, the animals and the kilns for everyone. Items: the room gives each one an id, sends new ones and what is left after a pickup, and moves them with the same `stepDrop` as the game; a broken block's drop is checked against what that block can give. Animals: the room steps the herd (`stepAnimals`) and sends their places five times a second; the game glides towards them; hitting and tending go to the room, and milk comes back to whoever tended the goat. Kilns: one player uses a kiln at a time (others are told it is in use); while it is open it burns in that player's game and its contents go to the room; once closed, or if the player leaves, it burns in the room; breaking it spills its contents and closes it for its user. Kilns are saved with the room.
 - A room is kept in memory for 30 seconds after its last use, so a new room is never unloaded before its creator is in it (building the island takes about 0.4 s, and the save loop could run in that gap).
 - Two-browser end-to-end test: `tests/rooms.e2e.ts` (Playwright starts its own room server on port 8788).
+- Load check (2026-11-17): `npm run load-check` runs 10 rooms of 5 simulated players (positions 12 times a second, a block change every 2 s each). On a laptop: every change confirmed, 95% within 1.1 ms, about 630 messages a second in and 930 out, 7% of one core and 78 MB for server and bots together. On the CloudPanel server (`LOAD_URL=wss://rooms.kivopolis.com`, 2026-11-17): all 1,567 changes confirmed, none refused, 12 ms median and 16 ms at the 95th percentile (mostly the network), one outlier at 403 ms, 50 players joined one after another in 8.1 s.
+- Old rooms are now cleaned up once a day while the server runs, not only at start-up.
 Players build together in the same world. One player creates a room and gets a short code; up to 4 more join with the code and a nickname. Single-player stays exactly as it is and needs no server.
 
 ### How it is hosted
@@ -123,14 +125,14 @@ Players build together in the same world. One player creates a room and gets a s
 - **Secure connection only:** the game is served over https, so the room server must use `wss://` with a Let's Encrypt certificate from CloudPanel.
 - **nginx in front of Node** (CloudPanel's Node.js site) must let live connections through: `proxy_http_version 1.1`, `Upgrade` and `Connection "upgrade"` headers, and a read timeout of several minutes. Check the site's vhost and add these if the template does not have them.
 - **PM2** keeps the server running and restarts it after a crash or reboot.
-- **Storage:** one SQLite file holds every room: world edits per chunk, shared game state, each player's inventory and position, and the kilns.
+- **Storage:** one JSON file per room (decided instead of SQLite, see the status above): world edits, shared game state, each player's inventory and position, and the kilns.
 - **The game finds the server** through a Netlify build setting, `VITE_ROOM_SERVER=wss://rooms.<domain>`. Without it, the multiplayer buttons are hidden.
 - **The server accepts connections only** from the Netlify site's address and from localhost during development.
 - **Deploying:** pull the repo on the server, build, restart with PM2. Later, a GitHub Action can do this on every merge to `main`.
 
 ### The room server (`server/`, in this repo)
 - Node and TypeScript, using the `ws` package. It **imports the game's own rules** from `src/voxel/` and `src/game/` (blocks, world, water, the block plans, task counting, recipes and the kiln), so game and server never drift apart.
-- **One room** holds the world (seed + edits), the shared game state, up to 5 players, the dropped items, the kilns, the animals and the clock. A room with nobody in it is saved and unloaded, and rooms unused for 60 days are deleted.
+- **One room** holds the world (seed + edits), the shared game state, up to 5 players, the dropped items, the kilns, the animals and the clock. A room with nobody in it is saved and unloaded, and rooms unused for 60 days are deleted (at start-up and once a day).
 - **The server decides the order of changes.** It checks each action (inside the world, a known block, within reach of the player), applies it with the same function the game uses, and sends it to everyone with a sequence number. If two players act on the same cell, the first to arrive wins.
 - **The server runs the simulation:** water ticks (Phase 10), animals (wandering, resting, wool growing back) and the day/night clock, sending updates a few times a second.
 - **Dropped items and kilns are shared.** The server owns every item on the ground, and the first player to pick it up gets it. A kiln's contents and its fire are the same for everyone who opens it.
@@ -162,6 +164,12 @@ Players build together in the same world. One player creates a room and gets a s
 
 ## Phase 13: The sanctuary of Dionysus (Ἱερὸ τοῦ Διονύσου)
 Theatres stood in the sanctuary of Dionysus, so this is the natural next step.
+
+**Size and layout (decided 2026-11-17)**
+- **Columns 2 × 2 blocks** (1 m thick), about 11 blocks tall with the capital, roughly the Doric 1 : 5.5. Axial spacing 4 blocks (a 2-block gap between columns).
+- **The temple faces east**, with the altar in front of it to the east and the gateway in the boundary wall on the road, which arrives from the east.
+- Footprint: the columns span 14 × 22 blocks; the stylobate 16 × 24; with the three steps of the krepis about **20 × 28 blocks (10 × 14 units)**, the long side running east–west. With the altar, the space around the temple and the boundary wall, the sacred ground needs about **44 × 28 blocks (22 × 14 units)**.
+- **The terrace grows to the west.** Today it is 17 × 15 units (`regions.ts`: centre (-31, 20), rx 8.5, rz 7.5). The stream runs just east of it, so the east edge stays where it is and the terrace widens westwards to about 24 × 16 units (centre near (-34.5, 20), rx 12, rz 8). The road's exit to the agora, now at (-39.5, 20), moves to the new west edge. The island tests (level and dry area, a walkable road, entrances on the road) must still pass.
 
 **Tasks, in order**
 1. **The boundary wall (περίβολος)**: a low limestone wall around the sacred ground, with a gateway on the road.
@@ -219,11 +227,10 @@ Unchanged from the old Phase 9, and done only after everything above: a *Surviva
 
 ## Decisions (2026-11-16)
 1. **Opening order:** one building at a time. The next signpost opens when the previous building is finished.
-2. **Temple size:** small, 4 × 6 columns.
+2. **Temple size:** small, 4 × 6 columns, each column 2 × 2 blocks; facing east; the terrace widens to the west (2026-11-17).
 3. **Stadium length:** a shorter track is fine.
 4. **Map:** one shared, large island, landscaped so that hills, a stream and groves separate the building areas. The road links them through passes and over a bridge.
 5. **Multiplayer:** up to 5 players per room, through a small Node room server on our own CloudPanel server. The game itself stays on Netlify.
 
 ## Also update
-- **README**: still says the koilon rows are limestone and that the mission card compares carried blocks with those needed. Update it in Phase 11, along with the list of buildings.
-- **E2E test** (`tests/game.e2e.ts`): walk from the theatre along the road to the next signpost.
+Done (2026-11-17): the README describes the island, the four buildings, rooms, the save in IndexedDB and the 642-block theatre; `tests/game.e2e.ts` walks from the theatre along the road to the sanctuary's signpost.

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, utimes, writeFile, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import WebSocket from 'ws'
@@ -12,7 +12,7 @@ import { VoxelWorld } from '../src/voxel/world'
 
 const dir = await mkdtemp(join(tmpdir(), 'kivopolis-rooms-'))
 process.env.DATA_DIR = dir
-const { start, originAllowed } = await import('../server/index')
+const { start, originAllowed, forgetOldRooms } = await import('../server/index')
 
 type Server = Awaited<ReturnType<typeof start>>
 let server: Server
@@ -285,5 +285,18 @@ describe('a room', () => {
 
   it('refuses connections from other sites', async () => {
     await expect(player(server.port, { type: 'create', name: 'X' }, 'https://elsewhere.example')).rejects.toBeTruthy()
+  })
+})
+
+describe('cleaning up old rooms', () => {
+  it('deletes rooms unused for 60 days, but keeps newer ones and rooms that are open', async () => {
+    const folder = await mkdtemp(join(tmpdir(), 'kivopolis-old-'))
+    const old = (Date.now() - 61 * 86_400_000) / 1000
+    for (const code of ['OLDAAA', 'OLDBBB', 'NEWCCC']) await writeFile(join(folder, `${code}.json`), '{}')
+    await utimes(join(folder, 'OLDAAA.json'), old, old)
+    await utimes(join(folder, 'OLDBBB.json'), old, old)
+    expect(await forgetOldRooms(folder, Date.now(), new Set(['OLDBBB']))).toBe(1)
+    expect((await readdir(folder)).sort()).toEqual(['NEWCCC.json', 'OLDBBB.json'])
+    await rm(folder, { recursive: true, force: true })
   })
 })

@@ -44,7 +44,7 @@ function App() {
       {!game && <header className="masthead">
         <div className="brand">
           <span className="brand-mark"><Logo size={30} /></span>
-          <span className="brand-text"><strong>{copy.brand}</strong><span>{copy.valley}</span></span>
+          <span className="brand-text"><strong>{copy.brand}</strong><span>{copy.island}</span></span>
         </div>
         <div className="partner-credit">
           <img src={`${import.meta.env.BASE_URL}diazoma.webp`} width={2000} height={1414} alt={copy.creditLogo} />
@@ -74,7 +74,7 @@ function App() {
           {ROOM_SERVER && !inRoom() && <button className="button guide room-button" onClick={() => setPanel('room')}><Users size={17} />{copy.rooms}</button>}
           <div className="intro-foot"><span className="foot-mark">Α</span><p>{copy.disclaimer}</p></div>
         </section>}
-        <section className="stage" aria-label={copy.valley}>
+        <section className="stage" aria-label={copy.island}>
           <World blueprint={blueprint} marker={marker} />
           {game ? <StageOverlay blueprint={blueprint} setBlueprint={setBlueprint} marker={marker} /> : (
             <div className="stage-overlay menu-overlay">

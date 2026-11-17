@@ -44,6 +44,26 @@ export function surfaceHeight(get: Get, x: number, y: number, z: number) {
 }
 
 /**
+ * Which way the surface of a flowing cell runs, as a unit vector in block x and z: away from
+ * higher water and towards lower water or an open edge it pours over. Sources, the sea and the
+ * inside of a falling column are still ([0, 0]).
+ */
+export function flowDirection(get: Get, x: number, y: number, z: number): [number, number] {
+  if (!isFlowing(get(x, y, z)) || isWater(get(x, y + 1, z))) return [0, 0]
+  const height = surfaceHeight(get, x, y, z)
+  let fx = 0, fz = 0
+  for (const [dx, dz] of SIDES) {
+    const side = get(x + dx, y, z + dz)
+    // Towards lower water, away from higher water; over an open edge the whole surface pours out.
+    const drop = isWater(side) ? height - surfaceHeight(get, x + dx, y, z + dz) : isSolid(side) ? 0 : height
+    fx += dx * drop
+    fz += dz * drop
+  }
+  const length = Math.hypot(fx, fz)
+  return length > 1e-6 ? [fx / length, fz / length] : [0, 0]
+}
+
+/**
  * True when a point (in block units, fractional y) is under water. Sources and falling water fill
  * their whole cell; a thin flow only up to its surface, so a puddle is not deep enough to swim in.
  */

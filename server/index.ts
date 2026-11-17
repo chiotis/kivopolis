@@ -114,14 +114,24 @@ function connect(socket: WebSocket) {
   })
 }
 
+/** Deletes the files of rooms nobody has used for two months. A room open in memory is kept. */
+export async function forgetOldRooms(dir = DATA_DIR, now = Date.now(), open: ReadonlySet<string> = new Set(rooms.keys())) {
+  let removed = 0
+  for (const name of await readdir(dir)) {
+    if (!name.endsWith('.json') || open.has(name.slice(0, -5))) continue
+    const info = await stat(join(dir, name)).catch(() => null)
+    if (info && now - info.mtimeMs > KEEP_DAYS * 86_400_000) {
+      await unlink(join(dir, name)).then(() => removed++, () => undefined)
+    }
+  }
+  return removed
+}
+
 export async function start(port = PORT) {
   await mkdir(DATA_DIR, { recursive: true })
-  // Forget rooms nobody has used for two months.
-  for (const name of await readdir(DATA_DIR)) {
-    if (!name.endsWith('.json')) continue
-    const info = await stat(join(DATA_DIR, name))
-    if (Date.now() - info.mtimeMs > KEEP_DAYS * 86_400_000) await unlink(join(DATA_DIR, name)).catch(() => undefined)
-  }
+  // Forget rooms nobody has used for two months: at start-up, then once a day while running.
+  await forgetOldRooms()
+  const cleanUp = setInterval(() => { forgetOldRooms().catch((error) => console.error('clean-up failed', error)) }, 86_400_000)
 
   const http = createServer((request, response) => {
     if (request.url === '/health') { response.writeHead(200, { 'content-type': 'text/plain' }).end('ok'); return }
@@ -173,7 +183,7 @@ export async function start(port = PORT) {
   return {
     port: listening,
     async close() {
-      clearInterval(heartbeat); clearInterval(loop); clearInterval(saver)
+      clearInterval(heartbeat); clearInterval(loop); clearInterval(saver); clearInterval(cleanUp)
       for (const room of rooms.values()) if (room.dirty) await saveRoom(room)
       rooms.clear()
       for (const socket of sockets.clients) socket.terminate()

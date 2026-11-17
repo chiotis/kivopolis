@@ -1,4 +1,4 @@
-import { Component, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { Component, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { PerformanceMonitor } from '@react-three/drei'
 import { MathUtils, Vector3 } from 'three'
@@ -36,6 +36,8 @@ class WorldBoundary extends Component<{ children: ReactNode }, { failed: boolean
 
 export function World({ blueprint, marker }: { blueprint: boolean; marker: RefObject<HTMLDivElement | null> }) {
   const view = useRef(initialView())
+  // Development only: browser tests steer the walk view (see __polis in App.tsx).
+  useEffect(() => { if (import.meta.env.DEV) Object.assign(window, { __polisView: view.current }) }, [])
   const [x, , z] = useGame.getState().player
   const player = useRef(new Vector3(x, 0, z))
   const quality = useGame((state) => state.settings.quality)
