@@ -1,12 +1,11 @@
 import { Block, blocks } from '../voxel/blocks'
 import { S, getWorld, index, wx, wy, wz } from '../voxel/world'
-import { cells } from './blueprints/theatre'
-import { builtIn } from './site'
+import { cellsOfStep } from './plans'
 import { inventory, type SlotRef } from './inventory'
 import { drops, spawnDrop } from '../world/dropState'
 import { herd, strikeAnimal, tendAnimal } from '../world/herd'
 import type { Stack } from './items'
-import type { Mission, Point } from './theatre'
+import type { Point } from './theatre'
 import type { WorldAction } from '../net/protocol'
 
 type Vec = [number, number, number]
@@ -25,8 +24,8 @@ export type Action =
   | { type: 'set'; x: number; y: number; z: number; block: number }
   /** Break the block in a cell; `drop` is what it gives (decided by the player's tool). A kiln spills its contents. */
   | { type: 'break'; x: number; y: number; z: number; drop: Stack | null }
-  /** Take down every built block of a theatre step and hand the blocks back. */
-  | { type: 'restart'; mission: Mission; at: Point }
+  /** Take down every built block of a step (the theatre's or a later building's) and hand the blocks back. */
+  | { type: 'restart'; mission: string; at: Point }
   /** Hit an animal (wool, feathers) or tend it (milk), by its id. */
   | { type: 'strike' | 'tend'; animal: number }
   /** Pick up a dropped item, by its id. */
@@ -75,8 +74,8 @@ export function apply(action: Action): boolean {
     case 'restart': {
       // Taking the step's blocks down gives them back, so nothing the player gathered is lost.
       const refund = new Map<string, number>()
-      for (const cell of cells) {
-        if (cell.mission !== action.mission || !builtIn(world, cell)) continue
+      for (const cell of cellsOfStep(action.mission)) {
+        if (!cell.accept.includes(world.get(cell.x, cell.y, cell.z))) continue
         const key = blocks[world.get(cell.x, cell.y, cell.z)].key
         world.set(cell.x, cell.y, cell.z, Block.air)
         refund.set(key, (refund.get(key) ?? 0) + 1)

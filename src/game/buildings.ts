@@ -1,4 +1,5 @@
 import { AREAS, areaAt, type BuildingId } from './regions'
+import { planOf } from './plans'
 
 /**
  * The buildings of the island, in the order they open: each one's signpost opens once the
@@ -39,8 +40,8 @@ export function unlocked(progress: ProgressView, id: BuildingId) {
   return i <= 0 || siteProgress(progress, BUILDING_ORDER[i - 1]).completed
 }
 
-/** Buildings whose block plan and steps exist. The others arrive in Phases 13–15. */
-export const hasPlan = (id: BuildingId) => id === 'theatre'
+/** Buildings whose block plan and steps exist. The others arrive in Phases 14–15. */
+export const hasPlan = (id: BuildingId) => id === 'theatre' || planOf(id) !== null
 
 export type BuildingStatus = 'locked' | 'coming' | 'open' | 'done'
 export function buildingStatus(progress: ProgressView, id: BuildingId): BuildingStatus {

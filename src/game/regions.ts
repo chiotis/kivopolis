@@ -27,7 +27,9 @@ export interface Area {
 export const AREAS: readonly Area[] = [
   { id: 'theatre', x: 0, z: 0, rx: 14, rz: 14, height: 0, entrance: [6.4, 5.8], sign: [6.4, 5.8] },
   // A level terrace just below the theatre, across the stream, as theatres stood in Dionysus' sanctuary.
-  { id: 'sanctuary', x: -31, z: 20, rx: 8.5, rz: 7.5, height: 0.6, entrance: [-23.4, 15.6], sign: [-21.2, 16] },
+  // Widened to the west in Phase 13 for the temple, its altar and the boundary wall (the stream runs
+  // close by on the east). The road passes through the sacred ground by two gateways.
+  { id: 'sanctuary', x: -34, z: 20.5, rx: 11.5, rz: 8.5, height: 0.6, entrance: [-23.4, 15.6], sign: [-21.2, 16] },
   // The open square on the western plain, beyond the wooded ridge.
   { id: 'agora', x: -60, z: 4, rx: 10.5, rz: 10.5, height: 0.5, entrance: [-51.2, 8.6], sign: [-49, 8.3] },
   // A long, level valley floor between two low hills; the track runs along x.
@@ -51,8 +53,8 @@ export const STREAM_WIDTH = { water: 0.9, cut: 2.2 }
 export const ROADS: readonly (readonly Point2[])[] = [
   // From the theatre's west side road, over the first bridge, into the sanctuary.
   [[-12.6, 3.4], [-16.5, 8], [-23.4, 15.6]],
-  // Out of the sanctuary to the west, through the pass in the ridge, to the agora.
-  [[-39.5, 20], [-46, 15], [-51.2, 8.6]],
+  // Out of the sanctuary's west gateway, through the pass in the ridge, to the agora.
+  [[-45, 15.6], [-46.8, 14.4], [-51.2, 8.6]],
   // From the agora south and east, over the second bridge, to the stadium.
   [[-58, 14.5], [-46, 34], [-24, 44.5], [-9, 43.6], [-1.6, 39.6]],
   // From the landing path below the theatre down to the stadium road.

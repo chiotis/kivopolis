@@ -5,7 +5,7 @@ import { network } from '../game/actions'
 import { blockSound } from '../game/audio'
 import { inventory } from '../game/inventory'
 import type { Kiln } from '../game/kiln'
-import { cells } from '../game/blueprints/theatre'
+import { cellsOfStep } from '../game/plans'
 import { sky } from '../game/daylight'
 import { useInventory } from '../game/inventory'
 import { useShared, type Shared } from '../game/shared'
@@ -171,8 +171,8 @@ export function startSync() {
         const action = message.action
         if (action.type === 'set') world.set(action.x, action.y, action.z, action.block)
         else if (action.type === 'break') world.set(action.x, action.y, action.z, Block.air)
-        else for (const cell of cells) {
-          if (cell.mission === action.mission && cell.accept.includes(world.get(cell.x, cell.y, cell.z))) world.set(cell.x, cell.y, cell.z, Block.air)
+        else for (const cell of cellsOfStep(action.mission)) {
+          if (cell.accept.includes(world.get(cell.x, cell.y, cell.z))) world.set(cell.x, cell.y, cell.z, Block.air)
         }
         return
       }

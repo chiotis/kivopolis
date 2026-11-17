@@ -58,7 +58,7 @@ This is the work left over from Phase 8. Today water fills only cells at or belo
 ### A larger island
 - The grid grows from 144 × 144 to **384 × 384 blocks** (192 × 192 world units), keeping 48 blocks of height and 0.5 m blocks. The theatre stays at the origin, so world coordinates, the theatre's block plan and the player's position stay the same. That's about 7.1 million cells (7 MB) and 576 chunks instead of 81.
 - **The land within 29 units of the centre stays exactly as it is** (`ground()` is unchanged there), so builds in old saves still sit on the same ground. Beyond that, the island continues to the new shore with a dedicated area for each building:
-  - **the sanctuary of Dionysus**: a level terrace just below the theatre, to the south-west;
+  - **the sanctuary of Dionysus**: a level terrace just below the theatre, to the south-west (widened westwards in Phase 13);
   - **the agora**: a wide flat plain near the western coast;
   - **the stadium**: a long, straight valley between two low hills to the south-east, whose slopes serve as the spectators' banks, as at Olympia.
 - **Landscaping that separates the areas (decided).** Each area sits in its own hollow or terrace, and the land between them closes the view, so every building feels like its own place:
@@ -166,6 +166,12 @@ Players build together in the same world. One player creates a room and gets a s
 Theatres stood in the sanctuary of Dionysus, so this is the natural next step.
 
 **Status (2026-11-17): 13a done (blocks).** Six new blocks after the flowing water (ids 30–35), so saved worlds keep their ids: column drum (fluted on every side, a dowel hole in its bed), Doric capital (abacus, echinus, annulets), triglyph (painted dark blue, as temples were), metope (a plain panel), statue base (with carved letters) and bronze. Workshop recipes: 1 marble → 1 drum, 2 marble side by side → 1 capital, 2 marble stacked → 2 triglyphs, 4 marble → 4 metopes, marble–bronze ingot–marble → 2 statue bases, 1 bronze ingot → 1 bronze block. The cult statue is built block by block from bronze blocks on the statue base, like everything else. Three history notes come the first time a part is placed: the Doric column, triglyphs and metopes, bronze statues. Animals do not climb any of them. Next: 13b, the terrace and tasks 1–4.
+
+**Status (2026-11-17): 13b done (terrace and the first four steps).**
+- The terrace is centred at (-34, 20.5) with rx 11.5 and rz 8.5. The generator levels the sacred ground itself (a grass rectangle one block wider than the boundary wall) and heaps up the temple's earth core, so the krepis is built as steps round it. The road now runs through the sanctuary: in by the east gateway at the old entrance, out by the west gateway towards the pass.
+- `src/game/plans.ts` holds the plans of the buildings after the theatre: steps, cells, counting from the world, materials, and restart by step id (also in rooms). The theatre's missions are unchanged.
+- `src/game/blueprints/sanctuary.ts`: the boundary wall with two gateways (280 blocks), the altar (56), the krepis (560: two ashlar steps, the stylobate's 2-block marble band for the columns, and a floor of any dressed stone) and the cella with its door and porch (432). 1,328 blocks in all.
+- Reading the signpost activates the plan; the mission panel, the ghost blocks, red outlines, the chime, a corner note per finished step, journal notes and restarting a step all work as for the theatre. Steps 5–8 show as still to come.
 
 **Size and layout (decided 2026-11-17)**
 - **Columns 2 × 2 blocks** (1 m thick), about 11 blocks tall with the capital, roughly the Doric 1 : 5.5. Axial spacing 4 blocks (a 2-block gap between columns).
