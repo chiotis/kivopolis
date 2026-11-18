@@ -6,11 +6,11 @@ import { islandEdge, type Obstacle } from '../game/terrain'
 import { siteMarker, spawn, tourMarker, type Point } from '../game/theatre'
 import { eyeHeight, stepBody, type Limits } from '../voxel/physics'
 import { raycast } from '../voxel/raycast'
-import { SX, SZ, getWorld, bx, by, bz, wx, wz } from '../voxel/world'
-import { blocks } from '../voxel/blocks'
+import { S, SX, SZ, getWorld, bx, by, bz, wx, wy, wz } from '../voxel/world'
+import { Block, blocks } from '../voxel/blocks'
 import { blockSound, hurtSound } from '../game/audio'
 import { copy } from '../game/el'
-import { fallDamage, hurt, survivalActive, tickSurvival, wake } from '../game/survival'
+import { fallDamage, hurt, setBed, survivalActive, tickSurvival, useSurvival, wake } from '../game/survival'
 import { signposts } from '../game/buildings'
 import { playerState } from './player'
 import { OVERVIEW_PAN } from './view'
@@ -44,9 +44,14 @@ export const initialView = (): View => ({ yaw: 0.18, pitch: 0.88, zoom: 24, x: 0
 const fall = { top: -Infinity }
 
 function respawn(x: number, z: number) {
+  respawnAt(x, getWorld().surface(x, z) + 0.01, z)
+}
+
+/** Puts the player at a point, still, on foot. */
+function respawnAt(x: number, y: number, z: number) {
   const body = playerState.body
   fall.top = -Infinity
-  Object.assign(body.position, { x, y: getWorld().surface(x, z) + 0.01, z })
+  Object.assign(body.position, { x, y, z })
   Object.assign(body.velocity, { x: 0, y: 0, z: 0 })
   body.crouching = false
   body.flying = false
@@ -174,9 +179,14 @@ export function CameraRig({ view, player, marker }: {
           const fainted = hurt(damage)
           if (state.settings.sound) hurtSound()
           if (fainted) {
-            respawn(spawn[0], spawn[2])
+            // Wake at this player's κλίνη if it still stands, or else at the theatre.
+            const { bed } = useSurvival.getState()
+            const home = bed && world.get(bed[0], bed[1], bed[2]) === Block.kline ? bed : null
+            if (home) respawnAt(wx(home[0]) + S / 2, wy(home[1] + 1) + 0.01, wz(home[2]) + S / 2)
+            else respawn(spawn[0], spawn[2])
+            if (bed && !home) setBed(null)
             wake()
-            state.setNotice(copy.fainted)
+            state.setNotice(home ? copy.faintedBed : bed ? copy.faintedBedGone : copy.fainted)
           }
         }
       }

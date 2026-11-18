@@ -8,6 +8,7 @@ import type { Kiln } from '../game/kiln'
 import { cellsOfStep } from '../game/plans'
 import { sky } from '../game/daylight'
 import { useInventory } from '../game/inventory'
+import { useSurvival } from '../game/survival'
 import { useShared, type Shared } from '../game/shared'
 import { useGame } from '../game/store'
 import { Block } from '../voxel/blocks'
@@ -121,6 +122,18 @@ export function startSync() {
     saving = setTimeout(sendInventory, 1000)
   })
 
+  // So are this player's health, hunger and bed (Phase 16).
+  let vitalsLater: ReturnType<typeof setTimeout> | undefined
+  const sendVitals = () => {
+    const { health, food, bed } = useSurvival.getState()
+    send({ type: 'vitals', vitals: { health, food, bed } })
+  }
+  useSurvival.subscribe((state, previous) => {
+    if (state.health === previous.health && state.food === previous.food && state.bed === previous.bed) return
+    clearTimeout(vitalsLater)
+    vitalsLater = setTimeout(sendVitals, 1000)
+  })
+
   const name = (id: string) => id === me.id ? me : useRoom.getState().players.find((player) => player.id === id)
 
   /** After a rejoin: the room's world and progress replace what this game had; the inventory stays. */
@@ -139,6 +152,7 @@ export function startSync() {
     useRoom.setState({ me, players: fresh.players, status: 'connected' })
     last = ''
     sendInventory()
+    sendVitals()
   }
 
   // A dropped connection: try again, waiting a little longer each time, for about two minutes.

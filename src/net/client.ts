@@ -108,7 +108,7 @@ export function roomRecords(welcome: Welcome) {
   }
   for (const [chunk, [cells, ids]] of byChunk) records.set(chunkKey(chunk), { cells: Uint32Array.from(cells), ids: Uint8Array.from(ids) } satisfies ChunkRecord)
   records.set('inventory', { version: 1, slots: welcome.inventory ?? [], kilns: {} })
-  records.set('game', { version: 3, shared: welcome.shared, player: { position: welcome.position ?? [...spawn] } })
+  records.set('game', { version: 3, shared: welcome.shared, player: { position: welcome.position ?? [...spawn], ...welcome.vitals } })
   return records
 }
 

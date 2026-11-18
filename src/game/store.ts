@@ -12,7 +12,7 @@ import { buildingHere, buildingStatus, readBuildings, signNear } from './buildin
 import { activeStep, finishedSteps, planOf, plans, trackPlans, usePlans } from './plans'
 import { factIds, initialShared, useShared, type Fact, type Shared } from './shared'
 import { apply } from './actions'
-import { freshSurvival, initialSurvival, readFood, readHealth, useSurvival, type GameMode } from './survival'
+import { freshSurvival, initialSurvival, readBed, readFood, readHealth, useSurvival, type Cell, type GameMode } from './survival'
 import type { BuildingId } from './regions'
 
 export { factIds, useShared, type Fact, type Shared } from './shared'
@@ -39,7 +39,7 @@ const within = (value: unknown, [low, high]: readonly [number, number], fallback
  * Saved game, version 3: the shared game, this player's position and the device settings, kept
  * apart so a room can own the shared part (Phase 12). Versions 1 and 2 kept them in one `progress`.
  */
-interface SavedGame { version: 3; shared: Shared; player: { position: Point; health?: number; food?: number }; settings: Settings }
+interface SavedGame { version: 3; shared: Shared; player: { position: Point; health?: number; food?: number; bed?: Cell | null }; settings: Settings }
 
 /** This player and this device: everything that is not shared with a room. */
 interface State {
@@ -150,7 +150,7 @@ function load(): Loaded {
         legacy: [],
         game: {
           version: 3, shared: readShared(data.shared), settings: readSettings(data.settings),
-          player: { position: isPoint(data.player?.position) ? data.player.position : [...spawn], health: readHealth((data.player as { health?: unknown } | undefined)?.health), food: readFood((data.player as { food?: unknown } | undefined)?.food) },
+          player: { position: isPoint(data.player?.position) ? data.player.position : [...spawn], health: readHealth((data.player as { health?: unknown } | undefined)?.health), food: readFood((data.player as { food?: unknown } | undefined)?.food), bed: readBed((data.player as { bed?: unknown } | undefined)?.bed) },
         },
       }
     }
@@ -198,7 +198,7 @@ function finishedInOrder() {
 
 const loaded = load()
 useShared.setState(loaded.game.shared)
-useSurvival.setState(initialSurvival(loaded.game.player.health, loaded.game.player.food))
+useSurvival.setState(initialSurvival(loaded.game.player.health, loaded.game.player.food, loaded.game.player.bed))
 
 /** Changes the shared game. In a room (Phase 12) this becomes a message to the room server. */
 const share = (patch: Partial<Shared>) => useShared.setState(patch)
@@ -401,14 +401,14 @@ useGame.subscribe((state, previous) => {
 
 function save() {
   const { player, settings } = useGame.getState()
-  const { health, food } = useSurvival.getState()
-  writeRecord('game', { version: 3, shared: useShared.getState(), player: { position: player, health, food }, settings } satisfies SavedGame)
+  const { health, food, bed } = useSurvival.getState()
+  writeRecord('game', { version: 3, shared: useShared.getState(), player: { position: player, health, food, bed }, settings } satisfies SavedGame)
 }
 useGame.subscribe((state, previous) => {
   if (state.player !== previous.player || state.settings !== previous.settings) save()
 })
 useShared.subscribe(save)
-useSurvival.subscribe((state, previous) => { if (state.health !== previous.health || state.food !== previous.food) save() })
+useSurvival.subscribe((state, previous) => { if (state.health !== previous.health || state.food !== previous.food || state.bed !== previous.bed) save() })
 
 onSaveStatus((ok) => {
   const saveStatus = ok ? 'ready' : 'unavailable'

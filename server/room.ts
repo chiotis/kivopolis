@@ -7,11 +7,12 @@ import { SEED } from '../src/voxel/generate'
 import { DAY_SECONDS, isNight } from '../src/game/daylight'
 import { emptyKiln, kilnContents, stepKiln, validKiln, validStack, type Kiln } from '../src/game/kiln'
 import { dropsOf, type Stack } from '../src/game/items'
+import { readBed, readFood, readHealth } from '../src/game/survival'
 import { addDrop, randomVelocity, stepDrop, type DropEntity } from '../src/world/dropState'
 import { spawnAnimals, stepAnimals, strikeGives, tendGives, type Animal } from '../src/world/wildlife'
 import type { AnimalPose } from '../src/world/herd'
 import { randomUUID } from 'node:crypto'
-import { KICK_MINUTES, MAX_PLAYERS, PHRASES, type ClientMessage, type PlayerInfo, type Pose, type RoomError, type ServerMessage, type WorldAction } from '../src/net/protocol'
+import { KICK_MINUTES, MAX_PLAYERS, PHRASES, type ClientMessage, type PlayerInfo, type Pose, type RoomError, type ServerMessage, type Vitals, type WorldAction } from '../src/net/protocol'
 
 type Vec3 = [number, number, number]
 
@@ -26,7 +27,7 @@ export interface SavedRoom {
   host: string
   edits: [number, number][]
   shared: Shared
-  players: Record<string, { inventory: unknown[] | null; position: Vec3 | null }>
+  players: Record<string, { inventory: unknown[] | null; position: Vec3 | null; vitals?: Vitals | null }>
   /** The kilns' contents, by world cell index. */
   kilns?: Record<string, Kiln>
 }
@@ -134,7 +135,7 @@ export class Room {
     send({
       type: 'welcome', code: this.code, you: info, seed: SEED, edits: [...this.world.edits], shared: this.shared,
       players: [...this.members.values()].map((member) => member.info),
-      inventory: saved?.inventory ?? null, position: saved?.position ?? null, token: secret,
+      inventory: saved?.inventory ?? null, position: saved?.position ?? null, vitals: saved?.vitals ?? null, token: secret,
       drops: this.drops, animals: this.animals,
     })
     this.broadcast({ type: 'joined', player: info })
@@ -268,6 +269,16 @@ export class Room {
       }
       case 'kilnClose': {
         if (this.kilnUser.get(message.cell) === id) this.kilnUser.delete(message.cell)
+        return
+      }
+      case 'vitals': {
+        const vitals = message.vitals as Partial<Vitals> | undefined
+        if (!vitals || typeof vitals !== 'object') return
+        this.players[member.info.name] = {
+          ...this.players[member.info.name],
+          vitals: { health: readHealth(vitals.health), food: readFood(vitals.food), bed: readBed(vitals.bed) },
+        }
+        this.touch()
         return
       }
       case 'inventory': {

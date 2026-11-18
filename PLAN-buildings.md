@@ -320,6 +320,13 @@ Unchanged from the old Phase 9, and done only after everything above: a *Surviva
 - **Blocks and atlas:** fig leaves and wheat are blocks 43–44. The atlas grew from 8 × 8 to 16 × 16 tiles, so there is room again; the new tiles start at 64 (fig leaves, wheat, wheat top, olive, fig, dough, bread).
 - A block's drop can now be a list, tried in order; the room server accepts any drop on the list.
 
+**Status (2026-11-18): 16c done: Phase 16 and the plan are complete.**
+- **Η κλίνη (the bed):** block 45, a cut-out couch: a wooden frame on four legs, a red woollen mattress and a feather pillow. Made at the workshop from a feather, 2 wool and 3 planks (`FWW` over `PPP`). This gives feathers their use.
+- **Lying on it:** the place button on a bed (not crouching) makes it this player's wake point, with a history note on the κλίνη and the symposium. Crouching builds against it instead. Food in hand isn't eaten while aiming at a bed.
+- **Waking:** a player who faints wakes standing on their bed if it still stands, or else at the theatre, and the lost bed is forgotten. Each case has its own message. The bed is per player and is saved with health and hunger; a new game forgets it.
+- **Rooms:** a new `vitals` message sends this player's health, hunger and bed to the room server about a second after they change, and again after a rejoin. The server checks them (health 1–20, hunger 0–20, a whole-numbered cell or nothing) and keeps them by nickname, so they come back with the inventory on the next join. Rooms saved before this start players full.
+- Animals keep off beds.
+
 ---
 
 ## Decisions (2026-11-16)

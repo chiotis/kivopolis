@@ -160,6 +160,26 @@ describe('a room', () => {
     back.socket.close()
   })
 
+  it('keeps each player\'s health, hunger and bed for when they come back, within bounds', async () => {
+    const host = await player(server.port, { type: 'create', name: 'Νίκη' })
+    const welcome = await host.next('welcome')
+    expect(welcome.vitals).toBeNull()
+    host.send({ type: 'vitals', vitals: { health: 7, food: 99, bed: [10, 20, 30] } })
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    host.socket.close()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const back = await player(server.port, { type: 'join', code: welcome.code, name: 'Νίκη', token: welcome.token })
+    expect((await back.next('welcome')).vitals).toEqual({ health: 7, food: 20, bed: [10, 20, 30] })
+    // Nonsense is made safe: health never below one point, no bed at a made-up place.
+    back.send({ type: 'vitals', vitals: { health: -5, food: 'lots', bed: [1.5, 'x', 3] } })
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    back.socket.close()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const again = await player(server.port, { type: 'join', code: welcome.code, name: 'Νίκη', token: welcome.token })
+    expect((await again.next('welcome')).vitals).toEqual({ health: 1, food: 20, bed: null })
+    again.socket.close()
+  })
+
   it('carries phrases and pointing, lets the creator remove a player, and lets a dropped player back in', async () => {
     const host = await player(server.port, { type: 'create', name: 'Δάσκαλος' })
     const welcome = await host.next('welcome')

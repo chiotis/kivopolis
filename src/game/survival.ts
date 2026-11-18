@@ -52,14 +52,19 @@ interface SurvivalState {
   appetite: number
   /** Seconds towards the next point an empty stomach costs. */
   starve: number
+  /** The block cell of this player's κλίνη, where they wake after fainting; null for the theatre. */
+  bed: Cell | null
 }
+export type Cell = [number, number, number]
 
-export const initialSurvival = (health = MAX_HEALTH, food = MAX_FOOD): SurvivalState =>
-  ({ health, calm: REGEN_DELAY, mend: 0, hurtAt: -Infinity, food, appetite: 0, starve: 0 })
+export const initialSurvival = (health = MAX_HEALTH, food = MAX_FOOD, bed: Cell | null = null): SurvivalState =>
+  ({ health, calm: REGEN_DELAY, mend: 0, hurtAt: -Infinity, food, appetite: 0, starve: 0, bed })
 export const useSurvival = create<SurvivalState>(() => initialSurvival())
 
 export const readHealth = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) ? Math.min(MAX_HEALTH, Math.max(1, Math.round(value))) : MAX_HEALTH
+export const readBed = (value: unknown): Cell | null =>
+  Array.isArray(value) && value.length === 3 && value.every((n) => Number.isInteger(n) && n >= 0 && n < 1024) ? [value[0], value[1], value[2]] : null
 export const readFood = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) ? Math.min(MAX_FOOD, Math.max(0, Math.round(value))) : MAX_FOOD
 
@@ -112,6 +117,11 @@ export function eat(value: number | undefined): 'ate' | 'full' | null {
 }
 
 /** Waking after a faint: full health, nothing lost; hunger stays as it was, but never empty. */
-export const wake = () => useSurvival.setState(initialSurvival(MAX_HEALTH, Math.max(FED + 1, useSurvival.getState().food)))
+export const wake = () => {
+  const { food, bed } = useSurvival.getState()
+  useSurvival.setState(initialSurvival(MAX_HEALTH, Math.max(FED + 1, food), bed))
+}
+/** Sets (or, with null, forgets) where this player wakes. */
+export const setBed = (bed: Cell | null) => useSurvival.setState({ bed })
 /** A new game: full health and a full stomach. */
 export const freshSurvival = () => useSurvival.setState(initialSurvival())

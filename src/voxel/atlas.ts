@@ -381,6 +381,19 @@ itemTiles[70] = (x, y, rng) => {
   if (y < 9 && (x === 5 || x === 10)) return '#d9a65c'
   return r > 5 ? '#8a5428' : hex('#b5733a', Math.round((rng() - 0.5) * 18))
 }
+// The κλίνη: from above, a woollen mattress with a feather pillow at its head inside a wooden
+// frame; from the side, the frame and mattress on four turned legs, open beneath.
+painters[Tile.klineTop] = (x, y, rng) => {
+  if (x === 0 || x === 15 || y === 0 || y === 15) return '#76583f'
+  if (y <= 4) return hex('#fbf8f0', Math.round((rng() - 0.5) * 8))
+  return (x + y * 2) % 7 === 0 ? '#c9b48a' : hex('#a8452f', Math.round((rng() - 0.5) * 14))
+}
+painters[Tile.klineSide] = (x, y, rng) => {
+  if (y >= 3 && y <= 5) return y === 3 ? hex('#ece6d6', 0) : hex('#a8452f', Math.round((rng() - 0.5) * 12))
+  if (y >= 6 && y <= 8) return y === 6 ? '#a87a51' : hex('#8c6544', Math.round((rng() - 0.5) * 10))
+  if (y >= 9 && (x <= 1 || x >= 14)) return y === 12 ? '#a87a51' : '#6b4c35'
+  return null
+}
 Object.assign(painters, itemTiles)
 
 export function createAtlas() {
