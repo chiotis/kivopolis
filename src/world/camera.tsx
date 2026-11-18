@@ -8,7 +8,9 @@ import { eyeHeight, stepBody, type Limits } from '../voxel/physics'
 import { raycast } from '../voxel/raycast'
 import { SX, SZ, getWorld, bx, by, bz, wx, wz } from '../voxel/world'
 import { blocks } from '../voxel/blocks'
-import { blockSound } from '../game/audio'
+import { blockSound, hurtSound } from '../game/audio'
+import { copy } from '../game/el'
+import { fallDamage, hurt, survivalActive, tickSurvival, wake } from '../game/survival'
 import { signposts } from '../game/buildings'
 import { playerState } from './player'
 import { OVERVIEW_PAN } from './view'
@@ -38,8 +40,12 @@ export interface View {
 export const viewMode = { third: false }
 export const initialView = (): View => ({ yaw: 0.18, pitch: 0.88, zoom: 24, x: 0, z: 0.8, walkYaw: -0.11, walkPitch: -0.12 })
 
+/** The highest point since the player last stood, swam or flew; a move to a new place starts it again. */
+const fall = { top: -Infinity }
+
 function respawn(x: number, z: number) {
   const body = playerState.body
+  fall.top = -Infinity
   Object.assign(body.position, { x, y: getWorld().surface(x, z) + 0.01, z })
   Object.assign(body.velocity, { x: 0, y: 0, z: 0 })
   body.crouching = false
@@ -153,11 +159,29 @@ export function CameraRig({ view, player, marker }: {
       const before = { ...body.position }
       if (!useShared.getState().creative) body.flying = false
       const wasInWater = body.inWater
+      const wasOnGround = body.onGround
       const lifted = stepBody(world, body, {
         x: moveX, z: moveZ, sprint: keys.has('shift'), jump: free && keys.has(' '), crouch: free && keys.has('c'),
       }, dt, memory.limits)
       if (body.inWater && !wasInWater && state.settings.sound) blockSound('water', 'break')
       if (body.position.y < -6) respawn(spawn[0], spawn[2])
+      // Survival: a long fall onto solid ground hurts, measured from its highest point; water,
+      // flight and standing all start the count again.
+      fall.top = Math.max(fall.top, before.y)
+      if (body.onGround && !wasOnGround && !body.flying && !body.inWater && !wasInWater) {
+        const damage = fallDamage(fall.top - body.position.y)
+        if (damage > 0 && survivalActive()) {
+          const fainted = hurt(damage)
+          if (state.settings.sound) hurtSound()
+          if (fainted) {
+            respawn(spawn[0], spawn[2])
+            wake()
+            state.setNotice(copy.fainted)
+          }
+        }
+      }
+      if (body.onGround || body.flying || body.inWater) fall.top = body.position.y
+      tickSurvival(dt)
       if (moveX || moveZ) memory.facing = Math.atan2(moveX, moveZ)
       // Smooth automatic step-ups so climbing a block does not jolt the view.
       memory.eyeLag = state.settings.reducedMotion ? 0 : MathUtils.damp(memory.eyeLag - lifted, 0, 14, dt)

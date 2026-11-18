@@ -12,6 +12,7 @@ import { buildingHere, buildingStatus, readBuildings, signNear } from './buildin
 import { activeStep, finishedSteps, planOf, plans, trackPlans, usePlans } from './plans'
 import { factIds, initialShared, useShared, type Fact, type Shared } from './shared'
 import { apply } from './actions'
+import { initialSurvival, readHealth, useSurvival, wake, type GameMode } from './survival'
 import type { BuildingId } from './regions'
 
 export { factIds, useShared, type Fact, type Shared } from './shared'
@@ -38,7 +39,7 @@ const within = (value: unknown, [low, high]: readonly [number, number], fallback
  * Saved game, version 3: the shared game, this player's position and the device settings, kept
  * apart so a room can own the shared part (Phase 12). Versions 1 and 2 kept them in one `progress`.
  */
-interface SavedGame { version: 3; shared: Shared; player: { position: Point }; settings: Settings }
+interface SavedGame { version: 3; shared: Shared; player: { position: Point; health?: number }; settings: Settings }
 
 /** This player and this device: everything that is not shared with a room. */
 interface State {
@@ -87,6 +88,10 @@ interface State {
   dismissMilestone: () => void
   setTime: (time: number) => void
   setCreative: (creative: boolean) => void
+  /** Survival play: health, hunger and fall damage (Phase 16). */
+  setSurvival: (survival: boolean) => void
+  /** Sets how a new game is played. */
+  setMode: (mode: GameMode) => void
   /** Queues a history note the first time it applies; later calls do nothing. */
   learn: (fact: Fact) => void
   dismissFact: () => void
@@ -130,6 +135,7 @@ function readShared(shared: Partial<Shared>): Shared {
     facts: Array.isArray(shared.facts) ? shared.facts.filter((id): id is Fact => factIds.includes(id as Fact)) : [],
     time: typeof shared.time === 'number' && shared.time >= 0 && shared.time < 1 ? shared.time : 0.3,
     creative: shared.creative === true,
+    survival: shared.survival === true,
   }
 }
 
@@ -144,7 +150,7 @@ function load(): Loaded {
         legacy: [],
         game: {
           version: 3, shared: readShared(data.shared), settings: readSettings(data.settings),
-          player: { position: isPoint(data.player?.position) ? data.player.position : [...spawn] },
+          player: { position: isPoint(data.player?.position) ? data.player.position : [...spawn], health: readHealth((data.player as { health?: unknown } | undefined)?.health) },
         },
       }
     }
@@ -192,6 +198,7 @@ function finishedInOrder() {
 
 const loaded = load()
 useShared.setState(loaded.game.shared)
+useSurvival.setState(initialSurvival(loaded.game.player.health))
 
 /** Changes the shared game. In a room (Phase 12) this becomes a message to the room server. */
 const share = (patch: Partial<Shared>) => useShared.setState(patch)
@@ -296,6 +303,7 @@ export const useGame = create<State>((set, get) => ({
     resetWorld()
     resetInventory()
     clearDrops()
+    wake()
     useShared.setState(initialShared())
     set({ screen: 'menu', panel: null, mode: 'explore', player: [...spawn], milestone: null, notice: null, facts: [] })
   },
@@ -304,6 +312,11 @@ export const useGame = create<State>((set, get) => ({
   setCreative: (creative) => {
     share({ creative })
     if (creative) stockCreativeHotbar()
+  },
+  setSurvival: (survival) => share({ survival }),
+  setMode: (mode) => {
+    share({ survival: mode === 'survival' })
+    get().setCreative(mode === 'creative')
   },
   learn: (fact) => {
     const { facts } = get()
@@ -388,12 +401,14 @@ useGame.subscribe((state, previous) => {
 
 function save() {
   const { player, settings } = useGame.getState()
-  writeRecord('game', { version: 3, shared: useShared.getState(), player: { position: player }, settings } satisfies SavedGame)
+  const { health } = useSurvival.getState()
+  writeRecord('game', { version: 3, shared: useShared.getState(), player: { position: player, health }, settings } satisfies SavedGame)
 }
 useGame.subscribe((state, previous) => {
   if (state.player !== previous.player || state.settings !== previous.settings) save()
 })
 useShared.subscribe(save)
+useSurvival.subscribe((state, previous) => { if (state.health !== previous.health) save() })
 
 onSaveStatus((ok) => {
   const saveStatus = ok ? 'ready' : 'unavailable'

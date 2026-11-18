@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Award, Backpack, BookOpen, CircleHelp, Compass, Flame, Hammer, Landmark, Lock, Pause, Settings2, Signpost, Users, X } from 'lucide-react'
 import { InventoryScreen } from './InventoryScreen'
+import type { GameMode } from '../game/survival'
 import { ModeChoice } from './ModeChoice'
 import { PartInfo } from './Parts'
 import { buildings, copy, missions, stepText } from '../game/el'
@@ -25,10 +26,10 @@ const icons = {
 }
 
 export function Dialogs() {
-  const { panel, part, building, congrats, setPanel, settings, settingsChange, screen, restartMission, goHome, reset, start, setCreative } = useGame()
+  const { panel, part, building, congrats, setPanel, settings, settingsChange, screen, restartMission, goHome, reset, start, setCreative, setSurvival, setMode } = useGame()
   const progress = useShared()
   const host = useRoom((state) => state.me?.host ?? false)
-  const [newCreative, setNewCreative] = useState(false)
+  const [newMode, setNewMode] = useState<GameMode>('gather')
   const ref = useRef<HTMLDialogElement>(null)
   const counts = useSite((state) => state.counts)
 
@@ -73,6 +74,7 @@ export function Dialogs() {
               <output>{settings.sensitivity.toLocaleString('el', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}×</output></span></label>
             <label>{copy.invertY}<input type="checkbox" checked={settings.invertY} onChange={(event) => settingsChange({ invertY: event.target.checked })} /></label>
             {progress.started && (!inRoom() || host) && <label>{copy.creativeSetting}<input type="checkbox" checked={progress.creative} onChange={(event) => setCreative(event.target.checked)} /></label>}
+            {progress.started && (!inRoom() || host) && <label>{copy.survivalSetting}<input type="checkbox" checked={progress.survival} onChange={(event) => setSurvival(event.target.checked)} /></label>}
             {progress.started && !inRoom() && <button className="button danger" onClick={() => setPanel('reset')}>{copy.reset}</button>}
           </div>
         )}
@@ -112,9 +114,9 @@ export function Dialogs() {
         {(panel === 'reset' || panel === 'new') && (
           <>
             <p>{panel === 'new' ? copy.newGamePrompt : copy.resetPrompt}</p>
-            {panel === 'new' && <ModeChoice creative={newCreative} onChange={setNewCreative} />}
+            {panel === 'new' && <ModeChoice mode={newMode} onChange={setNewMode} />}
             <div className="modal-actions">
-              <button className="button danger" onClick={() => { reset(); if (panel === 'new') { setCreative(newCreative); start() } }}>
+              <button className="button danger" onClick={() => { reset(); if (panel === 'new') { setMode(newMode); start() } }}>
                 {panel === 'new' ? copy.newGame : copy.confirmReset}
               </button>
               <button className="button" onClick={panel === 'new' ? dismiss : () => setPanel('settings')}>{copy.cancel}</button>

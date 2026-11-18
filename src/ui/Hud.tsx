@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import {
   ArrowDown, ArrowDownLeft, MapPin, MessageCircle, RefreshCw, Users, ArrowLeft, ArrowRight, ArrowUp, Award, BookOpen, Check, ChevronDown, ChevronUp, CircleHelp, Compass,
-  Backpack, Camera, ChevronsUp, DraftingCompass, Eye, EyeOff, Footprints, Lightbulb, Maximize, Minimize, Landmark, Mouse, Move, Pause, Pickaxe, Plus, Route, Settings2, Sparkles, X,
-} from 'lucide-react'
+  Backpack, Camera, ChevronsUp, DraftingCompass, Eye, EyeOff, Footprints, Lightbulb, Maximize, Minimize, Landmark, Mouse, Move, Pause, Pickaxe, Plus, Route, Settings2, Sparkles, X, HeartPulse } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { buildings, copy, itemName, missions, stepText } from '../game/el'
 import { activeStep, planOf, planSteps, stepMaterials, stepPoints, stepReady, stepTotal, usePlans, type Plan } from '../game/plans'
@@ -18,6 +17,7 @@ import { cells } from '../game/blueprints/theatre'
 import { keys } from '../world/camera'
 import { blockInput, jumpTapped } from '../world/player'
 import { savePicture } from '../world/picture'
+import { MAX_HEALTH, useSurvival } from '../game/survival'
 import { HOTBAR, useInventory } from '../game/inventory'
 import { ItemIcon, StackView } from './ItemIcon'
 import { PartsBar } from './Parts'
@@ -177,7 +177,7 @@ export function StageOverlay({ blueprint, setBlueprint, marker }: {
           </button>}
           <span className={`hud-save ${saveStatus === 'unavailable' ? 'unsaved' : ''}`} title={saveStatus === 'ready' ? copy.saved : copy.unsaved}><Check size={13} /></span>
         </div>
-        <span className="hud-panel hud-mode pixel">{mode === 'overview' ? copy.overview : mode === 'tour' ? copy.tour : copy.explore}{progress.creative && <small> · {copy.modeCreative}</small>}</span>
+        <span className="hud-panel hud-mode pixel">{mode === 'overview' ? copy.overview : mode === 'tour' ? copy.tour : copy.explore}{progress.creative ? <small> · {copy.modeCreative}</small> : progress.survival && <small> · {copy.modeSurvival}</small>}</span>
         <div className="compass" aria-hidden="true"><span>{copy.compass}</span><Compass size={18} strokeWidth={1.4} /></div>
         {inRoom() && <RoomPanel />}
       </div>
@@ -188,7 +188,7 @@ export function StageOverlay({ blueprint, setBlueprint, marker }: {
         {mode === 'explore' && !progress.creative && <Guide />}
         {mode !== 'tour' && <MissionPanel />}
       </div>
-      {mode === 'explore' && <><Crosshair /><TouchMovement /><TouchActions /><Notice /><BreakMeter /></>}
+      {mode === 'explore' && <><HurtFlash /><Crosshair /><TouchMovement /><TouchActions /><Notice /><BreakMeter /></>}
       {inRoom() && mode === 'explore' && <><PhraseMenu /><RoomMessages /></>}
       {mode === 'explore' && (!started || gates) && <div ref={marker} className="scene-marker">
         {started ? <Route size={17} /> : <Landmark size={17} />}
@@ -272,6 +272,27 @@ function Crosshair() {
   return <div className="crosshair" aria-hidden="true" />
 }
 
+/** Survival: this player's health, ten segments of two points each. */
+function Health() {
+  const health = useSurvival((state) => state.health)
+  const shown = useShared((state) => state.survival && !state.creative)
+  if (!shown) return null
+  const segments = Array.from({ length: MAX_HEALTH / 2 }, (_, i) => Math.min(2, Math.max(0, health - i * 2)))
+  return (
+    <div className="health" role="meter" aria-label={copy.health} aria-valuemin={0} aria-valuemax={MAX_HEALTH} aria-valuenow={health}
+      title={`${copy.health}: ${health}/${MAX_HEALTH}`}>
+      <HeartPulse size={13} aria-hidden="true" />
+      {segments.map((fill, i) => <span key={i} className={`health-cell fill-${fill}`} />)}
+    </div>
+  )
+}
+
+/** A red edge round the screen for a moment after a hurt. */
+function HurtFlash() {
+  const hurtAt = useSurvival((state) => state.hurtAt)
+  return Number.isFinite(hurtAt) ? <div key={hurtAt} className="hurt-flash" aria-hidden="true" /> : null
+}
+
 function Hotbar() {
   const hotbar = useGame((state) => state.hotbar)
   const setHotbar = useGame((state) => state.setHotbar)
@@ -279,6 +300,7 @@ function Hotbar() {
   const current = slots[hotbar]
   return (
     <div className="hotbar-wrap">
+      <Health />
       <span className="hotbar-label" aria-live="polite">{current ? itemName(current.item) : copy.emptyHand}</span>
       <div className="hotbar" role="toolbar" aria-label={copy.hotbar}>
         {slots.slice(0, HOTBAR).map((stack, index) => (

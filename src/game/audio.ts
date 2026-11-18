@@ -54,3 +54,24 @@ export function blockSound(kind: keyof typeof voices, action: 'hit' | 'break' | 
     // Audio is optional.
   }
 }
+
+/** A low thud and a falling note when the player is hurt. */
+export function hurtSound() {
+  try {
+    context ??= new AudioContext()
+    void context.resume().catch(() => undefined)
+    const now = context.currentTime
+    const note = context.createOscillator()
+    const level = context.createGain()
+    note.type = 'sine'
+    note.frequency.setValueAtTime(160, now)
+    note.frequency.exponentialRampToValueAtTime(55, now + 0.22)
+    level.gain.setValueAtTime(0.22, now)
+    level.gain.exponentialRampToValueAtTime(0.001, now + 0.26)
+    note.connect(level).connect(context.destination)
+    note.start(now)
+    note.stop(now + 0.27)
+  } catch {
+    // Audio is optional; the screen flashes too.
+  }
+}
