@@ -187,6 +187,8 @@ progress::-moz-progress-bar { background: #6f8b66; border-radius: 10px; }
 .settings-list input[type='range'] { width: min(150px, 34vw); height: 17px; }
 .settings-list output { min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; color: #585a4c; }
 .completion-message { font: 500 20px/1.4 var(--serif) !important; color: var(--ink) !important; }
+.finale-list { list-style: none; margin: 4px 0 18px; padding: 0; display: grid; gap: 7px; }
+.finale-list li { display: flex; align-items: center; gap: 8px; }
 .badge-score { display: flex; gap: 6px; align-items: center; margin-top: 10px; }
 .agora { display: flex; align-items: flex-start; gap: 10px; padding: 12px; margin-top: 14px; border: 1px solid #e5dac6; border-radius: 11px; background: #f0eadb; }
 .agora svg { color: #7a6f4c; margin-top: 4px; }

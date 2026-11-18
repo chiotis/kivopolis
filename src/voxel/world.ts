@@ -1,7 +1,7 @@
 import { Block, isFlowing, isKnownBlock, isOpaque, isSolid, isWater, lightTable } from './blocks'
 import { nextWater } from './flow'
 import { fedPipes, spoutOutput, spoutRuns } from './plumbing'
-import { springCells } from '../game/blueprints/agora'
+import { springCells } from '../game/blueprints/springs'
 import { generate, SEED } from './generate'
 import { chunkKey, chunkRecords, readRecord, worldHeader, writeRecord, type ChunkRecord } from '../game/save'
 
@@ -67,7 +67,10 @@ export class VoxelWorld {
       for (const chunk of this.relight()) chunks.add(chunk)
     }
     this.emit([...chunks])
-    if (old === Block.pipe || id === Block.pipe || old === Block.lionSpout || id === Block.lionSpout || springs.has(i)) this.plumb()
+    // A pipe, a spout or the spring changed, or a block now fills a running spout's mouth (it then
+    // pours from another open side, if it has one).
+    if (old === Block.pipe || id === Block.pipe || old === Block.lionSpout || id === Block.lionSpout || springs.has(i)
+      || (this.sources.has(i) && id !== Block.water)) this.plumb()
     return true
   }
 

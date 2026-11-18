@@ -22,6 +22,8 @@ export interface Area {
   entrance: Point2
   /** The area's signpost, just off the road by the entrance. */
   sign: Point2
+  /** Where the entrance's two boundary stones stand, when not either side of the road (the stadium's flank its tunnel). */
+  stones?: readonly Point2[]
 }
 
 export const AREAS: readonly Area[] = [
@@ -34,7 +36,8 @@ export const AREAS: readonly Area[] = [
   // since Phase 14, so the stoa along its north side stands inside it.
   { id: 'agora', x: -60, z: 3, rx: 10.5, rz: 12, height: 0.5, entrance: [-51.2, 8.6], sign: [-49, 8.3] },
   // A long, level valley floor between two low hills; the track runs along x.
-  { id: 'stadium', x: 24, z: 40, rx: 25, rz: 6.5, height: 0.4, entrance: [-1.6, 39.6], sign: [0.6, 37.4] },
+  // Its boundary stones flank the vaulted entrance (Phase 15), which the road runs into.
+  { id: 'stadium', x: 24, z: 40, rx: 25, rz: 6.5, height: 0.4, entrance: [-1.6, 39.6], sign: [0.6, 37.4], stones: [[-2.8, 38.2], [-2.8, 41.8]] },
 ]
 export const area = (id: BuildingId) => AREAS.find((item) => item.id === id)!
 

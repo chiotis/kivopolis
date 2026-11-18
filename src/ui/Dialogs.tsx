@@ -16,12 +16,12 @@ import { complete, earnedPoints, useSite } from '../game/site'
 
 const labels: Record<Panel, string> = {
   settings: copy.settings, help: copy.help, journal: copy.journal, pause: copy.pause, new: copy.newGame,
-  reset: copy.reset, complete: copy.badge, inventory: copy.backpack, workshop: copy.workshop, kiln: copy.kiln, part: copy.parts, building: copy.readSign, room: copy.rooms,
+  reset: copy.reset, complete: copy.badge, inventory: copy.backpack, workshop: copy.workshop, kiln: copy.kiln, part: copy.parts, building: copy.readSign, room: copy.rooms, finale: copy.finale,
 }
 
 const icons = {
   settings: Settings2, help: CircleHelp, journal: BookOpen, pause: Pause, reset: Settings2, new: Compass, complete: Award,
-  inventory: Backpack, workshop: Hammer, kiln: Flame, part: BookOpen, building: Signpost, room: Users,
+  inventory: Backpack, workshop: Hammer, kiln: Flame, part: BookOpen, building: Signpost, room: Users, finale: Landmark,
 }
 
 export function Dialogs() {
@@ -121,6 +121,16 @@ export function Dialogs() {
             </div>
           </>
         )}
+        {panel === 'finale' && (
+          <>
+            <p className="completion-message">{copy.finaleTitle}</p>
+            <p>{copy.finaleText}</p>
+            <ul className="finale-list">
+              {BUILDING_ORDER.map((id) => <li key={id}><Award size={15} />{buildings[id].title}</li>)}
+            </ul>
+            <div className="modal-actions"><button className="button primary" onClick={screen === 'game' ? dismiss : goHome}>{copy.returnIsland}</button></div>
+          </>
+        )}
         {panel === 'complete' && (
           <>
             <p className="completion-message">{copy.finishTitle}</p>
@@ -147,7 +157,7 @@ function BuildingSign({ id }: { id: (typeof BUILDING_ORDER)[number] }) {
         {status === 'locked' && <><Lock size={15} />{copy.buildingLocked(buildings[previousBuilding(id)].title.toLocaleLowerCase('el'))}</>}
         {status === 'coming' && copy.buildingComing}
         {status === 'open' && <><Hammer size={15} />{copy.buildingOpen}</>}
-        {status === 'done' && <><Award size={15} />{copy.buildingDone}</>}
+        {status === 'done' && <><Award size={15} />{id === BUILDING_ORDER.at(-1) ? copy.cityDone : copy.buildingDone}</>}
       </p>
     </>
   )

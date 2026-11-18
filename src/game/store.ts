@@ -19,7 +19,7 @@ export { factIds, useShared, type Fact, type Shared } from './shared'
 export const interactionRadius = 2.55
 /** Explore is the first-person game; overview is the orbiting architect's camera; tour is the finale. */
 export type Mode = 'explore' | 'overview' | 'tour'
-export type Panel = 'settings' | 'help' | 'journal' | 'pause' | 'reset' | 'new' | 'complete' | 'inventory' | 'workshop' | 'kiln' | 'part' | 'building' | 'room'
+export type Panel = 'settings' | 'help' | 'journal' | 'pause' | 'reset' | 'new' | 'complete' | 'inventory' | 'workshop' | 'kiln' | 'part' | 'building' | 'room' | 'finale'
 /** Device settings: they belong to this browser, never to a shared room. */
 export interface Settings {
   quality: 'auto' | 'high' | 'low'; sound: boolean; reducedMotion: boolean; dayCycle: boolean
@@ -55,6 +55,8 @@ interface State {
   /** The step just finished, congratulated at the top of the next step's window. */
   congrats: Mission | null
   mode: Mode
+  /** Which tour runs: the theatre's flight round the hollow, or the stadium's run down the track. */
+  tour: 'theatre' | 'stadium'
   /** A finished step shown in the corner note: a theatre mission or a later building's step. */
   milestone: string | null
   /** Notes waiting to pop up in the top-right corner, oldest first. */
@@ -204,6 +206,7 @@ export const useGame = create<State>((set, get) => ({
   building: null,
   congrats: null,
   mode: 'explore',
+  tour: 'theatre',
   milestone: null,
   facts: [],
   hotbar: 0,
@@ -257,10 +260,15 @@ export const useGame = create<State>((set, get) => ({
       share({ discovered: true, celebrated: finishedInOrder() })
       set(celebrate('discover'))
     } else if (entrancesReady(useSite.getState().counts)) {
-      set({ mode: 'tour', milestone: null })
+      set({ mode: 'tour', tour: 'theatre', milestone: null })
     }
   },
   endTour: () => {
+    // The stadium's run closes the whole game: the island's four buildings stand.
+    if (get().tour === 'stadium') {
+      set({ mode: 'explore', panel: 'finale' })
+      return
+    }
     share({ completed: true })
     set({ mode: 'explore', panel: 'complete' })
   },
@@ -354,7 +362,9 @@ usePlans.subscribe(({ sites }, previous) => {
     const buildings = useShared.getState().buildings
     share({ buildings: { ...buildings, [plan.id]: { ...known, celebrated: [...known.celebrated, ...fresh], completed: known.completed || done } } })
     if (state.screen !== 'game') continue
-    if (done) useGame.setState({ panel: 'building', building: plan.id, milestone: null })
+    // The last building ends with a run down the stadium's track; the others open their signpost window.
+    if (done && plan.id === 'stadium') useGame.setState({ mode: 'tour', tour: 'stadium', panel: null, milestone: null })
+    else if (done) useGame.setState({ panel: 'building', building: plan.id, milestone: null })
     else if (!state.panel) useGame.setState({ milestone: fresh.at(-1)! })
   }
 })

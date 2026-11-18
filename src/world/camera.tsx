@@ -12,6 +12,7 @@ import { blockSound } from '../game/audio'
 import { signposts } from '../game/buildings'
 import { playerState } from './player'
 import { OVERVIEW_PAN } from './view'
+import { BALBIDES, TRACK } from '../game/blueprints/stadium'
 
 export const movementKeys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', ' ', 'c'])
 export const keys = new Set<string>()
@@ -112,6 +113,27 @@ export function CameraRig({ view, player, marker }: {
         center.y + Math.sin(orbit.pitch) * orbit.zoom,
         center.z + Math.cos(orbit.yaw) * Math.cos(orbit.pitch) * orbit.zoom,
       )
+    } else if (state.mode === 'tour' && state.tour === 'stadium') {
+      // The closing run: from the west starting line to the east one at a runner's eye height, then
+      // up over the east end to look back down the whole stadium.
+      if (!state.panel) memory.touring += dt
+      const time = memory.touring
+      const lane = wz(TRACK.z0 + 3) + 0.5, ground = (TRACK.y + 1 - by(0)) * 0.5
+      const start = wx(BALBIDES[0]) + 0.25, finish = wx(BALBIDES[1]) + 0.25
+      const RUN = 6, RISE = 5
+      if (state.settings.reducedMotion) {
+        eye.set(finish + 9, ground + 9, lane + 9)
+        center.set((start + finish) / 2, ground, lane)
+      } else if (time < RUN) {
+        const pace = time / RUN, x = start + (finish - start) * (pace * pace * (3 - 2 * pace) * 0.35 + pace * 0.65)
+        eye.set(x, ground + 1.45 + Math.abs(Math.sin(time * 9)) * 0.08, lane)
+        center.set(x + 6, ground + 1.1, lane)
+      } else {
+        const rise = MathUtils.smoothstep(time, RUN, RUN + RISE)
+        eye.set(finish + rise * 9, ground + 1.45 + rise * 9, lane + rise * 9)
+        center.set(finish + (((start + finish) / 2) - finish) * rise + 6 * (1 - rise), ground + 1.1 * (1 - rise), lane)
+      }
+      if (time > (state.settings.reducedMotion ? 4 : RUN + RISE + 1.5)) state.endTour()
     } else if (state.mode === 'tour') {
       if (!state.panel) memory.touring += dt
       const time = memory.touring

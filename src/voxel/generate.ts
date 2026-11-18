@@ -3,7 +3,7 @@ import { AREAS, ROADS, ROAD_WIDTH, RIDGE, STREAM, STREAM_WIDTH, areaWeight, brid
 import { KOILON_EDGE, parodosZ, siteMarker, spawn, tourMarker } from '../game/theatre'
 import { cells } from '../game/blueprints/theatre'
 import { plans } from '../game/plans'
-import { SPRING, springCells } from '../game/blueprints/agora'
+import { SPRINGS, springCells } from '../game/blueprints/springs'
 import { Block } from './blocks'
 import { OY, S, SEA_FLOOR_Y, SEA_Y, SX, SY, SZ, bx, bz, wx, wz } from './grid'
 
@@ -302,6 +302,10 @@ function horos(grid: Grid, x: number, z: number, height = 2) {
 function markers(grid: Grid) {
   for (const item of AREAS) {
     if (item.id === 'theatre') continue
+    if (item.stones) {
+      for (const [x, z] of item.stones) horos(grid, x, z)
+      continue
+    }
     const [x, z] = item.entrance
     const [dx, dz] = roadDirection(x, z)
     for (const side of [-1, 1]) horos(grid, x - dz * side * 1.5, z + dx * side * 1.5)
@@ -375,16 +379,18 @@ function buildingGrounds(grid: Grid) {
 }
 
 /**
- * The spring above the agora (Phase 14): four cells of water in a limestone rim on a limestone
- * bed, cut into the ridge's slope and open to the sky.
+ * The springs (Phases 14 and 15): four cells of water in a limestone rim on a limestone bed, cut
+ * into a hillside and open to the sky.
  */
-function spring(grid: Grid) {
-  for (let x = SPRING.x0 - 1; x <= SPRING.x1 + 1; x++) {
-    for (let z = SPRING.z0 - 1; z <= SPRING.z1 + 1; z++) {
-      for (let y = topOf(grid, x, z); y > SPRING.y; y--) grid.fill(x, y, z, Block.air)
-      footing(grid, x, z, SPRING.y - 1, Block.limestone)
-      grid.fill(x, SPRING.y - 1, z, Block.limestone)
-      grid.fill(x, SPRING.y, z, Block.limestone)
+function springs(grid: Grid) {
+  for (const spring of SPRINGS) {
+    for (let x = spring.x0 - 1; x <= spring.x1 + 1; x++) {
+      for (let z = spring.z0 - 1; z <= spring.z1 + 1; z++) {
+        for (let y = topOf(grid, x, z); y > spring.y; y--) grid.fill(x, y, z, Block.air)
+        footing(grid, x, z, spring.y - 1, Block.limestone)
+        grid.fill(x, spring.y - 1, z, Block.limestone)
+        grid.fill(x, spring.y, z, Block.limestone)
+      }
     }
   }
   for (const [x, y, z] of springCells) grid.fill(x, y, z, Block.water)
@@ -406,7 +412,7 @@ export function generate(grid: Grid) {
   boulders(grid)
   seaCaves(grid)
   for (const point of bridges()) bridge(grid, point)
-  spring(grid)
+  springs(grid)
   buildingGrounds(grid)
   markers(grid)
   site(grid)

@@ -1,4 +1,4 @@
-import { springCells } from '../game/blueprints/agora'
+import { springCells } from '../game/blueprints/springs'
 import { Block, isFlowing } from './blocks'
 
 /**

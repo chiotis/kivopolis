@@ -11,7 +11,7 @@ The island has four building areas, joined by an ancient road with bridges over 
 | **The theatre** | Theatre Valley, at the centre | Playable: nine steps |
 | **The sanctuary of Dionysus** | A terrace south-west of the theatre, across the stream | Playable: eight steps, a Doric temple of 4 × 6 columns with its altar and boundary wall |
 | **The agora** | The western plain, beyond the wooded ridge | Playable: boundary stones, a stoa of 7 Doric columns with 3 shops, a fountain house fed by a clay pipe from a spring, and market stalls |
-| **The stadium** | A valley between low hills to the south-east | Playable: a sand track of 40 × 4 units with a starting line at each end, spectator banks and the judges' seats; the tunnel, turning posts and water channel come next |
+| **The stadium** | A valley between low hills to the south-east | Playable: a sand track of 40 × 4 units with a starting line at each end, spectator banks, the judges' seats, a vaulted entrance, turning posts and a water channel fed from a spring; the game ends with a run down the track |
 
 In the theatre you walk to the site marker, activate the blueprint, and build a fictional ancient Greek theatre in nine steps: the orchestra, the analemmata, four curved rows of seats split by a gravel diazoma, the stairways, the skene and the parodoi. The next phases are planned in [PLAN-buildings.md](PLAN-buildings.md).
 

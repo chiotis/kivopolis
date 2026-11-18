@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { isEmpty } from '../voxel/blocks'
+import { isEmpty, isWater } from '../voxel/blocks'
 import type { BuildingId } from './regions'
 import { FLOOR as SANCTUARY_FLOOR, SANCTUARY_STEPS, WALL, sanctuaryCells, sanctuaryCore } from './blueprints/sanctuary'
 import { AGORA_STEPS, GROUND as AGORA_GROUND, agoraCells } from './blueprints/agora'
@@ -115,7 +115,8 @@ export function stepMaterials(plan: Plan, step: string, site: PlanSite) {
   const open = new Set([...site.missing, ...site.wrong])
   const result = new Map<number, { block: number; placed: number; total: number }>()
   plan.cells.forEach((cell, i) => {
-    if (cell.step !== step) return
+    // Water in a channel comes from its spouts, not from the backpack.
+    if (cell.step !== step || isWater(cell.block)) return
     const entry = result.get(cell.block) ?? { block: cell.block, placed: 0, total: 0 }
     entry.total++
     if (!open.has(i)) entry.placed++
