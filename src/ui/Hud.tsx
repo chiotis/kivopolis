@@ -152,7 +152,7 @@ function PlanPanel({ plan, brief, setBrief }: { plan: Plan; brief: boolean; setB
 export function StageOverlay({ blueprint, setBlueprint, marker }: {
   blueprint: boolean; setBlueprint: (value: boolean) => void; marker: RefObject<HTMLDivElement | null>
 }) {
-  const { player, mode, toggleOverview, interact, setPanel, endTour, saveStatus, photo, setPhoto } = useGame()
+  const { player, mode, tour, toggleOverview, interact, setPanel, endTour, saveStatus, photo, setPhoto } = useGame()
   const progress = useShared()
   const started = progress.discovered
   const gates = entrancesReady(useSite((state) => state.counts))
@@ -196,13 +196,13 @@ export function StageOverlay({ blueprint, setBlueprint, marker }: {
       </div>}
       <div className="stage-bottom">
         <div className="stage-keys">
-          {mode === 'tour' ? <span><Route size={15} />{copy.tourHint}</span>
+          {mode === 'tour' ? <span><Route size={15} />{tour === 'stadium' ? copy.stadiumTourHint : copy.tourHint}</span>
             : overview ? <><span><kbd>W A S D</kbd>{copy.slide}</span><span><Move size={15} />{copy.orbit}</span><span><Mouse size={15} />{copy.zoom}</span></>
               : <><span><kbd>W A S D</kbd>{copy.movement}</span><span><Mouse size={15} />{copy.blocksHint}</span><span><kbd>E</kbd>{copy.backpackKey}</span></>}
         </div>
         <div className="stage-actions">
           {mode === 'tour' && <button className="button stage-button" onClick={endTour}>{copy.finishTour}</button>}
-          {mode !== 'tour' && progress.completed && <button className="button stage-button" onClick={() => setPanel('complete')}><Award size={17} />{copy.showResult}</button>}
+          {mode !== 'tour' && progress.completed && <button className="button stage-button" onClick={() => setPanel(progress.buildings.stadium?.completed ? 'finale' : 'complete')}><Award size={17} />{copy.showResult}</button>}
           {showInteract && <button className="button primary stage-button" onClick={interact}><kbd>E</kbd>{sign ? copy.readSign : started ? copy.startTour : copy.interact}</button>}
           {mode !== 'tour' && started && <button className="button stage-button" onClick={toggleOverview}>
             {overview ? <Footprints size={17} /> : <DraftingCompass size={17} />}{overview ? copy.explore : copy.overview}<kbd>B</kbd>

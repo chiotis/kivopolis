@@ -4,6 +4,7 @@ import { ROADS, ROAD_WIDTH, nearest, roadDistance } from '../src/game/regions'
 import { interactionAvailable, useGame, useShared } from '../src/game/store'
 import { VoxelWorld, S, bx, bz } from '../src/voxel/world'
 import { Block } from '../src/voxel/blocks'
+import { planOf, stepTotals, usePlans } from '../src/game/plans'
 
 const progress = (patch: Partial<ProgressView> = {}): ProgressView => ({ discovered: false, completed: false, celebrated: [], buildings: {}, ...patch })
 
@@ -68,5 +69,34 @@ describe('reading a signpost', () => {
     useGame.getState().updatePlayer([sign.x + 1, 0, sign.z])
     useGame.getState().interact()
     expect(useShared.getState().buildings.sanctuary).toEqual({ discovered: true, completed: false, celebrated: [] })
+  })
+})
+
+describe('the end of the game', () => {
+  beforeEach(() => {
+    useGame.getState().reset()
+    useGame.getState().start()
+  })
+
+  it('runs down the stadium\'s track when its last step stands, then shows the finished city', () => {
+    const plan = planOf('stadium')!
+    useShared.setState({ discovered: true, completed: true, buildings: {
+      sanctuary: { discovered: true, completed: true, celebrated: [] },
+      agora: { discovered: true, completed: true, celebrated: [] },
+      stadium: { discovered: true, completed: false, celebrated: [] },
+    } })
+    usePlans.setState({ sites: { stadium: { counts: stepTotals(plan), wrong: [], missing: [] } } })
+    expect(useShared.getState().buildings.stadium?.completed).toBe(true)
+    expect(useGame.getState()).toMatchObject({ mode: 'tour', tour: 'stadium', panel: null })
+    useGame.getState().endTour()
+    expect(useGame.getState()).toMatchObject({ mode: 'explore', panel: 'finale' })
+    expect(buildingStatus(useShared.getState(), 'stadium')).toBe('done')
+  })
+
+  it('still ends the theatre\'s tour with its own result window', () => {
+    useGame.setState({ mode: 'tour', tour: 'theatre' })
+    useGame.getState().endTour()
+    expect(useGame.getState()).toMatchObject({ mode: 'explore', panel: 'complete' })
+    expect(useShared.getState().completed).toBe(true)
   })
 })

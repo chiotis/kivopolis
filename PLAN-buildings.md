@@ -264,6 +264,24 @@ The first time a player places one, a history note appears: the stade race, the 
 
 The last three steps (the vaulted entrance, the turning posts, the water channel) have no cells yet and arrive in 15c, so the stadium is not marked finished. 2,032 blocks so far. The track starts 5 units east of the road's entrance, leaving room for the tunnel.
 
+**Status (2026-11-18): 15c done: Phase 15 and the four buildings are complete.** The stadium's last three steps, 2,524 blocks in all:
+- **Η κρυπτή είσοδος (the vaulted entrance):** at the west end, in line with the road. Ashlar walls three courses high carry a stepped arch of vault stones in two rows, with earth on top. The passage is four blocks high under the keystones. The entrance's two boundary stones now flank the tunnel mouth (`Area.stones`); either side of the road, one of them stood in the way.
+- **Οι καμπτήρες (the turning posts):** four posts just beyond the east end, one per lane, each an ashlar base with two marble blocks.
+- **Το αυλάκι (the water channel):**
+  - The channel runs along the north side of the track, one block wide and flush with the ground, on an ashlar bed with an ashlar kerb on the bank side. The track's sand forms its other side.
+  - Six lion's heads set in the kerb pour into it, one every 14 blocks, because flowing water reaches only 7 blocks from a source.
+  - A second spring, on the north hill at the west end beside the road, feeds them by pipe. The pipe comes down the slope west of the north bank, so a finished bank needn't be dug up, then runs east under the kerb past every spout.
+  - The step counts the channel's water cells, so it is finished only once the water runs. The materials list leaves the water out.
+
+**The water rule, reused from the agora:** both springs are listed in `src/game/blueprints/springs.ts`. Placing a block in a running spout's mouth now re-checks the water, so a spout that took a free side because its neighbour wasn't built yet turns to its proper side.
+
+**The ending:** when the stadium's last step stands, the closing tour starts:
+- the camera runs the track at a runner's eye height, from one starting line to the other;
+- it rises over the east end to look back over the stadium;
+- the closing window then lists the four buildings, under *Η πόλη σου στέκεται ολόκληρη*.
+
+With reduced motion, the tour is a still view. The stadium's signpost and the result button lead to the closing window. The theatre's tour is unchanged.
+
 **Tasks, in order**
 1. **The track (δρόμος)**: a long, straight, level strip of packed sand or soil. **Shorter than a real stade (decided)**: as long as the valley allows, about 50–60 world units. The history note gives the real length, about 180–190 metres.
 2. **The starting line (βαλβίς)**: a row of stone sills with grooves for the runners' toes, at each end.

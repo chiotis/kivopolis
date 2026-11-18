@@ -44,6 +44,44 @@ export const BANKS = {
 } as const
 /** The judges' seats in the middle of the south bank, as at Olympia: a marble floor, a bench and its back. */
 export const JUDGES = { x0: bx(24) - 4, x1: bx(24) + 3 }
+/** The vaulted entrance at the west end, in line with the road: walls, a stepped arch of vault stones and earth on top. */
+export const KRYPTE = { x0: TRACK.x0 - 8, x1: TRACK.x0 - 1, z0: TRACK.z0 + 1, z1: TRACK.z1 - 1, y: FLOOR }
+/** Four turning posts just beyond the east end of the track, one for each lane. */
+export const KAMPTRES: readonly number[] = [TRACK.z0, TRACK.z0 + 2, TRACK.z1 - 2, TRACK.z1]
+export const KAMPTER_X = TRACK.x1 + 1
+/**
+ * The water channel along the north side of the track: water flush with the ground at `z`, on a
+ * stone bed, with a stone kerb on the bank side. Lion's heads set in the kerb pour into it every 14
+ * blocks, since flowing water runs 7 blocks from a source; a pipe under the kerb feeds them all.
+ */
+export const CHANNEL = { x0: BANK.x0, x1: BANK.x1, z: TRACK.z0 - 1, kerb: TRACK.z0 - 2, y: FLOOR - 1 }
+export const SPOUTS: readonly number[] = [0, 1, 2, 3, 4, 5].map((i) => CHANNEL.x0 + 3 + i * 14)
+/** The second spring, on the north hill at the west end, beside the road down from the theatre. */
+export const SPRING = { x0: TRACK.x0 + 1, x1: TRACK.x0 + 2, z0: bz(30), z1: bz(30) + 1, y: 17 }
+/**
+ * The pipe: down the slope west of the north bank (so a finished bank need not be dug up), then
+ * east under the kerb past every lion's head. The ground under the slope's run is kept as data,
+ * checked against the terrain by a test, as for the agora's pipe.
+ */
+export const SLOPE_GROUND: readonly number[] = [17, 17, 16, 16, 16, 16, 16, 16, 16, 16, 16]
+export const pipeCells: readonly [number, number, number][] = (() => {
+  const x = SPRING.x0, cells: [number, number, number][] = [[x, SPRING.y, SPRING.z1 + 1]]
+  SLOPE_GROUND.forEach((y, i) => {
+    const z = SPRING.z1 + 2 + i
+    const [, ly, lz] = cells.at(-1)!
+    for (let k = y; k < ly; k++) cells.push([x, k, lz])
+    cells.push([x, y, z])
+  })
+  // Down under the kerb, then east to the last lion's head.
+  const [, ly, lz] = cells.at(-1)!
+  for (let k = CHANNEL.y - 1; k < ly; k++) cells.push([x, k, lz])
+  for (let px = x; px <= SPOUTS.at(-1)!; px++) cells.push([px, CHANNEL.y - 1, CHANNEL.kerb])
+  return cells
+})()
+export const springCells: readonly [number, number, number][] = [
+  [SPRING.x0, SPRING.y, SPRING.z0], [SPRING.x1, SPRING.y, SPRING.z0], [SPRING.x0, SPRING.y, SPRING.z1], [SPRING.x1, SPRING.y, SPRING.z1],
+]
+
 /** The ground the generator levels: the track and its walkways, clear of trees and stones. */
 export const GROUND = { x0: TRACK.x0 - 2, x1: TRACK.x1 + 2, z0: TRACK.z0 - WALK, z1: TRACK.z1 + WALK, top: FLOOR - 1 }
 
@@ -79,7 +117,41 @@ function build() {
       }
     }
   }
+  // 5. The vaulted entrance: ashlar walls three courses high, a stepped arch of vault stones, and
+  // earth heaped over it, so the athletes walked in under the bank.
+  for (let x = KRYPTE.x0; x <= KRYPTE.x1; x++) {
+    for (let y = KRYPTE.y; y < KRYPTE.y + 3; y++) for (const z of [KRYPTE.z0, KRYPTE.z1]) add(x, y, z, Block.ashlar, [Block.ashlar, Block.limestone], 'krypte', y === KRYPTE.y)
+    for (const z of [KRYPTE.z0, KRYPTE.z0 + 1, KRYPTE.z1 - 1, KRYPTE.z1]) add(x, KRYPTE.y + 3, z, Block.voussoir, [Block.voussoir], 'krypte')
+    for (let z = KRYPTE.z0 + 1; z <= KRYPTE.z1 - 1; z++) add(x, KRYPTE.y + 4, z, Block.voussoir, [Block.voussoir], 'krypte')
+    for (let z = KRYPTE.z0; z <= KRYPTE.z1; z++) add(x, KRYPTE.y + 5, z, Block.grass, earth, 'krypte')
+  }
+
+  // 6. The turning posts: an ashlar base and a marble shaft beyond the east end of each lane.
+  for (const z of KAMPTRES) {
+    add(KAMPTER_X, FLOOR, z, Block.ashlar, [Block.ashlar, Block.limestone], 'kamptres', true)
+    for (const y of [FLOOR + 1, FLOOR + 2]) add(KAMPTER_X, y, z, Block.marble, [Block.marble], 'kamptres')
+  }
+
+  // 7. The water: the pipe from the spring, the stone bed and kerb with the lion's heads, and the
+  // channel itself, which counts once the water runs in it.
+  for (const [x, y, z] of pipeCells) cells.push({ x, y, z, block: Block.pipe, accept: [Block.pipe], step: 'channel', open: true })
+  for (let x = CHANNEL.x0 - 1; x <= CHANNEL.x1 + 1; x++) {
+    const end = x < CHANNEL.x0 || x > CHANNEL.x1
+    if (end) { add(x, CHANNEL.y, CHANNEL.z, Block.ashlar, [Block.ashlar, Block.limestone], 'channel', true); continue }
+    add(x, CHANNEL.y - 1, CHANNEL.z, Block.ashlar, [Block.ashlar, Block.limestone], 'channel', true)
+    cells.push({ x, y: CHANNEL.y, z: CHANNEL.z, block: Block.water, accept: [Block.water, ...WATER_LEVELS], step: 'channel' })
+    const spout = SPOUTS.includes(x)
+    add(x, CHANNEL.y, CHANNEL.kerb, spout ? Block.lionSpout : Block.ashlar, spout ? [Block.lionSpout] : [Block.ashlar, Block.limestone], 'channel', true)
+  }
+  add(CHANNEL.x0 - 1, CHANNEL.y, CHANNEL.kerb, Block.ashlar, [Block.ashlar, Block.limestone], 'channel')
+
+  // A course only stands on the ground where no other cell of the plan is under it.
+  const taken = new Set(cells.map(({ x, y, z }) => `${x},${y},${z}`))
+  for (const cell of cells) if (cell.footing && taken.has(`${cell.x},${cell.y - 1},${cell.z}`)) cell.footing = false
   return cells
 }
+
+/** Flowing water at every level: the channel counts as soon as water runs in it. */
+const WATER_LEVELS = [Block.flow1, Block.flow2, Block.flow3, Block.flow4, Block.flow5, Block.flow6, Block.flow7]
 
 export const stadiumCells: readonly PlanCell[] = build()
