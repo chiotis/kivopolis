@@ -48,6 +48,8 @@ export const Block = {
   // The stadium (Phase 15): the starting line, and the vault of the entrance tunnel.
   balbis: 41,
   voussoir: 42,
+  figLeaves: 43,
+  wheat: 44,
 } as const
 export type BlockId = (typeof Block)[keyof typeof Block]
 
@@ -61,8 +63,9 @@ export const Tile = {
   // Tiles 32–49 are item icons (items.ts); the temple carries on after them.
   metope: 50, statueBase: 51, bronze: 52,
   lionSpout: 53, pipeSide: 54, pipeEnd: 55, pithosSide: 56, pithosTop: 57, amphoraSide: 58, amphoraTop: 59, stallSide: 60, stallTop: 61,
-  // The last two tiles of the atlas.
   balbisTop: 62, voussoir: 63,
+  // Survival (Phase 16), in the atlas's second half: tiles 64 and on.
+  figLeaves: 64, wheat: 65, wheatTop: 66,
 } as const
 
 export type ToolType = 'pickaxe' | 'axe' | 'shovel'
@@ -86,7 +89,8 @@ export interface BlockDef {
   /** Minimum tool tier needed to get a drop: 0 hand, 1 wood, 2 stone, 3 bronze. */
   tier: number
   /** Defaults to one of the block itself; null drops nothing. */
-  drop?: Drop | null
+  /** A list is tried in order and gives the first that comes up: leaves give fruit or a stick. */
+  drop?: Drop | Drop[] | null
   /** Block light it gives off (0–15), spreading one level per block. */
   light?: number
 }
@@ -103,7 +107,7 @@ const defs: Omit<BlockDef, 'id'>[] = [
   { key: 'clay', hardness: 0.45, opaque: true, solid: true, tiles: all(Tile.clay), color: '#b98466', sound: 'soft', tool: 'shovel', tier: 0, drop: { item: 'clayLump', count: 4 } },
   { key: 'terracotta', hardness: 0.9, opaque: true, solid: true, tiles: all(Tile.terracotta), color: '#c06c48', sound: 'stone', tool: 'pickaxe', tier: 1 },
   { key: 'oliveLog', hardness: 0.9, opaque: true, solid: true, tiles: { top: Tile.logTop, side: Tile.logSide, bottom: Tile.logTop }, color: '#76583f', sound: 'wood', tool: 'axe', tier: 0 },
-  { key: 'oliveLeaves', hardness: 0.15, opaque: false, solid: true, tiles: all(Tile.oliveLeaves), color: '#7d8a59', sound: 'leaves', tier: 0, drop: { item: 'stick', count: 1, chance: 0.12 } },
+  { key: 'oliveLeaves', hardness: 0.15, opaque: false, solid: true, tiles: all(Tile.oliveLeaves), color: '#7d8a59', sound: 'leaves', tier: 0, drop: [{ item: 'olive', count: 1, chance: 0.1 }, { item: 'stick', count: 1, chance: 0.12 }] },
   { key: 'cypressLeaves', hardness: 0.15, opaque: false, solid: true, tiles: all(Tile.cypressLeaves), color: '#3f6448', sound: 'leaves', tier: 0, drop: { item: 'stick', count: 1, chance: 0.12 } },
   { key: 'gravel', hardness: 0.5, opaque: true, solid: true, tiles: all(Tile.gravel), color: '#a49a88', sound: 'soft', tool: 'shovel', tier: 0 },
   { key: 'ashlar', hardness: 1.2, opaque: true, solid: true, tiles: all(Tile.ashlar), color: '#dcc49c', sound: 'stone', tool: 'pickaxe', tier: 1 },
@@ -141,6 +145,10 @@ const defs: Omit<BlockDef, 'id'>[] = [
   // top; the vault stone is a wedge of ashlar, cut to lean on its neighbours in an arch.
   { key: 'balbis', hardness: 1.1, opaque: true, solid: true, tiles: { top: Tile.balbisTop, side: Tile.limestone, bottom: Tile.limestone }, color: '#cdb995', sound: 'stone', tool: 'pickaxe', tier: 1 },
   { key: 'voussoir', hardness: 1.2, opaque: true, solid: true, tiles: { top: Tile.ashlar, side: Tile.voussoir, bottom: Tile.ashlar }, color: '#dcc49c', sound: 'stone', tool: 'pickaxe', tier: 1 },
+  // Survival (Phase 16): the fig tree's broad leaves, which sometimes drop a fig, and wild wheat,
+  // a cut-out tuft like the lamp that is walked through and gathered for bread.
+  { key: 'figLeaves', hardness: 0.15, opaque: false, solid: true, tiles: all(Tile.figLeaves), color: '#5f7d3c', sound: 'leaves', tier: 0, drop: [{ item: 'fig', count: 1, chance: 0.18 }, { item: 'stick', count: 1, chance: 0.12 }] },
+  { key: 'wheat', hardness: 0, opaque: false, solid: false, tiles: { top: Tile.wheatTop, side: Tile.wheat, bottom: Tile.wheatTop }, color: '#d8b863', sound: 'leaves', tier: 0 },
 ]
 
 export const blocks: BlockDef[] = defs.map((def, id) => ({ ...def, id: id as BlockId }))

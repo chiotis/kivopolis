@@ -309,6 +309,17 @@ Unchanged from the old Phase 9, and done only after everything above: a *Surviva
 - Health comes back a point every 3 seconds, after 6 seconds without being hurt. A hurt flashes the screen's edge red and makes a low thud.
 - A player whose health runs out faints and wakes at the theatre with full health and everything they carry.
 
+**Status (2026-11-18): 16b done (hunger and food).**
+- **Hunger:** 20 points, shown as ten golden segments beside health. It falls a point every 30 seconds, twice as fast when sprinting, and waits while a window is open. Health only heals while hunger is above 6. With hunger at 0, health falls a point every 10 seconds but stops at 1. A faint leaves at least 7 points of hunger.
+- **Eating:** the place button with food in hand eats it (or drinks the milk), unless it opens a workshop or kiln. Olives fill 2, figs 3, milk 4 and bread 6. A full player is told they aren't hungry. The first meal brings a history note on the ancient Greek table.
+- **Food on the island:**
+  - Olive leaves now drop an olive (1 in 10) before trying for a stick.
+  - Fig trees grow among the scattered groves: a short forked trunk under a wide, flat crown of fig leaves, which drop a fig (about 1 in 5).
+  - Wild wheat grows in patches on open grass, away from the theatre's valley, the building areas, the road and the stream (about 1,500 tufts). It is a walk-through cut-out like the lamp.
+  - 3 wheat in a row make dough; the kiln bakes dough into bread.
+- **Blocks and atlas:** fig leaves and wheat are blocks 43–44. The atlas grew from 8 × 8 to 16 × 16 tiles, so there is room again; the new tiles start at 64 (fig leaves, wheat, wheat top, olive, fig, dough, bread).
+- A block's drop can now be a list, tried in order; the room server accepts any drop on the list.
+
 ---
 
 ## Decisions (2026-11-16)

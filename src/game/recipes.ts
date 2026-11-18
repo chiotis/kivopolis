@@ -46,6 +46,8 @@ export const recipes: Recipe[] = [
   // The stadium (Phase 15): starting sills cut from limestone, and wedges of ashlar for the vault.
   { pattern: ['LLL'], keys: { L: 'limestone' }, result: { item: 'balbis', count: 2 } },
   { pattern: ['A A', ' A '], keys: { A: 'ashlar' }, result: { item: 'voussoir', count: 3 } },
+  // Survival (Phase 16): wheat kneaded into dough, which the kiln bakes into bread.
+  { pattern: ['WWW'], keys: { W: 'wheat' }, result: { item: 'dough', count: 1 } },
   ...tool('planks', 'wood'),
   ...tool('limestone', 'stone'),
   ...tool('bronzeIngot', 'bronze'),

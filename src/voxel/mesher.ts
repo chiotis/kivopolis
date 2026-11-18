@@ -2,7 +2,8 @@ import { blocks, isFlowing, isOpaque, isWater } from './blocks'
 import { flowDirection, surfaceHeight } from './flow'
 import { CHUNK, SX, SY, SZ, wx, wy, wz } from './grid'
 
-export const ATLAS_TILES = 8
+/** The atlas is 16 × 16 tiles of 16 px (Phase 16 doubled it from 8 × 8). */
+export const ATLAS_TILES = 16
 const INSET = 0.002
 
 export interface Sampler {

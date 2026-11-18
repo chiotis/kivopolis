@@ -43,7 +43,9 @@ export function onPath(x: number, z: number) {
  */
 export { level }
 
-export const groves: [number, number, number, 'olive' | 'cypress'][] = [
+/** Olive and cypress grow in the hand-placed groves; fig trees (Phase 16) among the scattered ones. */
+export type Tree = 'olive' | 'cypress' | 'fig'
+export const groves: [number, number, number, Tree][] = [
   [-12.8, -3.7, 1.10, 'olive'], [-11.4, -7.6, 1.2, 'olive'], [-12.5, -9.9, 1.35, 'cypress'],
   [-14.4, -4.8, 0.98, 'olive'], [-13.7, 1.9, 1.15, 'cypress'], [-16.8, -1, 1.2, 'olive'],
   [-9.4, -8.5, 1.0, 'cypress'], [-8.3, -10.4, 1.17, 'cypress'], [-5.0, -13.4, 1.09, 'olive'],
@@ -141,8 +143,8 @@ function setIfAir(grid: Grid, x: number, y: number, z: number, id: number) {
  * Groves on the new land: thick along the wooded ridge, scattered elsewhere, and never on a
  * building area, the road or the stream.
  */
-export function wildGroves(): [number, number, number, 'olive' | 'cypress'][] {
-  const result: [number, number, number, 'olive' | 'cypress'][] = []
+export function wildGroves(): [number, number, number, Tree][] {
+  const result: [number, number, number, Tree][] = []
   const step = 5.5
   for (let gx = -90; gx <= 90; gx += step) {
     for (let gz = -90; gz <= 90; gz += step) {
@@ -154,7 +156,8 @@ export function wildGroves(): [number, number, number, 'olive' | 'cypress'][] {
       if (nearest(STREAM, x, z).distance < STREAM_WIDTH.cut + 1.5 || oreHill(x, z) > 0.3) continue
       const wooded = nearest(RIDGE.line, x, z).distance < 7
       if (hash(cx, cz, 41) > (wooded ? 0.85 : 0.24)) continue
-      result.push([x, z, 0.85 + hash(cx, cz, 43) * 0.45, hash(cx, cz, 47) > (wooded ? 0.35 : 0.6) ? 'cypress' : 'olive'])
+      const kind = hash(cx, cz, 47) > (wooded ? 0.35 : 0.6) ? 'cypress' : !wooded && hash(cx, cz, 53) < 0.4 ? 'fig' : 'olive'
+      result.push([x, z, 0.85 + hash(cx, cz, 43) * 0.45, kind])
     }
   }
   return result
@@ -180,6 +183,22 @@ function trees(grid: Grid) {
       // A couple of branches reaching into the crown.
       grid.fill(ix + 1, base + trunk, iz, Block.oliveLog)
       grid.fill(ix - 1, base + trunk - 1 + (size > 1 ? 1 : 0), iz + 1, Block.oliveLog)
+    } else if (kind === 'fig') {
+      // A fig: a short trunk that forks low, under a wide, flat crown of broad leaves.
+      const trunk = 3
+      for (let y = 0; y < trunk; y++) grid.fill(ix, base + y, iz, Block.oliveLog)
+      grid.fill(ix + 1, base + trunk, iz, Block.oliveLog)
+      grid.fill(ix - 1, base + trunk, iz - 1, Block.oliveLog)
+      const rx = 2 + Math.round(size * 1.4), cy = base + trunk + 1
+      for (let dx = -rx; dx <= rx; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dz = -rx; dz <= rx; dz++) {
+            const d = (dx / (rx + 0.4)) ** 2 + (dy / 1.6) ** 2 + (dz / (rx + 0.4)) ** 2
+            if (d > 1 || hash(ix + dx, iz + dz, cy + dy + 7) < 0.08) continue
+            setIfAir(grid, ix + dx, cy + dy, iz + dz, Block.figLeaves)
+          }
+        }
+      }
     } else {
       const height = Math.round(9 + size * 3)
       for (let y = 0; y < 4; y++) grid.fill(ix, base + y, iz, Block.oliveLog)
@@ -190,6 +209,23 @@ function trees(grid: Grid) {
         }
       }
       grid.fill(ix, base + height, iz, Block.cypressLeaves)
+    }
+  }
+}
+
+/**
+ * Wild wheat (Phase 16) in patches on open grass: away from the theatre's valley, the building
+ * areas, the road and the stream, and never under a tree.
+ */
+function wheat(grid: Grid) {
+  for (let z = 0; z < SZ; z++) {
+    for (let x = 0; x < SX; x++) {
+      if (hash(x >> 3, z >> 3, 61) > 0.1 || hash(x, z, 67) > 0.45) continue
+      const px = wx(x) + S / 2, pz = wz(z) + S / 2
+      if (Math.hypot(px, pz) < 25 || roadDistance(px, pz) < 2.4 || nearest(STREAM, px, pz).distance < STREAM_WIDTH.cut + 1) continue
+      if (AREAS.some((item) => areaWeight(item, px, pz) > 0.02)) continue
+      const top = topOf(grid, x, z)
+      if (grid.get(x, top, z) === Block.grass && top + 1 < SY) grid.fill(x, top + 1, z, Block.wheat)
     }
   }
 }
@@ -416,5 +452,7 @@ export function generate(grid: Grid) {
   buildingGrounds(grid)
   markers(grid)
   site(grid)
+  // Last of all, so nothing built later lands on a tuft of wheat.
+  wheat(grid)
   sea(grid)
 }

@@ -181,7 +181,8 @@ export function CameraRig({ view, player, marker }: {
         }
       }
       if (body.onGround || body.flying || body.inWater) fall.top = body.position.y
-      tickSurvival(dt)
+      // Hunger and healing wait while a window (the pause menu, the backpack) is open.
+      if (free) tickSurvival(dt, keys.has('shift') && (moveX || moveZ) ? 2 : 1)
       if (moveX || moveZ) memory.facing = Math.atan2(moveX, moveZ)
       // Smooth automatic step-ups so climbing a block does not jolt the view.
       memory.eyeLag = state.settings.reducedMotion ? 0 : MathUtils.damp(memory.eyeLag - lifted, 0, 14, dt)

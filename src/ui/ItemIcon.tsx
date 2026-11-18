@@ -1,11 +1,12 @@
 import { itemByKey, type Stack } from '../game/items'
 import { atlasUrl } from '../voxel/atlas'
+import { ATLAS_TILES } from '../voxel/mesher'
 
 export function ItemIcon({ item }: { item: string }) {
   const tile = itemByKey.get(item)?.icon ?? 0
-  const col = tile % 8, row = Math.floor(tile / 8)
+  const col = tile % ATLAS_TILES, row = Math.floor(tile / ATLAS_TILES)
   return <span className="block-icon" style={{
-    backgroundImage: `url(${atlasUrl()})`, backgroundPosition: `${col / 7 * 100}% ${row / 7 * 100}%`,
+    backgroundImage: `url(${atlasUrl()})`, backgroundPosition: `${col / (ATLAS_TILES - 1) * 100}% ${row / (ATLAS_TILES - 1) * 100}%`,
   }} />
 }
 

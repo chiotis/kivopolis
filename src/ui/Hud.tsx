@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import {
   ArrowDown, ArrowDownLeft, MapPin, MessageCircle, RefreshCw, Users, ArrowLeft, ArrowRight, ArrowUp, Award, BookOpen, Check, ChevronDown, ChevronUp, CircleHelp, Compass,
-  Backpack, Camera, ChevronsUp, DraftingCompass, Eye, EyeOff, Footprints, Lightbulb, Maximize, Minimize, Landmark, Mouse, Move, Pause, Pickaxe, Plus, Route, Settings2, Sparkles, X, HeartPulse } from 'lucide-react'
+  Backpack, Camera, ChevronsUp, DraftingCompass, Eye, EyeOff, Footprints, Lightbulb, Maximize, Minimize, Landmark, Mouse, Move, Pause, Pickaxe, Plus, Route, Settings2, Sparkles, X, HeartPulse, Wheat } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { buildings, copy, itemName, missions, stepText } from '../game/el'
 import { activeStep, planOf, planSteps, stepMaterials, stepPoints, stepReady, stepTotal, usePlans, type Plan } from '../game/plans'
@@ -17,7 +17,7 @@ import { cells } from '../game/blueprints/theatre'
 import { keys } from '../world/camera'
 import { blockInput, jumpTapped } from '../world/player'
 import { savePicture } from '../world/picture'
-import { MAX_HEALTH, useSurvival } from '../game/survival'
+import { MAX_FOOD, MAX_HEALTH, useSurvival } from '../game/survival'
 import { HOTBAR, useInventory } from '../game/inventory'
 import { ItemIcon, StackView } from './ItemIcon'
 import { PartsBar } from './Parts'
@@ -272,17 +272,27 @@ function Crosshair() {
   return <div className="crosshair" aria-hidden="true" />
 }
 
-/** Survival: this player's health, ten segments of two points each. */
-function Health() {
+/** Survival: this player's health and hunger, ten segments of two points each. */
+function Vitals() {
   const health = useSurvival((state) => state.health)
+  const food = useSurvival((state) => state.food)
   const shown = useShared((state) => state.survival && !state.creative)
   if (!shown) return null
-  const segments = Array.from({ length: MAX_HEALTH / 2 }, (_, i) => Math.min(2, Math.max(0, health - i * 2)))
   return (
-    <div className="health" role="meter" aria-label={copy.health} aria-valuemin={0} aria-valuemax={MAX_HEALTH} aria-valuenow={health}
-      title={`${copy.health}: ${health}/${MAX_HEALTH}`}>
-      <HeartPulse size={13} aria-hidden="true" />
-      {segments.map((fill, i) => <span key={i} className={`health-cell fill-${fill}`} />)}
+    <div className="vitals">
+      <Meter kind="health" label={copy.health} value={health} max={MAX_HEALTH} Icon={HeartPulse} />
+      <Meter kind="hunger" label={copy.hunger} value={food} max={MAX_FOOD} Icon={Wheat} />
+    </div>
+  )
+}
+
+function Meter({ kind, label, value, max, Icon }: { kind: string; label: string; value: number; max: number; Icon: typeof Wheat }) {
+  const segments = Array.from({ length: max / 2 }, (_, i) => Math.min(2, Math.max(0, value - i * 2)))
+  return (
+    <div className={`meter ${kind}`} role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value}
+      title={`${label}: ${value}/${max}`}>
+      <Icon size={13} aria-hidden="true" />
+      {segments.map((fill, i) => <span key={i} className={`meter-cell fill-${fill}`} />)}
     </div>
   )
 }
@@ -300,7 +310,7 @@ function Hotbar() {
   const current = slots[hotbar]
   return (
     <div className="hotbar-wrap">
-      <Health />
+      <Vitals />
       <span className="hotbar-label" aria-live="polite">{current ? itemName(current.item) : copy.emptyHand}</span>
       <div className="hotbar" role="toolbar" aria-label={copy.hotbar}>
         {slots.slice(0, HOTBAR).map((stack, index) => (

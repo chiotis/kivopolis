@@ -1,4 +1,4 @@
-import { blocks, isFlowing, type BlockDef, type ToolType } from '../voxel/blocks'
+import { blocks, isFlowing, type BlockDef, type Drop, type ToolType } from '../voxel/blocks'
 
 /** Atlas tiles for items that are not blocks (drawn in voxel/atlas.ts). */
 export const ItemTile = {
@@ -7,6 +7,8 @@ export const ItemTile = {
   woodAxe: 40, stoneAxe: 41, bronzeAxe: 42,
   woodShovel: 43, stoneShovel: 44, bronzeShovel: 45,
   milk: 46, feather: 47, hydria: 48, hydriaFull: 49,
+  // Survival food (Phase 16), after the new blocks' tiles.
+  olive: 67, fig: 68, dough: 69, bread: 70,
 } as const
 
 export interface Tool { type: ToolType; tier: 1 | 2 | 3; speed: number; durability: number }
@@ -32,7 +34,7 @@ const placeable = blocks.filter((def) => def.key !== 'air' && def.key !== 'bedro
 
 export const items: ItemDef[] = [
   ...placeable.map((def): ItemDef => ({ key: def.key, block: def.id, icon: def.tiles.side, maxStack: 64 })),
-  ...(['stick', 'clayLump', 'copperIngot', 'tinIngot', 'bronzeIngot', 'milk', 'feather'] as const)
+  ...(['stick', 'clayLump', 'copperIngot', 'tinIngot', 'bronzeIngot', 'milk', 'feather', 'olive', 'fig', 'dough', 'bread'] as const)
     .map((key): ItemDef => ({ key, icon: ItemTile[key], maxStack: 64 })),
   // The hydria carries one load of water: empty, or full.
   ...(['hydria', 'hydriaFull'] as const).map((key): ItemDef => ({ key, icon: ItemTile[key], maxStack: 1 })),
@@ -49,8 +51,10 @@ export const maxStack = (key: string) => itemByKey.get(key)?.maxStack ?? 64
 export const fuel: Record<string, number> = { oliveLog: 15, planks: 7.5, stick: 2.5, workshop: 7.5 }
 /** Kiln recipes: input item → output item. */
 export const smelting: Record<string, string> = {
-  clay: 'terracotta', copperOre: 'copperIngot', tinOre: 'tinIngot',
+  clay: 'terracotta', copperOre: 'copperIngot', tinOre: 'tinIngot', dough: 'bread',
 }
+/** Food and drink in survival play: how much hunger each fills (out of 20). */
+export const food: Record<string, number> = { olive: 2, fig: 3, milk: 4, bread: 6 }
 export const SMELT_TIME = 4
 
 export interface Mining {
@@ -74,7 +78,13 @@ export function mining(def: BlockDef, held?: Stack | null): Mining {
 /** What a broken block drops, after rolling its chance. */
 export function rollDrop(def: BlockDef, random = Math.random): Stack | null {
   if (def.drop === null) return null
-  const drop = def.drop ?? { item: def.key, count: 1 }
-  if (drop.chance !== undefined && random() >= drop.chance) return null
-  return { item: drop.item, count: drop.count }
+  for (const drop of dropsOf(def)) {
+    if (drop.chance !== undefined && random() >= drop.chance) continue
+    return { item: drop.item, count: drop.count }
+  }
+  return null
 }
+
+/** Everything a block may give when broken (the block itself when nothing else is set). */
+export const dropsOf = (def: BlockDef): Drop[] =>
+  def.drop === null ? [] : def.drop === undefined ? [{ item: def.key, count: 1 }] : Array.isArray(def.drop) ? def.drop : [def.drop]
