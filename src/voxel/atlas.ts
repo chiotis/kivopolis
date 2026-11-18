@@ -337,6 +337,50 @@ const hydria = (full: boolean): Paint => (x, y) => {
 }
 itemTiles[48] = hydria(false)
 itemTiles[49] = hydria(true)
+// Survival (Phase 16). The fig's broad, lobed leaves, darker than the olive's, with a few figs among them.
+painters[Tile.figLeaves] = (x, y, rng) => {
+  const r = rng()
+  if (r < 0.12) return null
+  if ((x * 5 + y * 3) % 23 === 0) return '#6b3f5a'
+  const vein = (x + y) % 5 === 0
+  return vein ? '#86a35a' : hex('#5f7d3c', Math.round((r - 0.5) * 30))
+}
+// Wild wheat: stalks rising from the ground with golden ears, transparent between them.
+painters[Tile.wheat] = (x, y, rng) => {
+  const stalk = [1, 4, 6, 9, 11, 14].indexOf(x)
+  if (stalk < 0) return null
+  const top = 2 + ((stalk * 5) % 4)
+  if (y < top) return null
+  if (y < top + 4) return (x + y) % 2 === 0 ? '#e6c66d' : hex('#c9a046', Math.round((rng() - 0.5) * 16))
+  return y > 12 ? '#7d8a4a' : hex('#b9a45b', Math.round((rng() - 0.5) * 18))
+}
+painters[Tile.wheatTop] = (x, y) => ((x * 7 + y * 5) % 9 === 0 ? '#e6c66d' : null)
+// Food: an olive on a sprig, a ripe fig, a round of dough and a loaf of bread.
+itemTiles[67] = (x, y) => {
+  if (Math.hypot(x - 7, (y - 9) * 0.8) < 3.6) return Math.hypot(x - 6, y - 8) < 1.2 ? '#8d8f63' : '#4c4a2c'
+  if (y >= 2 && y <= 5 && Math.abs(x - y - 5) <= 0.6) return '#6b4c35'
+  if (Math.hypot(x - 12, y - 3) < 2 && x > y + 6) return '#7d8a59'
+  return null
+}
+itemTiles[68] = (x, y) => {
+  if (y >= 2 && y <= 4 && x >= 7 && x <= 8) return '#6b4c35'
+  const half = y < 5 ? 0 : y < 9 ? (y - 4) * 1.1 : 4.6 - Math.max(0, y - 12) * 1.2
+  if (y >= 5 && y <= 14 && Math.abs(x - 7.5) <= half) return x < 6 ? '#4f2d43' : x > 10 && y < 10 ? '#8c5a7a' : '#6b3f5a'
+  return null
+}
+itemTiles[69] = (x, y, rng) => {
+  const r = Math.hypot(x - 7.5, (y - 9) * 1.4)
+  if (r > 6) return null
+  return r > 5.2 ? '#cdb58d' : hex('#eadcb9', Math.round((rng() - 0.5) * 12))
+}
+itemTiles[70] = (x, y, rng) => {
+  const r = Math.hypot((x - 7.5) * 0.85, (y - 9) * 1.3)
+  if (r > 6 || y > 13) return null
+  if (y === 13) return '#7a4a26'
+  // Scored across the top, as Greek loaves were.
+  if (y < 9 && (x === 5 || x === 10)) return '#d9a65c'
+  return r > 5 ? '#8a5428' : hex('#b5733a', Math.round((rng() - 0.5) * 18))
+}
 Object.assign(painters, itemTiles)
 
 export function createAtlas() {

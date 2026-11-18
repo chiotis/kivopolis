@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGame, useShared } from '../src/game/store'
-import { MAX_HEALTH, REGEN_DELAY, REGEN_EVERY, SAFE_FALL, fallDamage, hurt, modeOf, readHealth, tickSurvival, useSurvival } from '../src/game/survival'
+import { FED, HUNGER_EVERY, MAX_FOOD, MAX_HEALTH, REGEN_DELAY, REGEN_EVERY, SAFE_FALL, STARVE_EVERY, eat, fallDamage, hurt, modeOf, readFood, readHealth, tickSurvival, useSurvival, wake } from '../src/game/survival'
+import { food, smelting, type Stack } from '../src/game/items'
+import { matchRecipe } from '../src/game/recipes'
+import { VoxelWorld, SX, SY, SZ } from '../src/voxel/world'
+import { Block } from '../src/voxel/blocks'
 import { PLAYER } from '../src/voxel/physics'
 import { S } from '../src/voxel/grid'
 import { readRecord } from '../src/game/save'
@@ -83,5 +87,94 @@ describe('healing', () => {
     expect(readHealth(0)).toBe(1)
     expect(readHealth('lots')).toBe(MAX_HEALTH)
     expect(readHealth(99)).toBe(MAX_HEALTH)
+  })
+})
+
+/** Runs survival for this many seconds in small frames. */
+function run(seconds: number, effort = 1) {
+  for (let t = 0; t < seconds - 1e-9; t += 0.05) tickSurvival(0.05, effort)
+}
+
+describe('hunger', () => {
+  beforeEach(() => {
+    useGame.getState().reset()
+    useGame.getState().setMode('survival')
+  })
+
+  it('falls a point every half minute, twice as fast when sprinting', () => {
+    run(HUNGER_EVERY + 0.1)
+    expect(useSurvival.getState().food).toBe(MAX_FOOD - 1)
+    run(HUNGER_EVERY + 0.1, 2)
+    expect(useSurvival.getState().food).toBe(MAX_FOOD - 3)
+  })
+
+  it('heals only a fed player', () => {
+    hurt(4)
+    useSurvival.setState({ food: FED })
+    run(REGEN_DELAY + REGEN_EVERY * 2)
+    expect(useSurvival.getState().health).toBe(MAX_HEALTH - 4)
+    useSurvival.setState({ food: FED + 2 })
+    run(REGEN_EVERY + 0.1)
+    expect(useSurvival.getState().health).toBe(MAX_HEALTH - 3)
+  })
+
+  it('wears an empty stomach down to the last point of health, never past it', () => {
+    useSurvival.setState({ food: 0, appetite: 0 })
+    run(STARVE_EVERY + 0.1)
+    expect(useSurvival.getState().health).toBe(MAX_HEALTH - 1)
+    run(STARVE_EVERY * (MAX_HEALTH + 5))
+    expect(useSurvival.getState().health).toBe(1)
+  })
+
+  it('is filled by eating, until the player is full', () => {
+    useSurvival.setState({ food: 10 })
+    expect(eat(food.bread)).toBe('ate')
+    expect(useSurvival.getState().food).toBe(16)
+    expect(eat(food.milk)).toBe('ate')
+    expect(useSurvival.getState().food).toBe(MAX_FOOD)
+    expect(eat(food.olive)).toBe('full')
+    expect(eat(food.stick)).toBeNull()
+    useGame.getState().setMode('gather')
+    useSurvival.setState({ food: 10 })
+    expect(eat(food.fig)).toBeNull()
+  })
+
+  it('stays in the save, and a faint leaves the player some food', () => {
+    useSurvival.setState({ food: 3 })
+    const saved = readRecord<{ player: { food: number } }>('game')!
+    expect(saved.player.food).toBe(3)
+    expect(readFood(-2)).toBe(0)
+    expect(readFood(undefined)).toBe(MAX_FOOD)
+    wake()
+    expect(useSurvival.getState()).toMatchObject({ health: MAX_HEALTH, food: FED + 1 })
+  })
+})
+
+describe('food', () => {
+  const s = (item: string, count = 1): Stack => ({ item, count })
+
+  it('kneads three wheat into dough, which the kiln bakes into bread', () => {
+    expect(matchRecipe([s('wheat'), s('wheat'), s('wheat'), null, null, null, null, null, null], 3)?.result).toEqual(s('dough'))
+    expect(smelting.dough).toBe('bread')
+    expect(Object.keys(food).sort()).toEqual(['bread', 'fig', 'milk', 'olive'])
+  })
+
+  it('grows on the island: fig trees in the groves and patches of wild wheat in the meadows', () => {
+    const world = new VoxelWorld()
+    let wheat = 0, figs = 0, floating = 0
+    for (let y = 1; y < SY; y++) {
+      for (let z = 0; z < SZ; z++) {
+        for (let x = 0; x < SX; x++) {
+          const id = world.get(x, y, z)
+          if (id === Block.wheat) {
+            wheat++
+            if (world.get(x, y - 1, z) !== Block.grass) floating++
+          } else if (id === Block.figLeaves) figs++
+        }
+      }
+    }
+    expect(wheat).toBeGreaterThan(300)
+    expect(figs).toBeGreaterThan(200)
+    expect(floating).toBe(0)
   })
 })

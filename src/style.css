@@ -278,7 +278,7 @@ progress::-moz-progress-bar { background: #6f8b66; border-radius: 10px; }
 .hotbar { display: flex; gap: 3px; padding: 4px; background: #20382dd9; border: 1px solid #f0e9d45c; border-radius: 10px; }
 .hotbar button { position: relative; width: 38px; height: 38px; padding: 4px; border: 2px solid transparent; border-radius: 7px; background: #ffffff14; pointer-events: auto; }
 .hotbar button.active { border-color: #ffe7a8; background: #ffffff2e; }
-.block-icon { display: block; width: 100%; height: 100%; background-size: 800% 800%; image-rendering: pixelated; border-radius: 2px; }
+.block-icon { display: block; width: 100%; height: 100%; background-size: 1600% 1600%; image-rendering: pixelated; border-radius: 2px; }
 .slot-key { position: absolute; right: 2px; bottom: 0; color: #fff9e9; font-size: 9px; font-weight: 800; text-shadow: 0 1px 1px #000a; }
 .world-notice { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); max-width: min(90%, 420px); text-align: center; color: #fff9e9; background: #6e2f22e0; padding: 7px 11px; border-radius: 8px; font-size: 11px; font-weight: 700; pointer-events: none; }
 .touch-actions { display: none; }
@@ -632,10 +632,12 @@ progress::-moz-progress-bar { background: #6f8b66; border-radius: 10px; }
 .room-messages li { padding: 4px 9px; font-size: 13px; color: #f2ecdd; }
 
 /* Survival (Phase 16): health above the hotbar, and a red edge when hurt. */
-.health { display: flex; align-items: center; gap: 2px; padding: 3px 6px; color: #f3c9b8; background: #20382dcb; border-radius: 6px; }
-.health-cell { width: 11px; height: 8px; border: 1px solid #f0e9d480; border-radius: 2px; background: #3b2620; }
-.health-cell.fill-1 { background: linear-gradient(90deg, #c8432f 50%, #3b2620 50%); }
-.health-cell.fill-2 { background: #c8432f; }
+.vitals { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.meter { --full: #c8432f; display: flex; align-items: center; gap: 2px; padding: 3px 6px; color: #f3c9b8; background: #20382dcb; border-radius: 6px; }
+.meter.hunger { --full: #d39b3c; color: #f1dca8; }
+.meter-cell { width: 11px; height: 8px; border: 1px solid #f0e9d480; border-radius: 2px; background: #3b2620; }
+.meter-cell.fill-1 { background: linear-gradient(90deg, var(--full) 50%, #3b2620 50%); }
+.meter-cell.fill-2 { background: var(--full); }
 .hurt-flash { position: absolute; inset: 0; z-index: 1; pointer-events: none; box-shadow: inset 0 0 90px 20px #b3221acc; animation: hurt-flash 0.6s ease-out forwards; }
 @keyframes hurt-flash { from { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .hurt-flash { animation-duration: 0.01s; } }

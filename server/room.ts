@@ -6,7 +6,7 @@ import { initialShared, type Shared } from '../src/game/shared'
 import { SEED } from '../src/voxel/generate'
 import { DAY_SECONDS, isNight } from '../src/game/daylight'
 import { emptyKiln, kilnContents, stepKiln, validKiln, validStack, type Kiln } from '../src/game/kiln'
-import type { Stack } from '../src/game/items'
+import { dropsOf, type Stack } from '../src/game/items'
 import { addDrop, randomVelocity, stepDrop, type DropEntity } from '../src/world/dropState'
 import { spawnAnimals, stepAnimals, strikeGives, tendGives, type Animal } from '../src/world/wildlife'
 import type { AnimalPose } from '../src/world/herd'
@@ -304,9 +304,8 @@ export class Room {
       const at: Vec3 = [wx(x) + S / 2, wy(y) + S / 2, wz(z) + S / 2]
       // What the block gives: at most what this kind of block can give.
       const def = blocks[id]
-      const most = def.drop === undefined ? { item: def.key, count: 1 } : def.drop
       const given = validStack(action.drop)
-      if (given && most && given.item === most.item && given.count <= most.count) this.spawn(given, at)
+      if (given && dropsOf(def).some((most) => given.item === most.item && given.count <= most.count)) this.spawn(given, at)
       if (id === Block.kiln) this.breakKiln(String(index(x, y, z)), at)
       return true
     }

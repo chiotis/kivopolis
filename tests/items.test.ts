@@ -172,11 +172,16 @@ describe('mining', () => {
     expect(mining(block('oliveLog'), s('woodPickaxe')).time).toBe(mining(block('oliveLog'), null).time)
   })
 
-  it('turns grass into soil, clay into lumps, and leaves sometimes into sticks', () => {
+  it('turns grass into soil, clay into lumps, and leaves sometimes into fruit or sticks', () => {
     expect(rollDrop(block('grass'))).toEqual(s('soil'))
     expect(rollDrop(block('clay'))).toEqual(s('clayLump', 4))
     expect(rollDrop(block('oliveLeaves'), () => 0.9)).toBeNull()
-    expect(rollDrop(block('oliveLeaves'), () => 0.01)).toEqual(s('stick'))
+    expect(rollDrop(block('oliveLeaves'), () => 0.01)).toEqual(s('olive'))
+    // The fruit misses, then the stick comes up.
+    const rolls = [0.5, 0.01]
+    expect(rollDrop(block('oliveLeaves'), () => rolls.shift()!)).toEqual(s('stick'))
+    expect(rollDrop(block('figLeaves'), () => 0.01)).toEqual(s('fig'))
+    expect(rollDrop(block('wheat'))).toEqual(s('wheat'))
     expect(rollDrop(block('bedrock'))).toBeNull()
   })
 })
