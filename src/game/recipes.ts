@@ -48,6 +48,8 @@ export const recipes: Recipe[] = [
   { pattern: ['A A', ' A '], keys: { A: 'ashlar' }, result: { item: 'voussoir', count: 3 } },
   // Survival (Phase 16): wheat kneaded into dough, which the kiln bakes into bread.
   { pattern: ['WWW'], keys: { W: 'wheat' }, result: { item: 'dough', count: 1 } },
+  // A κλίνη: a feather pillow and a woollen mattress on a wooden frame.
+  { pattern: ['FWW', 'PPP'], keys: { F: 'feather', W: 'wool', P: 'planks' }, result: { item: 'kline', count: 1 } },
   ...tool('planks', 'wood'),
   ...tool('limestone', 'stone'),
   ...tool('bronzeIngot', 'bronze'),

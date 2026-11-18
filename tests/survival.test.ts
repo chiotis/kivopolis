@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGame, useShared } from '../src/game/store'
-import { FED, HUNGER_EVERY, MAX_FOOD, MAX_HEALTH, REGEN_DELAY, REGEN_EVERY, SAFE_FALL, STARVE_EVERY, eat, fallDamage, hurt, modeOf, readFood, readHealth, tickSurvival, useSurvival, wake } from '../src/game/survival'
+import { FED, HUNGER_EVERY, MAX_FOOD, MAX_HEALTH, REGEN_DELAY, REGEN_EVERY, SAFE_FALL, STARVE_EVERY, eat, fallDamage, freshSurvival, hurt, modeOf, readBed, readFood, readHealth, setBed, tickSurvival, useSurvival, wake } from '../src/game/survival'
 import { food, smelting, type Stack } from '../src/game/items'
 import { matchRecipe } from '../src/game/recipes'
 import { VoxelWorld, SX, SY, SZ } from '../src/voxel/world'
@@ -176,5 +176,29 @@ describe('food', () => {
     expect(wheat).toBeGreaterThan(300)
     expect(figs).toBeGreaterThan(200)
     expect(floating).toBe(0)
+  })
+})
+
+describe('the κλίνη', () => {
+  beforeEach(() => {
+    useGame.getState().reset()
+    useGame.getState().setMode('survival')
+  })
+
+  it('is made of a feather pillow, a woollen mattress and a wooden frame', () => {
+    const s = (item: string): Stack => ({ item, count: 1 })
+    expect(matchRecipe([s('feather'), s('wool'), s('wool'), s('planks'), s('planks'), s('planks'), null, null, null], 3)?.result).toEqual({ item: 'kline', count: 1 })
+  })
+
+  it('is where a player wakes, kept through a faint and in the save, and forgotten in a new game', () => {
+    setBed([200, 20, 210])
+    hurt(MAX_HEALTH)
+    wake()
+    expect(useSurvival.getState().bed).toEqual([200, 20, 210])
+    expect(readRecord<{ player: { bed: number[] } }>('game')!.player.bed).toEqual([200, 20, 210])
+    expect(readBed([1, 2])).toBeNull()
+    expect(readBed([1.5, 2, 3])).toBeNull()
+    freshSurvival()
+    expect(useSurvival.getState().bed).toBeNull()
   })
 })

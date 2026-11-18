@@ -50,6 +50,7 @@ export const Block = {
   voussoir: 42,
   figLeaves: 43,
   wheat: 44,
+  kline: 45,
 } as const
 export type BlockId = (typeof Block)[keyof typeof Block]
 
@@ -66,6 +67,8 @@ export const Tile = {
   balbisTop: 62, voussoir: 63,
   // Survival (Phase 16), in the atlas's second half: tiles 64 and on.
   figLeaves: 64, wheat: 65, wheatTop: 66,
+  // 67–70 are the food icons (items.ts).
+  klineTop: 71, klineSide: 72,
 } as const
 
 export type ToolType = 'pickaxe' | 'axe' | 'shovel'
@@ -149,6 +152,9 @@ const defs: Omit<BlockDef, 'id'>[] = [
   // a cut-out tuft like the lamp that is walked through and gathered for bread.
   { key: 'figLeaves', hardness: 0.15, opaque: false, solid: true, tiles: all(Tile.figLeaves), color: '#5f7d3c', sound: 'leaves', tier: 0, drop: [{ item: 'fig', count: 1, chance: 0.18 }, { item: 'stick', count: 1, chance: 0.12 }] },
   { key: 'wheat', hardness: 0, opaque: false, solid: false, tiles: { top: Tile.wheatTop, side: Tile.wheat, bottom: Tile.wheatTop }, color: '#d8b863', sound: 'leaves', tier: 0 },
+  // The κλίνη: a wooden couch with a woollen mattress and a feather pillow, where a player wakes
+  // after fainting. A cut-out like the jars, standing solid on four legs.
+  { key: 'kline', hardness: 0.6, opaque: false, solid: true, tiles: { top: Tile.klineTop, side: Tile.klineSide, bottom: Tile.planks }, color: '#a87a51', sound: 'wood', tool: 'axe', tier: 0 },
 ]
 
 export const blocks: BlockDef[] = defs.map((def, id) => ({ ...def, id: id as BlockId }))

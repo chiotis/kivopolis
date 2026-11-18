@@ -61,6 +61,8 @@ export type ClientMessage =
   | { type: 'shared'; patch: Partial<Shared> }
   | { type: 'move'; p: Vec3; yaw: number; item: string | null }
   | { type: 'inventory'; slots: unknown[] }
+  /** Survival (Phase 16): this player's health, hunger and bed, kept by the room for their return. */
+  | { type: 'vitals'; vitals: Vitals }
   /** Say one of the preset phrases, by its number. */
   | { type: 'say'; phrase: number }
   /** Point everyone to a block. */
@@ -78,6 +80,9 @@ export type ClientMessage =
   | { type: 'kilnSet'; cell: string; kiln: Kiln }
   | { type: 'kilnClose'; cell: string }
 
+/** One player's survival state, as the room keeps it. */
+export interface Vitals { health: number; food: number; bed: Vec3 | null }
+
 export type RoomError = 'full' | 'unknown-room' | 'bad-name' | 'name-taken' | 'bad-message' | 'unavailable' | 'kicked'
 
 export interface Welcome {
@@ -92,6 +97,8 @@ export interface Welcome {
   /** This player's saved inventory and position in the room, if they have played here before. */
   inventory: unknown[] | null
   position: Vec3 | null
+  /** This player's health, hunger and bed in the room (Phase 16); absent in rooms saved before it. */
+  vitals?: Vitals | null
   /** This player's secret for taking their place back after a dropped connection. */
   token: string
   /** The items lying in the room's world, and its animals. */

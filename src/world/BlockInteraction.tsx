@@ -8,7 +8,7 @@ import { apply } from '../game/actions'
 import { siteMarker, tourMarker } from '../game/theatre'
 import { inventory, useInventory } from '../game/inventory'
 import { food, itemByKey, mining, rollDrop } from '../game/items'
-import { eat, survivalActive } from '../game/survival'
+import { eat, setBed, survivalActive } from '../game/survival'
 import { Block, blocks, isEmpty, isWater } from '../voxel/blocks'
 import { PLAYER } from '../voxel/physics'
 import { raycast, type VoxelHit } from '../voxel/raycast'
@@ -229,7 +229,7 @@ export function BlockInteraction() {
       return
     }
     const aimed = hit ? world.get(hit.x, hit.y, hit.z) : Block.air
-    const opens = !playerState.body.crouching && (aimed === Block.workshop || aimed === Block.kiln)
+    const opens = !playerState.body.crouching && (aimed === Block.workshop || aimed === Block.kiln || aimed === Block.kline)
     // Survival: food in hand is eaten (or milk drunk) with the place button, unless it opens a workshop or kiln.
     const meal = holding ? food[holding] : undefined
     if (active && wantsPlace && blockInput.placeClick && meal && survivalActive() && !opens) {
@@ -262,6 +262,16 @@ export function BlockInteraction() {
       const x = hit.x + nx, y = hit.y + ny, z = hit.z + nz
       // Workshops and kilns open on use unless the player is crouching to build against them.
       const target = world.get(hit.x, hit.y, hit.z)
+      // A κλίνη is lain on, unless crouching: this player will wake there.
+      if (blockInput.placeClick && !playerState.body.crouching && target === Block.kline) {
+        blockInput.placeClick = false
+        blockInput.placing = false
+        setBed([hit.x, hit.y, hit.z])
+        notify(copy.bedSet)
+        state.learn('kline')
+        if (state.settings.sound) blockSound('soft', 'place')
+        return
+      }
       if (blockInput.placeClick && !playerState.body.crouching && (target === Block.workshop || target === Block.kiln)) {
         blockInput.placeClick = false
         blockInput.placing = false
