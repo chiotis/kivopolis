@@ -25,6 +25,7 @@ import { useRoom } from './net/roomState'
 import { useControls } from './ui/controls'
 import { Dialogs } from './ui/Dialogs'
 import { StageOverlay } from './ui/Hud'
+import type { GameMode } from './game/survival'
 import { ModeChoice } from './ui/ModeChoice'
 import { Logo } from './ui/Logo'
 
@@ -33,7 +34,7 @@ function App() {
   const progress = useShared()
   const marker = useRef<HTMLDivElement>(null)
   const [blueprint, setBlueprint] = useState(true)
-  const [creative, setCreative] = useState(false)
+  const [mode, setMode] = useState<GameMode>('gather')
   const game = screen === 'game'
   const roomCode = useRoom((state) => state.code)
   useControls()
@@ -61,10 +62,10 @@ function App() {
           <h1>{copy.title[0]}<em>{copy.title[1]}</em></h1>
           <p className="tagline">{copy.tagline}</p>
           <p className="intro-description">{copy.intro}</p>
-          {!progress.started && !inRoom() && <ModeChoice creative={creative} onChange={setCreative} />}
+          {!progress.started && !inRoom() && <ModeChoice mode={mode} onChange={setMode} />}
           {inRoom() && <p className="room-banner"><Users size={16} />{copy.inRoom} <strong className="pixel">{roomCode}</strong></p>}
           <div className="menu-actions">
-            <button className="button primary start" onClick={() => { if (!progress.started) useGame.getState().setCreative(creative); start() }}>{progress.started ? copy.continue : copy.start}<ArrowRight size={20} /></button>
+            <button className="button primary start" onClick={() => { if (!progress.started) useGame.getState().setMode(mode); start() }}>{progress.started ? copy.continue : copy.start}<ArrowRight size={20} /></button>
             {inRoom()
               ? <button className="button guide" onClick={leaveRoom}><LogOut size={17} />{copy.leaveRoom}</button>
               : progress.started

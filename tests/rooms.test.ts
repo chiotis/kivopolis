@@ -122,7 +122,7 @@ describe('a room', () => {
     expect(answers.map((m) => m.seq)).toEqual([...answers.map((m) => m.seq)].sort((x, y) => x - y))
 
     // Shared progress goes to the others; only the host may switch creative play.
-    b.send({ type: 'shared', patch: { discovered: true, creative: true } })
+    b.send({ type: 'shared', patch: { discovered: true, creative: true, survival: true } })
     const shared = await a.next('shared')
     expect(shared.patch).toEqual({ discovered: true })
 

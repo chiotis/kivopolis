@@ -47,8 +47,8 @@ interface Member {
 /** How far from a player a block change may be: the game's reach plus room for lag. */
 const REACH = 9
 /** Shared fields a player may change, and which of them only the room's creator may change. */
-const SHARED_KEYS = new Set<keyof Shared>(['started', 'discovered', 'completed', 'celebrated', 'buildings', 'facts', 'creative'])
-const HOST_ONLY = new Set<keyof Shared>(['creative'])
+const SHARED_KEYS = new Set<keyof Shared>(['started', 'discovered', 'completed', 'celebrated', 'buildings', 'facts', 'creative', 'survival'])
+const HOST_ONLY = new Set<keyof Shared>(['creative', 'survival'])
 
 const isInt = (value: unknown): value is number => Number.isInteger(value)
 const isVec = (value: unknown): value is Vec3 => Array.isArray(value) && value.length === 3 && value.every(Number.isFinite)

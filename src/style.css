@@ -630,3 +630,12 @@ progress::-moz-progress-bar { background: #6f8b66; border-radius: 10px; }
 .phrase-menu kbd { min-width: 18px; text-align: center; }
 .room-messages { position: absolute; left: 12px; bottom: 150px; margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; z-index: 5; pointer-events: none; }
 .room-messages li { padding: 4px 9px; font-size: 13px; color: #f2ecdd; }
+
+/* Survival (Phase 16): health above the hotbar, and a red edge when hurt. */
+.health { display: flex; align-items: center; gap: 2px; padding: 3px 6px; color: #f3c9b8; background: #20382dcb; border-radius: 6px; }
+.health-cell { width: 11px; height: 8px; border: 1px solid #f0e9d480; border-radius: 2px; background: #3b2620; }
+.health-cell.fill-1 { background: linear-gradient(90deg, #c8432f 50%, #3b2620 50%); }
+.health-cell.fill-2 { background: #c8432f; }
+.hurt-flash { position: absolute; inset: 0; z-index: 1; pointer-events: none; box-shadow: inset 0 0 90px 20px #b3221acc; animation: hurt-flash 0.6s ease-out forwards; }
+@keyframes hurt-flash { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .hurt-flash { animation-duration: 0.01s; } }

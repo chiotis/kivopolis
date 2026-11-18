@@ -54,19 +54,20 @@ The theatre is built block by block in first person, like any other build. There
 - **Skene (122):** ashlar platform and walls, olive-log posts and a terracotta roof.
 - **Gates (26):** two ashlar parodos gateways with marble lintels.
 
-Two ways to play, chosen when a game starts and switchable in settings:
+Three ways to play, chosen when a game starts and switchable in settings:
 - **Συλλογή υλικών (gathering):** cut wood, craft tools and dress stone before building. A «Πρώτα βήματα» guide walks through the first steps.
+- **Επιβίωση (survival):** gathering, with health. A fall of more than 3 blocks costs a point for every block beyond, and health comes back slowly after a quiet spell. A player whose health runs out faints and wakes at the theatre with full health, keeping everything. Health is shown above the hotbar and belongs to each player.
 - **Δημιουργικό (creative):** every item in the backpack palette, instant breaking, blocks that never run out, and flight. Meant for classrooms.
 
 Water placed above sea level is a source: it runs down and spreads up to seven blocks sideways, and dries up when its source is taken away. A hydria (three terracotta blocks at the workshop) carries water from one place to another.
 
 Day turns to night over 20 minutes. Oil lamps («Λυχνοστάτης»: a clay lump on a stick) light their surroundings, and sheep, goats and chickens roam the meadows. Short history notes pop up in the top-right corner the first time night falls, a lamp is lit or an animal is met, and they are kept in the journal. The day cycle can be switched off in settings.
 
-Progress and settings are saved automatically in the browser (IndexedDB). The save (version 3) keeps the shared game (buildings found and finished, history notes, time of day, creative play), this player's position and inventory, the device settings, and the world edits chunk by chunk. Mission progress, knowledge points and the tour are derived from the blocks in the saved world. Older saves are upgraded once: LocalStorage saves move into IndexedDB, saves from the smaller first island move onto the larger grid with the theatre in place, and saves from the prefab era fill the blueprint cells of the pieces they had placed. The pause menu can restart the current mission, which takes its blocks down and returns them to the inventory. Settings offers a confirmation dialog before resetting the campaign.
+Progress and settings are saved automatically in the browser (IndexedDB). The save (version 3) keeps the shared game (buildings found and finished, history notes, time of day, the way of playing), this player's position, health and inventory, the device settings, and the world edits chunk by chunk. Mission progress, knowledge points and the tour are derived from the blocks in the saved world. Older saves are upgraded once: LocalStorage saves move into IndexedDB, saves from the smaller first island move onto the larger grid with the theatre in place, and saves from the prefab era fill the blueprint cells of the pieces they had placed. The pause menu can restart the current mission, which takes its blocks down and returns them to the inventory. Settings offers a confirmation dialog before resetting the campaign.
 
 ## Play with friends
 
-With the room server running, the start menu shows «Παιχνίδι με φίλους». One player creates a room and shares its six-character code; up to four more join with the code and a nickname. Everyone builds in the same world and shares the progress, the water, the animals, the dropped items and the kilns. Because the players are children, there is no free text chat: nine preset phrases (T, then 1–9) and a pointer (G) that marks a block for everyone. Only the room's creator can restart a step, switch creative play, or remove a player. No accounts, e-mail or personal data are collected, and nothing is sent to third-party services. Setting up the server is described in [server/README.md](server/README.md).
+With the room server running, the start menu shows «Παιχνίδι με φίλους». One player creates a room and shares its six-character code; up to four more join with the code and a nickname. Everyone builds in the same world and shares the progress, the water, the animals, the dropped items and the kilns. Because the players are children, there is no free text chat: nine preset phrases (T, then 1–9) and a pointer (G) that marks a block for everyone. Only the room's creator can restart a step, switch creative or survival play, or remove a player. No accounts, e-mail or personal data are collected, and nothing is sent to third-party services. Setting up the server is described in [server/README.md](server/README.md).
 
 ## Build and deploy
 

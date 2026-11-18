@@ -296,6 +296,19 @@ With reduced motion, the tour is a still view. The stadium's signpost and the re
 ## Phase 16: Survival (last)
 Unchanged from the old Phase 9, and done only after everything above: a *Survival* mode with health, hunger from food such as olives, bread, figs and milk, and fall damage; uses for milk and feathers.
 
+**Decisions (2026-11-18)**
+- **A third way to play:** *Επιβίωση* sits beside gathering and creative when a game starts. It is gathering, plus health, hunger and fall damage. In a room only the host can switch it, and creative play pauses it.
+- **Gentle fainting:** a player whose health runs out wakes at their bed, or at the theatre, with full health and keeps everything they carry. Hunger lowers health but never makes a player faint.
+- **Food:** olive leaves sometimes drop olives, fig trees grow in the groves, wild wheat is baked into bread in the kiln, and milk is a drink. Feathers and wool make a bed that sets where a player wakes.
+- **Three slices:** **16a** the mode, health and fall damage; **16b** hunger and the food; **16c** the bed, waking up, and the multiplayer and save details.
+
+**Status (2026-11-18): 16a done (mode, health, fall damage).**
+- A new game offers three ways to play; settings has a *Επιβίωση* switch next to the creative one (host only in a room). The shared game keeps a `survival` flag beside `creative`.
+- Health is 20 points, shown as ten segments above the hotbar (`src/game/survival.ts`). It belongs to each player and is saved with their position.
+- A fall of more than 3 blocks costs a point for every block beyond, measured from the fall's highest point, so frame rate doesn't matter. Landing in water, flying, and being moved (a respawn or a tour) start the count again.
+- Health comes back a point every 3 seconds, after 6 seconds without being hurt. A hurt flashes the screen's edge red and makes a low thud.
+- A player whose health runs out faints and wakes at the theatre with full health and everything they carry.
+
 ---
 
 ## Decisions (2026-11-16)

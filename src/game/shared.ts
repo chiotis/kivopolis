@@ -27,6 +27,8 @@ export interface Shared {
   time: number
   /** Creative play: unlimited blocks, instant breaking and flight. */
   creative: boolean
+  /** Survival play (Phase 16): gathering, with health, hunger and fall damage for every player. */
+  survival: boolean
 }
 
 /** History notes that pop up the first time something happens in the world. */
@@ -34,7 +36,7 @@ export type Fact = 'night' | 'lamp' | 'sheep' | 'goat' | 'chicken' | 'hydria' | 
 export const factIds: readonly Fact[] = ['night', 'lamp', 'sheep', 'goat', 'chicken', 'hydria', 'column', 'frieze', 'bronze', 'water', 'market', 'stade', 'vault']
 
 export const initialShared = (): Shared => ({
-  started: false, discovered: false, completed: false, celebrated: [], buildings: {}, facts: [], time: 0.3, creative: false,
+  started: false, discovered: false, completed: false, celebrated: [], buildings: {}, facts: [], time: 0.3, creative: false, survival: false,
 })
 
 export const useShared = create<Shared>(() => initialShared())
