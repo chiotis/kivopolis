@@ -15,6 +15,7 @@ import { signposts } from '../game/buildings'
 import { playerState } from './player'
 import { OVERVIEW_PAN } from './view'
 import { BALBIDES, TRACK } from '../game/blueprints/stadium'
+import { isBuildingTour, tourLength, tourShot } from './tours'
 
 export const movementKeys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', ' ', 'c'])
 export const keys = new Set<string>()
@@ -145,6 +146,11 @@ export function CameraRig({ view, player, marker }: {
         center.set(finish + (((start + finish) / 2) - finish) * rise + 6 * (1 - rise), ground + 1.1 * (1 - rise), lane)
       }
       if (time > (state.settings.reducedMotion ? 4 : RUN + RISE + 1.5)) state.endTour()
+    } else if (state.mode === 'tour' && isBuildingTour(state.tour)) {
+      // The sanctuary's and the agora's flights (src/world/tours.ts).
+      if (!state.panel) memory.touring += dt
+      tourShot(state.tour, memory.touring, state.settings.reducedMotion, eye, center)
+      if (memory.touring > tourLength(state.tour, state.settings.reducedMotion)) state.endTour()
     } else if (state.mode === 'tour') {
       if (!state.panel) memory.touring += dt
       const time = memory.touring
