@@ -120,6 +120,8 @@ Vitest covers:
 
 Playwright activates the plan and lays an orchestra block in first person, upgrades an old save into a finished theatre and runs the tour, walks the road from the theatre to the sanctuary's signpost, checks the blueprint guide on a phone, exercises the break, pick up and place loop, plays in creative mode, and plays two browsers in one room (`tests/rooms.e2e.ts`).
 
+GitHub Actions (`.github/workflows/ci.yml`) runs the type check, both builds, the unit tests and the Playwright tests on every pull request and every push to `main`. When the Playwright tests fail, the report and screenshots are kept as a download on the run for a week.
+
 `npm run load-check` starts a room server and fills 10 rooms with 5 simulated players each, then reports message rates and round-trip times. Point it at a deployed server with `LOAD_URL=wss://rooms.kivopolis.com` (and an `Origin` the server allows, through `LOAD_ORIGIN`).
 
 ## Project layout
