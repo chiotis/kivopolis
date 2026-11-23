@@ -11,6 +11,7 @@
     "test:e2e": "playwright test",
     "build:server": "esbuild server/main.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=server/dist/index.mjs",
     "server": "npm run build:server && node server/dist/index.mjs",
+    "texts": "esbuild scripts/greek-texts.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=scripts/dist/greek-texts.mjs && node scripts/dist/greek-texts.mjs",
     "load-check": "esbuild server/load-check.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=server/dist/load-check.mjs && node server/dist/load-check.mjs"
   },
   "dependencies": {
@@ -36,6 +37,7 @@
     "@types/three": "^0.181.0",
     "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^5.1.0",
+    "docx": "^9.15.3",
     "tailwindcss": "^4.1.0",
     "typescript": "~5.9.3",
     "vite": "7.3.8",

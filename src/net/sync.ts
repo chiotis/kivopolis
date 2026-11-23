@@ -3,6 +3,7 @@ import { bubbles, markers, others, roomActions, useRoom } from './roomState'
 import type { ClientMessage, PlayerInfo, ServerMessage, Welcome, WorldAction } from './protocol'
 import { network } from '../game/actions'
 import { blockSound } from '../game/audio'
+import { copy } from '../game/el'
 import { inventory } from '../game/inventory'
 import type { Kiln } from '../game/kiln'
 import { cellsOfStep } from '../game/plans'
@@ -146,7 +147,7 @@ export function startSync() {
     setHerd(fresh.animals)
     // The room may have restarted: a kiln left open here is closed rather than trusted.
     const open = useInventory.getState().openKiln
-    if (open) closeKiln(open, 'Το καμίνι έκλεισε· άνοιξέ το ξανά.')
+    if (open) closeKiln(open, copy.kilnClosed)
     fromRoom(fresh.shared)
     sky.time = fresh.shared.time
     useRoom.setState({ me, players: fresh.players, status: 'connected' })
@@ -241,8 +242,8 @@ export function startSync() {
         inventory.setKiln(message.cell, message.kiln)
         fromRoomKiln = false
         return
-      case 'kilnBusy': closeKiln(message.cell, 'Κάποιος άλλος χρησιμοποιεί αυτό το καμίνι.'); return
-      case 'kilnGone': closeKiln(message.cell, 'Το καμίνι χάλασε· ό,τι είχε μέσα έπεσε κάτω.'); return
+      case 'kilnBusy': closeKiln(message.cell, copy.kilnBusy); return
+      case 'kilnGone': closeKiln(message.cell, copy.kilnGone); return
       case 'error': void retry(); return
     }
   }
