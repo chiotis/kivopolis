@@ -149,6 +149,9 @@ function PlanPanel({ plan, brief, setBrief }: { plan: Plan; brief: boolean; setB
   )
 }
 
+/** What each building's tour shows, under the finish button. */
+const tourHints = { theatre: copy.tourHint, sanctuary: copy.sanctuaryTourHint, agora: copy.agoraTourHint, stadium: copy.stadiumTourHint }
+
 export function StageOverlay({ blueprint, setBlueprint, marker }: {
   blueprint: boolean; setBlueprint: (value: boolean) => void; marker: RefObject<HTMLDivElement | null>
 }) {
@@ -196,7 +199,7 @@ export function StageOverlay({ blueprint, setBlueprint, marker }: {
       </div>}
       <div className="stage-bottom">
         <div className="stage-keys">
-          {mode === 'tour' ? <span><Route size={15} />{tour === 'stadium' ? copy.stadiumTourHint : copy.tourHint}</span>
+          {mode === 'tour' ? <span><Route size={15} />{tourHints[tour]}</span>
             : overview ? <><span><kbd>W A S D</kbd>{copy.slide}</span><span><Move size={15} />{copy.orbit}</span><span><Mouse size={15} />{copy.zoom}</span></>
               : <><span><kbd>W A S D</kbd>{copy.movement}</span><span><Mouse size={15} />{copy.blocksHint}</span><span><kbd>E</kbd>{copy.backpackKey}</span></>}
         </div>

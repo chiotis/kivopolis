@@ -17,7 +17,7 @@ The island has four building areas, joined by an ancient road with bridges over 
 
 Every building is a voxel blueprint, built block by block in first person; there are no prefab pieces. At a building's sign the plan is activated, and the current step's blocks appear as glowing ghost blocks. A correct block placed in a ghost cell counts, a block that does not belong there is outlined in red, and breaking a block is the undo. The step card lists the materials still needed next to how many the player carries. Each finished step brings a short text about what was built and why.
 
-When the theatre is finished, a tour flies round its hollow. When the stadium, the last building, is finished, the camera runs the track from one starting line to the other and rises over the stadium, and a closing window, *Η πόλη σου στέκεται ολόκληρη*, lists the four buildings. The island stays open to explore and build on afterwards.
+When the theatre is finished, a tour flies round its hollow. The sanctuary's tour starts before the altar and climbs round the colonnade to the pediments, and the agora's rises over the square from the stalls to the stoa and looks into the fountain house; each lands on the building's signpost window, which can run it again. When the stadium, the last building, is finished, the camera runs the track from one starting line to the other and rises over the stadium, and a closing window, *Η πόλη σου στέκεται ολόκληρη*, lists the four buildings. The island stays open to explore and build on afterwards.
 
 ### The theatre in detail
 
@@ -111,6 +111,7 @@ npm run test:e2e
 Vitest covers:
 - the four blueprints and their progress: the theatre's missions, and the sanctuary's, agora's and stadium's steps, with their ground, water and footings;
 - the opening order of the buildings, the signposts, and the closing tour;
+- the sanctuary's and the agora's tours: their flights stay in open air, keep the building in sight and glide without jumps;
 - the voxel world: generation, edits and persistence, meshing, raycasts and physics;
 - items: recipes, mining and drops, inventory moves, tool wear, and the kiln;
 - flowing water, springs and pipes;

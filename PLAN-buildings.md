@@ -178,7 +178,7 @@ Theatres stood in the sanctuary of Dionysus, so this is the natural next step.
 - Entablature (400): a marble architrave over the column ring, the frieze with a triglyph over every column and between them and metopes in the gaps, and a marble cornice to the stylobate's edge.
 - Roof (432): terracotta in two slopes, rising one block for every two to a ridge along the temple, closed by a marble pediment at each end.
 - Statue (43): a statue base at the west end of the cella and a bronze Dionysus built block by block, with the thyrsus in his right hand, facing the door.
-- 2,907 blocks in all. When every step stands, the sanctuary is finished: the signpost window says so, and the agora's signpost opens (its plan comes in Phase 14). Not done: a tour of the sanctuary like the theatre's.
+- 2,907 blocks in all. When every step stands, the sanctuary is finished: the signpost window says so, and the agora's signpost opens (its plan comes in Phase 14). A tour of the sanctuary like the theatre's was added later (2026-11-23), together with one of the agora: see `src/world/tours.ts`.
 
 **Size and layout (decided 2026-11-17)**
 - **Columns 2 × 2 blocks** (1 m thick), about 11 blocks tall with the capital, roughly the Doric 1 : 5.5. Axial spacing 4 blocks (a 2-block gap between columns).
