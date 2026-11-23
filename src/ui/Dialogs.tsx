@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Award, Backpack, BookOpen, CircleHelp, Compass, Flame, Hammer, Landmark, Lock, Pause, Settings2, Signpost, Users, X } from 'lucide-react'
+import { Award, Backpack, BookOpen, CircleHelp, Compass, Flame, Hammer, Landmark, Lock, Pause, Route, Settings2, Signpost, Users, X } from 'lucide-react'
 import { InventoryScreen } from './InventoryScreen'
 import type { GameMode } from '../game/survival'
 import { ModeChoice } from './ModeChoice'
@@ -151,6 +151,7 @@ export function Dialogs() {
 /** What a new area's signpost says: the story of the building, and whether it is open yet. */
 function BuildingSign({ id }: { id: (typeof BUILDING_ORDER)[number] }) {
   const progress = useShared()
+  const replayTour = useGame((state) => state.replayTour)
   const status = buildingStatus(progress, id)
   return (
     <>
@@ -161,6 +162,7 @@ function BuildingSign({ id }: { id: (typeof BUILDING_ORDER)[number] }) {
         {status === 'open' && <><Hammer size={15} />{copy.buildingOpen}</>}
         {status === 'done' && <><Award size={15} />{id === BUILDING_ORDER.at(-1) ? copy.cityDone : copy.buildingDone}</>}
       </p>
+      {status === 'done' && id !== 'theatre' && <div className="modal-actions"><button className="button" onClick={() => replayTour(id)}><Route size={16} />{copy.replayTour}</button></div>}
     </>
   )
 }

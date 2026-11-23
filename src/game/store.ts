@@ -56,8 +56,8 @@ interface State {
   /** The step just finished, congratulated at the top of the next step's window. */
   congrats: Mission | null
   mode: Mode
-  /** Which tour runs: the theatre's flight round the hollow, or the stadium's run down the track. */
-  tour: 'theatre' | 'stadium'
+  /** Which tour runs: the theatre's flight round the hollow, a flight round the sanctuary or the agora, or the stadium's run down the track. */
+  tour: BuildingId
   /** A finished step shown in the corner note: a theatre mission or a later building's step. */
   milestone: string | null
   /** Notes waiting to pop up in the top-right corner, oldest first. */
@@ -83,6 +83,8 @@ interface State {
   updatePlayer: (position: Point) => void
   interact: () => void
   endTour: () => void
+  /** Runs a finished building's tour again, from its signpost window. */
+  replayTour: (id: BuildingId) => void
   restartMission: () => void
   reset: () => void
   dismissMilestone: () => void
@@ -271,13 +273,23 @@ export const useGame = create<State>((set, get) => ({
     }
   },
   endTour: () => {
+    const tour = get().tour
     // The stadium's run closes the whole game: the island's four buildings stand.
-    if (get().tour === 'stadium') {
+    if (tour === 'stadium') {
       set({ mode: 'explore', panel: 'finale' })
+      return
+    }
+    // The sanctuary's and the agora's flights land on their signpost window, which says the next building is open.
+    if (tour !== 'theatre') {
+      set({ mode: 'explore', panel: 'building', building: tour })
       return
     }
     share({ completed: true })
     set({ mode: 'explore', panel: 'complete' })
+  },
+  replayTour: (id) => {
+    if (id === 'theatre' || !useShared.getState().buildings[id]?.completed) return
+    set({ mode: 'tour', tour: id, panel: null, milestone: null })
   },
   restartMission: () => {
     const shared = useShared.getState()
@@ -375,9 +387,9 @@ usePlans.subscribe(({ sites }, previous) => {
     const buildings = useShared.getState().buildings
     share({ buildings: { ...buildings, [plan.id]: { ...known, celebrated: [...known.celebrated, ...fresh], completed: known.completed || done } } })
     if (state.screen !== 'game') continue
-    // The last building ends with a run down the stadium's track; the others open their signpost window.
-    if (done && plan.id === 'stadium') useGame.setState({ mode: 'tour', tour: 'stadium', panel: null, milestone: null })
-    else if (done) useGame.setState({ panel: 'building', building: plan.id, milestone: null })
+    // A finished building is shown in a short tour: a flight round the sanctuary or the agora, which
+    // lands on its signpost window, or the run down the stadium's track that closes the game.
+    if (done) useGame.setState({ mode: 'tour', tour: plan.id, panel: null, milestone: null })
     else if (!state.panel) useGame.setState({ milestone: fresh.at(-1)! })
   }
 })
