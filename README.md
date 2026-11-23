@@ -133,7 +133,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs the type check, both builds, th
 - `src/game/items.ts`, `recipes.ts`, `inventory.ts` and `kiln.ts` define items, tools and food, mining and drops, crafting, the 36-slot inventory and the kiln. `src/game/survival.ts` holds health, hunger and the bed.
 - `src/voxel/` holds the block world: the block registry, the 384 × 48 × 384 grid, the island generator, flowing water (`flow.ts`), springs and pipes (`plumbing.ts`), the 16 × 16 texture atlas drawn in code, the face-culled mesher with ambient occlusion, the raycast and the player's physics.
 - `src/net/` is the room client: messages, joining, and keeping the game in step with the room. `server/` is the room server (see [server/README.md](server/README.md)).
-- `src/game/el.ts` contains all the Greek text: the interface, the steps, the history notes and the journal.
+- `src/game/el.ts` contains all the Greek text: the interface, the steps, the history notes and the journal. `npm run texts` writes all of it, with the room's preset phrases, into `docs/greek-texts-review.docx`: tables in which an archaeologist or a teacher can comment on every text in Word. Run it again whenever the texts change.
 - `src/world/` renders the terrain, the blueprint ghosts, drops, animals and block interaction, and runs the camera, the tours and input. `src/ui/` contains the HUD, inventory and dialogs.
 
 ## Sources

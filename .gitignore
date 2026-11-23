@@ -7,3 +7,4 @@ output/
 server/dist/
 rooms/
 *.local
+scripts/dist/
