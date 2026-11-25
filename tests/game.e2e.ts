@@ -344,3 +344,27 @@ test('walks the ancient road from the theatre to the sanctuary signpost', async 
   await page.getByRole('button', { name: new RegExp(copy.readSign) }).click()
   await expect(page.getByRole('dialog')).toContainText(buildings.sanctuary.title)
 })
+
+test('turns the head with the arrow keys while walking with W', async ({ page }, info) => {
+  test.skip(info.project.name === 'touch', 'Keyboard look is checked once, with the keyboard.')
+  await startGame(page)
+  await expect.poll(() => page.evaluate(() => Boolean((window as any).__polisView && (window as any).__polis))).toBe(true)
+  const read = () => page.evaluate(() => {
+    const view = (window as any).__polisView, { x, z } = (window as any).__polis.player.body.position
+    return { yaw: view.walkYaw as number, pitch: view.walkPitch as number, x: x as number, z: z as number }
+  })
+  const before = await read()
+  await page.keyboard.down('w')
+  await page.keyboard.down('ArrowLeft')
+  await page.keyboard.down('ArrowUp')
+  await page.waitForTimeout(500)
+  await page.keyboard.up('ArrowUp')
+  await page.keyboard.up('ArrowLeft')
+  await page.keyboard.up('w')
+  const after = await read()
+  // ← turns left (yaw grows), ↑ looks up, and W kept walking the whole time. The margins are
+  // small because a slow headless frame rate caps each frame's step.
+  expect(after.yaw).toBeGreaterThan(before.yaw + 0.15)
+  expect(after.pitch).toBeGreaterThan(before.pitch + 0.08)
+  expect(Math.hypot(after.x - before.x, after.z - before.z)).toBeGreaterThan(0.3)
+})

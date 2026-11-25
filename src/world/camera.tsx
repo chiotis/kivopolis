@@ -19,6 +19,9 @@ import { isBuildingTour, tourLength, tourShot } from './tours'
 
 export const movementKeys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', ' ', 'c'])
 export const keys = new Set<string>()
+/** How fast the arrow keys turn (left/right) and tilt (up/down) the view on foot, in radians a second. */
+const KEY_TURN_SPEED = 2.2
+const KEY_TILT_SPEED = 1.4
 // Terrain, trees and ruins collide as voxels; only the signposts remain round colliders.
 const staticObstacles: Obstacle[] = [
   { x: siteMarker[0], z: siteMarker[2], radius: 0.4 },
@@ -163,8 +166,17 @@ export function CameraRig({ view, player, marker }: {
       const body = playerState.body
       const active = (first: string, second: string) => Number(keys.has(first) || keys.has(second))
       const free = !state.panel
-      const dx = free ? active('d', 'arrowright') - active('a', 'arrowleft') : 0
-      const dz = free ? active('s', 'arrowdown') - active('w', 'arrowup') : 0
+      // On foot W A S D walk and the arrows turn the head, so the view can be steered without the
+      // mouse or touchpad (many laptops switch the touchpad off while keys are held).
+      const dx = free ? Number(keys.has('d')) - Number(keys.has('a')) : 0
+      const dz = free ? Number(keys.has('s')) - Number(keys.has('w')) : 0
+      const turn = free ? Number(keys.has('arrowleft')) - Number(keys.has('arrowright')) : 0
+      const tilt = free ? Number(keys.has('arrowup')) - Number(keys.has('arrowdown')) : 0
+      if (turn || tilt) {
+        const { sensitivity, invertY } = state.settings
+        orbit.walkYaw += turn * KEY_TURN_SPEED * sensitivity * dt
+        orbit.walkPitch = MathUtils.clamp(orbit.walkPitch + tilt * KEY_TILT_SPEED * sensitivity * (invertY ? -1 : 1) * dt, -1.5, 1.5)
+      }
       const sin = Math.sin(orbit.walkYaw), cos = Math.cos(orbit.walkYaw)
       const moveX = dx * cos + dz * sin, moveZ = dz * cos - dx * sin
       const before = { ...body.position }
