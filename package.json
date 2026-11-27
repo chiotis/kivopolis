@@ -12,6 +12,7 @@
     "build:server": "esbuild server/main.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=server/dist/index.mjs",
     "server": "npm run build:server && node server/dist/index.mjs",
     "texts": "esbuild scripts/greek-texts.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=scripts/dist/greek-texts.mjs && node scripts/dist/greek-texts.mjs",
+    "print-model": "esbuild scripts/theatre-print.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=scripts/dist/theatre-print.mjs && node scripts/dist/theatre-print.mjs",
     "load-check": "esbuild server/load-check.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=server/dist/load-check.mjs && node server/dist/load-check.mjs"
   },
   "dependencies": {
